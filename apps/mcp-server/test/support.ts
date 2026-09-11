@@ -115,6 +115,7 @@ export async function startApp(overrides: AppOverrides = {}): Promise<TestApp> {
         'context_state',
         'context_baseline',
         'track_affinity',
+        'action',
         'event',
         'device',
         'rule',

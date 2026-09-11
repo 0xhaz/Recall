@@ -292,7 +292,7 @@ export class MemoryService {
     householdId: string,
     speaker: Speaker | null,
     query: string,
-    opts: { limit: number; closed?: boolean; mode?: SearchMode },
+    opts: { limit: number; closed?: boolean; mode?: SearchMode; keywordOnly?: boolean },
   ): Promise<SearchHit[]> {
     const personId = speaker?.person_id ?? null;
     const when = opts.closed ? CLOSED : CURRENT;
@@ -300,7 +300,9 @@ export class MemoryService {
     const tsquery = toTsQuery(query, nameWords(speaker?.display_name));
     const [keyword, vector] = await Promise.all([
       this.keywordHits(householdId, personId, tsquery, when, !opts.closed, Math.max(opts.limit, CANDIDATES)),
-      query.trim() ? this.vectorHits(householdId, personId, query, when, opts.mode ?? 'query') : [],
+      query.trim() && !opts.keywordOnly
+        ? this.vectorHits(householdId, personId, query, when, opts.mode ?? 'query')
+        : [],
     ]);
 
     const scores = reciprocalRankFusion([keyword.filter((r) => r.rank > 0).map((r) => r.id), vector.map((r) => r.id)]);

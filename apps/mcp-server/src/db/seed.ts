@@ -91,6 +91,17 @@ const facts = [
     origin: 'seed',
   },
   {
+    id: 'f8',
+    household: DEMO_HOUSEHOLD_ID,
+    scope: 'household',
+    owner: DEMO_HOUSEHOLD_ID,
+    type: 'semantic',
+    content: "The family's home delivery address is 12 Jalan Setiawangsa, Kuala Lumpur",
+    confidence: 0.95,
+    tag: 'pii',
+    origin: 'seed',
+  },
+  {
     id: 'f6',
     household: DEMO_HOUSEHOLD_ID,
     scope: 'person',

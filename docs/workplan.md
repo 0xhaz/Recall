@@ -22,7 +22,9 @@ Each work item has a week, a priority, and a "done when". Priorities:
 - ✅ 4a: activity projection (60 days), routine miner (clusters, day patterns, holidays, chains, drift, broken/fading), `checkin` and the absence watcher (prompt the person, then the carers 30 min later), notices delivered once, embedding model warmed at start
 - ✅ 4b: context engine (workout per person; wind-down, party, festive, focus for the household) as a worker-recomputed projection with debounce, hysteresis and manual override that calibrates the trigger; quiet hours; `get_context`, `set_context`, `suggest_music` over a labelled mock catalogue with per-context skips; `session_brief` now carries active contexts and quiet hours
 - ✅ Live on the dev server: a 2-minute heart-rate burst became Aisyah's workout via the worker after its hold; `get_context` p50 9 ms / p95 13 ms; no raw heart rate in any response
-- ⏳ 4c `propose_action` / `action_preflight` / `undo`, offer and auto-start counting; 4d care-mode inversions; 4e simulator + replay scripts; AgentCore deploy waits on AWS credits
+- ✅ 4c: `action_preflight` (rules quoted, quiet hours, the address on record, venues known from memory or past orders, repeat orders, amounts, routine clashes, guests, delivery notices with no matching order), `propose_action` (due routines, chains, music for the live context; one offer with its source; auto-start after two accepts for low-risk ones), `decide_action`, `undo` (per-intent windows, a tombstone carrying the inverse command)
+- ✅ Live: the demo's pre-flight beat flags the office address against the home address on record; confirm → undo → "already undone"; the 2 am couch notice is withheld; a workout offers Running Mix on an idle device but not over the news already playing; pre-flight p95 35 ms once its address and venue lookups became keyword-only
+- ⏳ 4d care-mode inversions; 4e simulator + replay scripts; AgentCore deploy waits on AWS credits
 
 **W3 (started early, as of 2026-09-11)**
 
@@ -228,8 +230,8 @@ Checkboxes are the tasks. "Done when" is the acceptance test.
 - [x] Precedence engine: caregiver safety → person's rule → other caregiver rule → learned → default [A§1.5] — refined with a parent-for-child tier; household rules share the person's tier (decision log)
 - [x] NL → structured rule parsing via LLM, with the verbatim text always kept — live parser tests pass on `qwen3:8b`
 - [ ] Rules can tag/exclude learned facts (e.g. "never peanuts" filters recipe recall) [A§1.5]
-- [ ] Conflict detection: rule vs rule, rule vs routine → conflict item with a plain-language explanation; never silently resolved [A§1.5] — rule vs rule ✓ (returned by `set_rule`); rule vs routine in W4
-- [ ] Enforcement inside `propose_action` and `action_preflight` → `blocked_by: {rule_id, text}`; device-state rules verified afterwards via `device_state` [A§1.5]
+- [ ] Conflict detection: rule vs rule, rule vs routine → conflict item with a plain-language explanation; never silently resolved [A§1.5] — rule vs rule ✓ (returned by `set_rule`); rule vs routine surfaces at offer time (`propose_action` lists the routine under `not_offered`, quoting the rule); a conflict item at `set_rule` time → W5 with the console
+- [x] Enforcement inside `propose_action` and `action_preflight` → `blocked_by: {rule_id, text}`; device-state rules verified afterwards via `device_state` [A§1.5] — rules are checked again at `decide_action`; responses tell the assistant to re-read `device_state`
 - [ ] "Want me to make that a rule?" offer after repeated manual corrections (IG)
 
 **Done when:** "no music after 10pm on school nights" suppresses a learned 10:30pm music routine in a replayed scenario, and zero rule violations show up across all replay tests [A§8].
@@ -268,15 +270,15 @@ NestJS, MCP spec 2025-11-25+, Streamable HTTP; the repo must actually call MCP i
 - [ ] State-of-record: every "turn X off" is re-read from `device_state` after the change [A§5]
 - [ ] Assert in tests that `session_history` / `device_state` are consulted before any state claim [A§8]
 - [ ] Repeat detector on the session projection: the same answer N times → abstain + offer an alternative; **inverted in care mode** (answer consistently) [A§5, D§5]
-- [ ] Undo log: every action through Recall gets an undo handle with a window [D§3.2 #3]
-- [ ] Pre-flight checks: known addresses, venues used before, routine conflicts, order history, quiet hours → "confirm these N things" payload [D§3.2 #2]
+- [x] Undo log: every action through Recall gets an undo handle with a window [D§3.2 #3] — per-intent windows (orders and rides 2 min, device changes 10 min, bookings 15 min, purchases 30 min, calls none); `action.undone` is a tombstone carrying the inverse command; locks are never reversed
+- [x] Pre-flight checks: known addresses, venues used before, routine conflicts, order history, quiet hours → "confirm these N things" payload [D§3.2 #2] — plus repeat orders, unusual amounts, guests and an unknown speaker
 
 ### WS7 — Behaviour policy (W4, MS/IG)
-- [ ] Tiered proactivity: inform → suggest → draft → act; only high-confidence, low-risk actions run autonomously; everything autonomous can be undone [D§4.1]
-- [ ] Per-person accept/dismiss feeds thresholds [D§4.1]
-- [ ] Provenance gate: no proactive utterance without a source record visible in the console [A§1.2, D§3.3]
-- [ ] Never-initiate list: health, bereavement, financial, third-party, child → answer-only [D§3.3]
-- [ ] Quiet hours: wind-down/sleep hard-suppresses proactive output; unsolicited purchase/delivery notices must pass pre-flight against order history [D§3.3]
+- [x] Tiered proactivity: inform → suggest → draft → act; only high-confidence, low-risk actions run autonomously; everything autonomous can be undone [D§4.1] — money is only ever drafted; media and smart-home start on their own after two accepts when the last answer was yes; party/festive always ask
+- [x] Per-person accept/dismiss feeds thresholds [D§4.1] — per offer (a person's routine, or person × context for music); three more dismissals than accepts stops the offer
+- [x] Provenance gate: no proactive utterance without a source record visible in the console [A§1.2, D§3.3] — every offer carries `source` (the routine, or the context and its reasons)
+- [x] Never-initiate list: health, bereavement, financial, third-party, child → answer-only [D§3.3] — by topic and the sensitivity taggers; health, medication, check-in, sleep and lock kinds are never offered
+- [x] Quiet hours: wind-down/sleep hard-suppresses proactive output; unsolicited purchase/delivery notices must pass pre-flight against order history [D§3.3] — a delivery notice must match a recent order's venue or items
 - [ ] Tone rule and response budget per intent class (transactional → confirmation word only) — IG [D§3.3]
 
 ### WS8 — Routine miner (W4, P0)

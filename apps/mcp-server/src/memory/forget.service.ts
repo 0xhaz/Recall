@@ -177,7 +177,7 @@ export class ForgetService {
         // Routines are memory too (architecture.md §1.3): what they did, and when, goes with them.
         await tx.query('DELETE FROM routine WHERE household_id = $1 AND person_id = $2', [householdId, personId]);
         await tx.query('DELETE FROM activity WHERE household_id = $1 AND person_id = $2', [householdId, personId]);
-        for (const table of ['context_state', 'context_baseline', 'track_affinity']) {
+        for (const table of ['action', 'context_state', 'context_baseline', 'track_affinity']) {
           await tx.query(`DELETE FROM ${table} WHERE household_id = $1 AND person_id = $2`, [householdId, personId]);
         }
         const revoked = await tx.query(

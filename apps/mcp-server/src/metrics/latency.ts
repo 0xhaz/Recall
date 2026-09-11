@@ -11,6 +11,10 @@ export const LATENCY_BUDGETS_MS: Record<string, number> = {
   get_context: 100,
   set_context: 100,
   suggest_music: 100,
+  action_preflight: 200,
+  propose_action: 200,
+  decide_action: 100,
+  undo: 100,
 };
 
 const WINDOW = 1000;

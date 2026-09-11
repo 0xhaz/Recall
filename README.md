@@ -85,6 +85,11 @@ so the assistant can ask "Is this Aisyah?". Every read carries the device-local 
 | `set_context` | "Workout mode" / "stop workout mode": wins over the signals for a while and calibrates the person's trigger |
 | `suggest_music` | Picks for the live context from a mock catalogue, ranked by fit and what this person plays or skips in that context; nothing when a rule forbids music |
 | `checkin` | "I'm up" / "good morning": recorded, and the carers are told; a missed usual check-in prompts the person, then the carers |
+| **Actions** | |
+| `action_preflight` | Before any order, booking, ride, call or device change: rules (quoted), quiet hours, the address on record, venues used before, repeat orders, unusual amounts and routine clashes decide whether to allow it, confirm specific things first, or block it |
+| `propose_action` | At most one offer, with its source: a routine that's due, the next step of a routine chain, or music for the live context. Nothing in quiet hours; after two accepts, low-risk ones just start |
+| `decide_action` | The person's answer: confirm carries it out with an undo window, dismiss teaches the offer to back off |
+| `undo` | Takes back the latest action while its window is open; device changes are reversed with the inverse command |
 | **Devices** | |
 | `resolve_speaker` | Simulated Voice ID: a confident match is the speaker; a weak match or the device's usual person is a candidate |
 | `ingest_events` | Device reports (media, timers, alarms, subscriptions, conversation turns, sensors), idempotent and HLC-ordered |
@@ -113,6 +118,10 @@ signals never leave the server.
 contexts, recomputed by a background job. A context switches on only after its score holds, and off only after it has
 stayed low, so a flight of stairs isn't a workout. Thresholds are relative to the person's own resting rate. Only
 scores and thresholds are kept; raw heart rate is deleted after 7 days. Wind-down or sleep sets quiet hours.
+
+**Actions.** Anything done on someone's behalf is checked first, recorded, and can be undone for a while. Offers come
+only from a routine or a live context, carry their source, never come during quiet hours, and never raise health,
+money or loss. Anything that costs money is only ever drafted for the person to confirm.
 
 **Rules.** Rules are law, learned memory is evidence. Precedence: a caregiver's safety rule for a cared-for person, then
 a parent's rule for a child, then the person's own and household rules (the most restrictive wins), then other

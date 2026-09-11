@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { type DynamicModule, Module } from '@nestjs/common';
 import { HybridClock } from '@recall/core';
 import { createEmbedder, createLlmProvider, type Embedder, type LlmProvider } from '@recall/llm';
+import { ActionService } from './actions/action.service.js';
 import { ConsoleAuthController } from './auth/console-auth.controller.js';
 import { ConsoleAuthService } from './auth/console-auth.service.js';
 import { ConsoleEmailSender, EMAIL_SENDER, type EmailSender } from './auth/email.js';
@@ -84,6 +85,7 @@ export class AppModule {
         CheckinService,
         ContextService,
         MusicService,
+        ActionService,
         ModelWarmup,
         UsageMeter,
         Extractor,

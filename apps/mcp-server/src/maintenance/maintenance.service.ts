@@ -213,6 +213,7 @@ export class MaintenanceService {
         await tx.query(`UPDATE ${table} SET ${column} = NULL WHERE ${column} = $1`, [personId]);
       }
       for (const table of [
+        'action',
         'activity',
         'routine',
         'context_state',
