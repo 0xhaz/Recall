@@ -43,6 +43,7 @@ describe('tools', () => {
       'recall',
       'remember',
       'remove_rule',
+      'resolve_speaker',
       'session_brief',
       'session_history',
       'set_communication_style',

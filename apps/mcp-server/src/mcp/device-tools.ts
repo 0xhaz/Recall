@@ -8,6 +8,9 @@ import type { MemoryService } from '../memory/memory.service.js';
 import { SESSION_TTL_MINUTES, type SessionService } from '../sessions/session.service.js';
 import { DEVICE_ID, deviceArg, json, type Timed } from './tool-kit.js';
 
+/** Knowing only the device is a guess, kept below the speaker-confidence threshold on purpose. */
+const DEVICE_GUESS_CONFIDENCE = 0.5;
+
 export interface DeviceToolDeps {
   memory: MemoryService;
   events: EventLog;
@@ -120,6 +123,66 @@ export function registerDeviceTools(
           ...(session
             ? {}
             : { message: `No conversation on record for this device in the last ${SESSION_TTL_MINUTES} minutes.` }),
+        });
+      }),
+  );
+
+  server.registerTool(
+    'resolve_speaker',
+    {
+      title: 'Resolve speaker',
+      description:
+        'For devices (simulated Voice ID): who is speaking, from what the device knows — a recognised voice profile with ' +
+        "its match score, or just the device. Pass the result's speaker and confidence on to the other tools. A device's " +
+        'usual person is only a guess: it comes back as a candidate to confirm, never as the speaker.',
+      inputSchema: {
+        name: z.string().max(80).optional().describe('The voice profile the device matched, if any.'),
+        confidence: z.number().min(0).max(1).optional().describe('The match score for that profile.'),
+        device: deviceArg,
+      },
+      annotations: { readOnlyHint: true },
+    },
+    ({ name, confidence, device }) =>
+      timed('resolve_speaker', async () => {
+        if (name) {
+          const identity = await memory.identify(ctx.householdId, name, confidence ?? 1);
+          const who = identity.speaker;
+          if (who) {
+            return json({
+              speaker: { id: who.person_id, name: who.display_name, role: who.role },
+              confidence: who.confidence,
+              source: 'voice',
+            });
+          }
+          if (identity.candidate) {
+            return json({
+              speaker: null,
+              speaker_candidate: identity.candidate,
+              confidence: confidence ?? null,
+              source: 'voice',
+              message: 'Weak voice match: confirm who is speaking before using anything personal.',
+            });
+          }
+        }
+        const usual = device ? await devices.primaryPerson(ctx.householdId, device) : null;
+        if (usual) {
+          const identity = await memory.identify(ctx.householdId, usual, DEVICE_GUESS_CONFIDENCE);
+          const candidate = identity.candidate ?? identity.speaker?.display_name;
+          if (candidate) {
+            return json({
+              speaker: null,
+              speaker_candidate: candidate,
+              confidence: DEVICE_GUESS_CONFIDENCE,
+              source: 'device',
+              message: `This is usually ${candidate}'s device: confirm before using anything personal.`,
+            });
+          }
+        }
+        return json({
+          speaker: null,
+          confidence: 0,
+          source: 'unknown',
+          message: 'Nobody recognised: ask who is speaking.',
         });
       }),
   );

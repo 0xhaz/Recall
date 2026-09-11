@@ -14,7 +14,7 @@ import {
   screen,
   tagsFor,
 } from '@recall/core';
-import type { Embedder } from '@recall/llm';
+import type { Embedder, EmbedPurpose } from '@recall/llm';
 import { APP_CONFIG, type AppConfig } from '../config.js';
 import { Db } from '../db/db.js';
 import { EventLog, lockHousehold } from '../events/event-log.service.js';
@@ -134,6 +134,7 @@ function blockedMessage(categories: BlockedCategory[], partlyStored: boolean): s
 export const SIMILARITY_FLOOR = { statement: 0.72, query: 0.34 } as const;
 export type SearchMode = keyof typeof SIMILARITY_FLOOR;
 const CANDIDATES = 20;
+const QUERY_CACHE_SIZE = 500;
 const MAX_FUTURE_DRIFT_MS = 5 * 60_000;
 
 // Facts the speaker may see: their own person facts and household facts, never tombstones.
@@ -153,6 +154,8 @@ const FACT_COLUMNS = `f.id, 'fact' AS kind, f.content, f.scope_type, f.scope_id:
 export class MemoryService {
   private readonly logger = new Logger(MemoryService.name);
   private embedderDown = false;
+  /** Recent query embeddings, least recently used first: a repeated question skips the model. */
+  private readonly queryVectors = new Map<string, number[]>();
 
   constructor(
     @Inject(Db) private readonly db: Db,
@@ -376,7 +379,7 @@ export class MemoryService {
   ): Promise<HitRow[]> {
     let vector: number[] | undefined;
     try {
-      [vector] = await this.embedder.embed([query], mode === 'query' ? 'query' : 'document');
+      vector = await this.embedQuery(query, mode === 'query' ? 'query' : 'document');
     } catch (err) {
       // Keyword search still works; say so once rather than on every call.
       if (!this.embedderDown) this.logger.warn(`Embeddings unavailable, keyword search only: ${String(err)}`);
@@ -394,6 +397,23 @@ export class MemoryService {
       [householdId, personId, JSON.stringify(vector)],
     );
     return rows.filter((r) => (r.similarity ?? 0) >= SIMILARITY_FLOOR[mode]);
+  }
+
+  private async embedQuery(text: string, purpose: EmbedPurpose): Promise<number[] | undefined> {
+    const key = `${purpose}:${text.trim().toLowerCase()}`;
+    const cached = this.queryVectors.get(key);
+    if (cached) {
+      this.queryVectors.delete(key);
+      this.queryVectors.set(key, cached);
+      return cached;
+    }
+    const [vector] = await this.embedder.embed([text], purpose);
+    if (vector) {
+      this.queryVectors.set(key, vector);
+      const oldest = this.queryVectors.keys().next().value;
+      if (this.queryVectors.size > QUERY_CACHE_SIZE && oldest !== undefined) this.queryVectors.delete(oldest);
+    }
+    return vector;
   }
 }
 

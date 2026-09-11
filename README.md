@@ -3,28 +3,29 @@
 A user-owned memory layer for Alexa+ and any other agent, served as an MCP server over Streamable HTTP.
 Per-person, inspectable, editable, forgettable memory that stays consistent across every device in the house.
 
-**Status:** week 2 of 6 — scoped memory with async extraction, per-household tokens, console sign-in. See [docs/workplan.md](docs/workplan.md).
+**Status:** week 3 of 6 — memory, stated rules, forgetting that reaches every device, device sync and honesty tools. See [docs/workplan.md](docs/workplan.md).
 
 ## Quickstart
 
 Requires Node 22+, pnpm 9, Docker, and [Ollama](https://ollama.com) with two models:
-`ollama pull qwen3:8b` (extraction) and `ollama pull qwen3-embedding:0.6b` (embeddings).
+`ollama pull qwen3:8b` (extraction and rule parsing) and `ollama pull qwen3-embedding:0.6b` (embeddings).
 
 ```sh
 cp .env.example .env
 pnpm install
 pnpm db:up          # Postgres 16 + pgvector on localhost:5435
 pnpm db:migrate
-pnpm db:seed        # demo households, plus RECALL_DEV_TOKEN as an MCP token for the demo household
-pnpm dev            # MCP server on http://127.0.0.1:3100/mcp, extraction worker in-process
+pnpm db:seed        # demo households and devices, plus RECALL_DEV_TOKEN as an MCP token for the demo household
+pnpm dev            # MCP server on http://127.0.0.1:3100/mcp, background jobs in-process
 pnpm smoke          # in another terminal: calls the tools the way an assistant would
 pnpm test           # unit + end-to-end on a separate <db>_test database
 ```
 
-`GET /health` reports database and LLM reachability.
+`GET /health` reports database and LLM reachability; `GET /metrics/latency` reports p50/p95 per tool against its budget.
 
 The demo seed has one household with Aisyah (owner), Daniel (adult), Sofia (child), Mak Som (cared for), Ravi (guest)
-and Farah (caregiver, who owns a separate household of her own).
+and Farah (caregiver, who owns a separate household of her own), and three devices: `kitchen-echo`, `bedroom-echo`
+(Mak Som's) and `living-firetv`.
 
 ## Connect an assistant
 
@@ -51,53 +52,90 @@ claude mcp add --transport http recall http://localhost:3100/mcp --header "Autho
 }
 ```
 
-Try: *"I'm Aisyah — what should we cook tonight?"*, then the same as Daniel, then without saying who you are.
-Then *"I'm Daniel, remember I'm off coffee until Wednesday"* and ask again a few seconds later.
+Things to try, speaking as someone from the demo household:
+
+- *"I'm Aisyah — what should we cook tonight?"*, then the same as Daniel, then without saying who you are.
+- *"I'm Daniel, remember I'm off coffee until Wednesday"*, then ask again a few seconds later.
+- *"Aisyah here. No music after 10pm on school nights."* Then, as Daniel: *"Always play music when I work out."*
+- *"What do you know about me?"* and *"Do you know anything about my uncle?"*
+- *"Forget that I'm off coffee."*
 
 ## Tools
 
+Every tool that concerns a person takes `speaker` and an optional `speaker_confidence` (a voice-match score). Below
+0.7 the speaker is treated as unknown: only household memory is used, and `session_brief` returns `speaker_candidate`
+so the assistant can ask "Is this Aisyah?". Every read carries the device-local date and time.
+
 | Tool | What it does |
 |---|---|
-| `session_brief` | The first call for any request: local date/time, who is speaking, the most relevant facts with provenance |
-| `recall` | Ranked facts visible to the speaker (their own + household); household-only when the speaker is unknown or unconfirmed |
-| `remember` | Screens, stores and acknowledges at once; facts are extracted in the background. Refuses for guests and unknown speakers |
+| **Memory** | |
+| `session_brief` | The first call for any request: local time, who is speaking and how they like to be spoken to, the rules that apply, relevant facts with provenance, the conversation in progress (even from another device), device state |
+| `recall` | Facts visible to the speaker, ranked by meaning and shared words |
+| `remember` | Screens, stores and acknowledges at once; facts are extracted in the background |
+| `forget` | Forgets for good on every device, by topic or id; asks when the match is unclear |
+| `explain_memory` | What is kept about the speaker and the household, with sources; "nothing stored about …" when there is nothing |
+| `verify_claim` | Evidence on record for a claim (and what changed), for the assistant to compare before asserting anything |
+| `set_communication_style` | The person's tone dial: brief, no commentary, humour or emotion-labelling unless they ask |
+| **Rules** | |
+| `set_rule` | Saves a stated rule verbatim with its structured form; reports conflicts, never resolves them |
+| `list_rules` / `remove_rule` | Rules in force, word for word; only the author (or a caregiver) removes one |
+| **Devices** | |
+| `resolve_speaker` | Simulated Voice ID: a confident match is the speaker; a weak match or the device's usual person is a candidate |
+| `ingest_events` | Device reports (media, timers, alarms, subscriptions, conversation turns, sensors), idempotent and HLC-ordered |
+| `sync` | Events since a cursor, or a snapshot once the log it needs has been compacted |
+| `device_state` | The only source for what is playing, timers, alarms, subscriptions and features |
+| `session_history` | The actual conversation log, before any claim about what was said |
 
-Every tool takes `speaker` and an optional `speaker_confidence` (a voice-match score). Below 0.7 the speaker is treated
-as unknown and `session_brief` returns `speaker_candidate`, so the assistant can ask "Is this Aisyah?".
 The full planned tool surface is in [docs/architecture.md §6](docs/architecture.md).
 
-## How memory is written
+## How it works
 
-1. **Screen** — clauses with card numbers, passwords, account or ID numbers, or diagnoses are dropped. They are never stored and never sent to a model.
-2. **Queue** — the screened statement is stored as an utterance with an extraction job, and `remember` returns. Until the job runs, the statement is recallable as `pending_extraction`.
-3. **Extract** — the LLM drafts facts. Deterministic rules then set scope, confidence, sensitivity and expiry: a fact goes to household scope only when it was said collectively, and "until Wednesday" is resolved to a date by code.
-4. **Dedupe** — similar existing facts go to an LLM judge. A restatement raises confidence, a change supersedes the old fact (closed and linked, never deleted), anything else is inserted.
+**Writing memory.** A deterministic screen drops card numbers, passwords, account or ID numbers and diagnoses before
+anything is stored or sent to a model. The statement is stored and queued; until extraction runs it is recallable as
+`pending_extraction`. The model drafts facts, and code decides scope, confidence, sensitivity and expiry ("until
+Wednesday" is resolved to a date by code). Similar existing facts go to a model judge: a restatement raises confidence,
+a change supersedes the old fact (closed and linked, never deleted).
 
-LLM calls are metered per household per day (`llm_usage`).
+**Forgetting.** A tombstone reaches every device, and the words are erased from the fact, the history it replaced, the
+statement it came from, past events and snapshots. A statement recorded before the forget can't bring it back.
 
-## Console API (week 2)
+**Devices.** The event log is the source of truth. Devices sync by the server's sequence number, merge by hybrid logical
+clock, and restart from a snapshot once old events are compacted (raw events are kept 7 days in this build). Raw health
+signals never leave the server.
+
+**Rules.** Rules are law, learned memory is evidence. Precedence: a caregiver's safety rule for a cared-for person, then
+a parent's rule for a child, then the person's own and household rules (the most restrictive wins), then other
+caregiver rules, then anything learned.
+
+LLM calls are metered per household per day (`llm_usage`). The model never runs on the read path.
+
+## Console API
 
 | Endpoint | |
 |---|---|
 | `POST /auth/magic-link` `{email}` | Sends a single-use sign-in link (logged to the server console in dev) |
 | `POST /auth/verify` `{token}` | Exchanges the link for a 30-day session token |
 | `GET /me` | The signed-in person and their household memberships |
+| `POST /me/forget` `{confirm: "forget me"}` | Erases the person's memory in every household and revokes their access |
 | `POST /households/:id/tokens` `{label}` | Owner only: mint an MCP token for a device or assistant (shown once) |
 | `DELETE /households/:id/tokens/:tokenId` | Owner only: revoke it |
 
 ## Tests
 
-- `pnpm test` runs everything against `<db>_test` (created, migrated and wiped automatically), using a scripted LLM and a deterministic embedder, so no model is needed.
-- `RECALL_LIVE_LLM=1 pnpm --filter @recall/mcp-server exec vitest run extraction.live` checks the prompts against the real local model.
+- `pnpm test` runs everything against `<db>_test` (created, migrated and wiped automatically) with a scripted LLM and a
+  deterministic embedder, so no model is needed. It includes a latency check that fails if any read tool's server-side
+  p95 exceeds its budget.
+- `RECALL_LIVE_LLM=1 pnpm --filter @recall/mcp-server exec vitest run extraction.live rules.live` checks the extraction
+  and rule-parsing prompts against the real local model.
 
 ## Layout
 
 ```
-apps/mcp-server/   NestJS MCP server: tools, memory, extraction worker, auth, migrations, Dockerfile
-packages/core/     domain types, sensitivity screen, access rules, calendar helpers
+apps/mcp-server/   NestJS MCP server: tools, memory, rules, event log, sync, jobs, auth, migrations, Dockerfile
+packages/core/     domain logic without I/O: clock, device projection, rules engine, sensitivity screen, access rules
 packages/llm/      LlmProvider + Embedder: Ollama (local), Bedrock (switch via LLM_PROVIDER)
 docker/            docker-compose: Postgres + pgvector; `--profile full` adds the server
-docs/              design, architecture, tech stack, work plan, friction log, feedback
+docs/              design, architecture (with the decision log), tech stack, work plan, friction log, feedback
 ```
 
 ## Conventions
@@ -105,8 +143,11 @@ docs/              design, architecture, tech stack, work plan, friction log, fe
 - **Explicit `@Inject(token)` on every Nest constructor dependency.** `tsx` and `vitest` compile with esbuild, which doesn't emit decorator metadata.
 - Workspace packages export their TypeScript source under the `development` condition; `pnpm build` produces `dist/` for containers.
 - Every household-owned table carries `household_id` and `region`; every query filters on `household_id`.
-- The LLM never runs on the read path. It only drafts; deterministic code decides what is stored.
+- Every transaction that writes events takes the household lock first (`lockHousehold`).
+- The model only drafts; deterministic code decides what is stored.
 - SQL migrations live in `apps/mcp-server/migrations/` and run in filename order.
+
+If the dev server seems to be running old code after large changes, restart `pnpm dev`: `tsx watch` occasionally misses new files.
 
 ## Licence
 

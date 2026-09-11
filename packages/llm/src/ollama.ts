@@ -81,7 +81,8 @@ export class OllamaEmbedder implements Embedder {
     const res = await fetch(`${this.baseUrl}/api/embed`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ model: this.model, input }),
+      // Search embeds on the read path: keep the model loaded so a question never waits for a cold start.
+      body: JSON.stringify({ model: this.model, input, keep_alive: '30m' }),
     });
     if (!res.ok) {
       throw new Error(`Ollama embed ${res.status}: ${await res.text()}`);

@@ -17,6 +17,20 @@ Each work item has a week, a priority, and a "done when". Priorities:
 
 ## Progress
 
+**W3 (started early, as of 2026-09-11)**
+
+- ✅ Event log with hybrid logical clocks and a per-household write lock, so the sync cursor never skips a late commit; `ingest_events` (idempotent, memory kinds rejected, clock-skew guard) and `sync` (replay, or snapshot once compacted)
+- ✅ Device-side `MemoryProjection` in `@recall/core`; tests show devices converge whatever page size they use, and after a snapshot
+- ✅ `device_state` (last-writer-wins per key); sessions with `session_history` and cross-device handoff in `session_brief`
+- ✅ Daily snapshot + compaction job; health signals never synced and deleted after 7 days; tombstones kept retention + 30 days
+- ✅ `forget` (topic or id; asks when unclear) erases the words from facts, history, statements, events and snapshots; stale statements can't bring a fact back; forget-me + 30-day purge
+- ✅ `explain_memory` ("nothing stored about my uncle"), `verify_claim` (evidence, not verdicts), keyword + vector search with question/statement thresholds calibrated on the real model, embedding backfill, tone dial
+- ✅ Stated rules: engine with precedence and an explicit `allow`, parser validated in code (live tests pass on `qwen3:8b`), conflicts surfaced, synced as `rule.set` / `rule.removed`
+- ✅ `resolve_speaker`; per-tool latency on `/metrics/latency`, enforced in CI; query-embedding cache and the embedding model kept loaded
+- ✅ Checkpoint met: scoped recall, forget propagating to every device, and the honesty tools, all green in CI
+- ⏳ Entity edges / graph hops in retrieval, consolidation worker, SSE push for sync → later; neither demo direction needs them
+- ⏳ Rule enforcement in `propose_action` / `action_preflight` → W4 (the evaluator is built and tested)
+
 **W2 (started early, as of 2026-09-11)**
 
 - ✅ Migration `0002`: grants, audit log, household tokens, magic-link sign-in, utterances, job queue, fact embeddings (1024-dim, HNSW), LLM usage metering
@@ -104,8 +118,8 @@ Deterministic smart-home routing, companion app rebuild, pricing/ads, Kindle Ass
 |---|---|---|---|---|
 | Q5 ✅ | Speaker resolution in the simulator: explicit `speaker_id` or confidence faked from a hint | End of W2 (earlier than the doc's W3, because `resolve_speaker` shape affects `session_brief`) | WS5, WS12 | Closed 2026-09-11: explicit `speaker` + optional `speaker_confidence`; below 0.7 → unknown, household only, `speaker_candidate` to confirm |
 | Q6 ✅ | Can Bee CLI/MCP export Apple Watch HR at useful granularity? | W1 spike, final answer W3 | WS9 real-data claim | Closed 2026-09-11: not exposed. Recorded stream only; no "real Bee data" claim in the video. Bee utterance/location events are an optional second signal |
-| Q7 | Routines write-back: offers only, or also create real Alexa+ Routines? | W3 | WS8 | Offers only |
-| Q8 | Music metadata: real provider or a mocked catalogue labelled honestly | W3 | WS9 | Mocked catalogue with tempo/energy fields, labelled in the UI and the video |
+| Q7 ✅ | Routines write-back: offers only, or also create real Alexa+ Routines? | W3 | WS8 | Default applied 2026-09-11: offers only (built in W4) |
+| Q8 ✅ | Music metadata: real provider or a mocked catalogue labelled honestly | W3 | WS9 | Default applied 2026-09-11: mocked catalogue with tempo/energy fields, labelled in the UI and the video (built in W4) |
 | Q9 | Demo direction A vs B | W5 dry run | WS18 | — (scheduled) |
 | Q10 | Opener: forgotten recipe vs `explain_memory` "no uncle" beat | W5 | WS18 | — (scheduled) |
 | New ✅ | Job queue: BullMQ + Redis vs Postgres-backed queue [T§1] | W1 | WS13 | Default applied: Postgres-backed queue (one less container; Redis only if sync demo needs it) |
@@ -168,19 +182,19 @@ Checkboxes are the tasks. "Done when" is the acceptance test.
 **Done when:** an integration test shows household A's token cannot read household B's data through any tool, and a caregiver can't read another member's facts. ✅ Met 2026-09-11 (`auth.e2e`, `access.test`).
 
 ### WS2 — Event log, HLC, sync, retention (W3, P0)
-- [ ] Event shape `{event_id, household_id, hlc, device_id, person_id, person_confidence, location, kind, payload}` [A§2]
-- [ ] HLC implementation in `packages/core` (wall time + counter + device id; tie-break on device id) [A§4]
-- [ ] `ingest_events`: idempotent batch append, dedupe on UUID [A§4, A§6]
-- [ ] Projections rebuilt by workers, never hand-merged: facts, rules, routines, context scores, session/state, sync cursors [A§7]
-- [ ] Conflict semantics: LWW register (by HLC) for single-valued prefs; add/remove set for set-valued facts [A§4]
-- [ ] Tombstone events for `forget`, `undo`, `remove_rule` [A§4]
-- [ ] `sync(device, cursor)` → `{mode: replay | snapshot}`; per-device cursors; light SSE endpoint [A§4, A§4.1]
-- [ ] Sessions: `session.open/turn/close` with TTL in minutes; a device joining mid-session continues it [A§4]
-- [ ] Nightly snapshot worker records `snapshot_hlc` [A§4.1]
-- [ ] Compaction: delete events older than retention **and** the latest snapshot; retention 90 days default (30–365 configurable), **7 days in the hackathon build** [A§4.1]
-- [ ] Tombstones kept retention + 30 days; sensitive raw events 7 days; zero-membership persons purged after 30 days [A§4.1]
+- [x] Event shape `{event_id, household_id, hlc, device_id, person_id, person_confidence, location, kind, payload}` [A§2]
+- [x] HLC implementation in `packages/core` (wall time + counter + device id; tie-break on device id) [A§4]
+- [x] `ingest_events`: idempotent batch append, dedupe on UUID [A§4, A§6]
+- [ ] Projections rebuilt by workers, never hand-merged: facts, rules, routines, context scores, session/state, sync cursors [A§7] — facts, rules, device state, sessions and cursors ✓ (written with their event, in one transaction); routines and context scores in W4
+- [x] Conflict semantics: LWW register (by HLC) for single-valued prefs; add/remove set for set-valued facts [A§4] — LWW per key for device state; tombstones always win for facts and rules
+- [ ] Tombstone events for `forget`, `undo`, `remove_rule` [A§4] — forget ✓, remove_rule ✓; undo in W4
+- [x] `sync(device, cursor)` → `{mode: replay | snapshot}`; per-device cursors; light SSE endpoint [A§4, A§4.1] — the cursor is the server sequence (decision log); no SSE push yet, devices poll
+- [x] Sessions: `session.open/turn/close` with TTL in minutes; a device joining mid-session continues it [A§4]
+- [x] Nightly snapshot worker records `snapshot_hlc` [A§4.1] — records the last sequence number it covers
+- [x] Compaction: delete events older than retention **and** the latest snapshot; retention 90 days default (30–365 configurable), **7 days in the hackathon build** [A§4.1]
+- [x] Tombstones kept retention + 30 days; sensitive raw events 7 days; zero-membership persons purged after 30 days [A§4.1]
 
-**Done when:** a two-device replay test converges to identical projections; a stale device replaying old events can't bring back a forgotten fact; a device with a cursor older than retention gets `mode: snapshot`.
+**Done when:** a two-device replay test converges to identical projections; a stale device replaying old events can't bring back a forgotten fact; a device with a cursor older than retention gets `mode: snapshot`. ✅ Met 2026-09-11 (`events.e2e`, `forget.e2e`, `projection.test`).
 
 ### WS3 — Persona memory (W2–W3, P0)
 - [x] Fact record exactly as in A§1.2 (scope, type, entities, source with speaker confidence, bi-temporal validity, confidence, sensitivity tag, TTL, `superseded_by`)
@@ -189,25 +203,25 @@ Checkboxes are the tasks. "Done when" is the acceptance test.
 - [x] Calibrated claims: one mention ≠ a trait; generalise only after it recurs [A§1.2] — 0.5 per mention, +0.1 per recurrence
 - [x] Sensitivity classifier at write time; blocked categories never stored (passwords, card/account numbers, raw HR, diagnoses, non-consenting third parties) [A§1.2, D§4.2] — deterministic screen; third parties are skipped by the prompt only
 - [x] Extraction worker via `LlmProvider`: single-pass salient facts → dedupe → supersede; runs async after `remember` acks [A§1.4]
-- [ ] pgvector embeddings + keyword index + entity edge table [A§1.4] — embeddings ✓, keyword index ✓; entity edges → W3
-- [ ] Retrieval: fuse vector + keyword + graph hops → rerank → top-k compact results [A§1.4]
+- [ ] pgvector embeddings + keyword index + entity edge table [A§1.4] — embeddings ✓, keyword index ✓, backfill job ✓; entity edges deferred (neither demo needs them)
+- [ ] Retrieval: fuse vector + keyword + graph hops → rerank → top-k compact results [A§1.4] — vector + keyword fused by reciprocal rank ✓; graph hops deferred with entity edges
 - [x] Speaker scoping: below the confidence threshold, return household-scoped facts only and ask who's speaking [A§1.3]
 - [ ] Preference conflicts: household rule → speaker identity → ask; never favour the owner [A§1.3]
 - [ ] Consolidation worker: merge duplicates, expire TTLs, decay unused facts; per-person size budget → "review these" prompt, not silent pruning [A§1.4]
-- [ ] Forget: by fact id or topic → tombstone, close `valid_to`; "forget me" cascades across all memberships [A§1.3]
-- [ ] `communication_style` fact (terse / warm / no jokes / no emotional language) — IG [D§3.2 #6]
+- [x] Forget: by fact id or topic → tombstone, close `valid_to`; "forget me" cascades across all memberships [A§1.3] — erases the words everywhere they were kept
+- [x] `communication_style` fact (terse / warm / no jokes / no emotional language) — IG [D§3.2 #6] — per person, with response rules in `session_brief`
 - [ ] Intent aliases as per-person facts learned from successful invocations — B [D§3.3]
 - [ ] Temporary-chat mode: neither reads nor writes [D§4.2]
 
-**Done when:** two family members get different, correct answers to "what should we cook tonight?"; a guest gets household-only; "forget that I'm on a diet" sets `valid_to` and the fact drops out of every retrieval.
+**Done when:** two family members get different, correct answers to "what should we cook tonight?"; a guest gets household-only; "forget that I'm on a diet" sets `valid_to` and the fact drops out of every retrieval. ✅ Met 2026-09-11 (`memory.e2e`, `forget.e2e`).
 
 ### WS4 — Stated rules (W3 storage, W4 enforcement, P0)
-- [ ] Rule record as in A§1.5 (verbatim text + structured `condition`, `effect` ∈ block/require_confirm/prefer/suppress_offer, `severity` ∈ safety/hard/soft, `expires_at`, tombstone)
-- [ ] `severity = safety` only allowed for caregiver rules on `cared_for` members
-- [ ] Precedence engine: caregiver safety → person's rule → other caregiver rule → learned → default [A§1.5]
-- [ ] NL → structured rule parsing via LLM, with the verbatim text always kept
+- [x] Rule record as in A§1.5 (verbatim text + structured `condition`, `effect` ∈ block/require_confirm/prefer/suppress_offer, `severity` ∈ safety/hard/soft, `expires_at`, tombstone) — plus an explicit `allow` effect
+- [x] `severity = safety` only allowed for caregiver rules on `cared_for` members
+- [x] Precedence engine: caregiver safety → person's rule → other caregiver rule → learned → default [A§1.5] — refined with a parent-for-child tier; household rules share the person's tier (decision log)
+- [x] NL → structured rule parsing via LLM, with the verbatim text always kept — live parser tests pass on `qwen3:8b`
 - [ ] Rules can tag/exclude learned facts (e.g. "never peanuts" filters recipe recall) [A§1.5]
-- [ ] Conflict detection: rule vs rule, rule vs routine → conflict item with a plain-language explanation; never silently resolved [A§1.5]
+- [ ] Conflict detection: rule vs rule, rule vs routine → conflict item with a plain-language explanation; never silently resolved [A§1.5] — rule vs rule ✓ (returned by `set_rule`); rule vs routine in W4
 - [ ] Enforcement inside `propose_action` and `action_preflight` → `blocked_by: {rule_id, text}`; device-state rules verified afterwards via `device_state` [A§1.5]
 - [ ] "Want me to make that a rule?" offer after repeated manual corrections (IG)
 
@@ -236,10 +250,10 @@ NestJS, MCP spec 2025-11-25+, Streamable HTTP; the repo must actually call MCP i
 | `undo` | W4 | MS | Within the undo window; tombstone on the action event |
 | `checkin` | W4 | MS if B | Logs event, messages the household |
 
-- [ ] Temporal stamp middleware (device local date/time/timezone) on `session_brief`, `recall`, `get_context`, `propose_action`; timers/alarms include the actual start timestamp [A§5]
+- [x] Temporal stamp middleware (device local date/time/timezone) on `session_brief`, `recall`, `get_context`, `propose_action`; timers/alarms include the actual start timestamp [A§5] — on every read tool; timers report `started_at` and time left
 - [ ] Tool descriptions tuned against Claude Desktop so the model reliably calls `session_brief` first [T§3]
 - [ ] Streaming: send the deterministic parts first (state, rules, hot facts), enrichment after [A§7.1]
-- [ ] Bearer-token guard per household
+- [x] Bearer-token guard per household
 
 **Done when:** Claude Desktop, connected over Streamable HTTP, completes every demo scenario using real tool calls.
 
@@ -339,10 +353,10 @@ Not a general chatbot. Must-show moments: fixing a wrong fact, a rule blocking a
 
 ### WS15 — Latency (instrument from W3, publish W5, MS)
 Budgets [T§5]: `session_brief` < 400 ms p95 · `recall` < 300 ms p95 · `get_context`, `device_state`, `list_rules`, `session_history` < 100 ms p95 · `remember` ack < 100 ms.
-- [ ] Per-tool timing middleware; p50/p95 histograms
-- [ ] Hot-fact and context caches; warm on `resolve_speaker`; prefetch from the active routine [A§7.1]
+- [x] Per-tool timing middleware; p50/p95 histograms — `/metrics/latency`, last 1000 calls per tool
+- [ ] Hot-fact and context caches; warm on `resolve_speaker`; prefetch from the active routine [A§7.1] — query-embedding cache and embedding model keep-alive ✓; hot-fact and context caches when the W4 context engine lands
 - [ ] Deterministic fast path for rule hits, routine triggers and check-ins [A§7.1]
-- [ ] CI latency check on the replay suite
+- [x] CI latency check on the replay suite — `latency.e2e` fails CI if any read tool's server-side p95 exceeds its budget
 - [ ] Publish numbers in the README and the console dashboard
 
 ### WS16 — Evaluation and tests (continuous; suite frozen W5) [A§8]
