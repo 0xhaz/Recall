@@ -1,14 +1,15 @@
-import { DEMO_HOUSEHOLD_ID } from './db/seed-ids.js';
-
 export const APP_CONFIG = Symbol('APP_CONFIG');
 
 export interface AppConfig {
   port: number;
   host: string;
   databaseUrl: string;
-  /** Week-1 single bearer token; replaced by per-household tokens in week 2. Empty = no check. */
-  devToken: string | undefined;
-  devHouseholdId: string;
+  /** Below this, a named speaker is treated as unknown: household facts only, and ask (architecture.md §1.3). */
+  speakerConfidenceThreshold: number;
+  /** Run the extraction worker in this process. Tests turn it off and drain jobs by hand. */
+  extractionWorker: boolean;
+  /** Where magic links point (the console arrives in week 5). */
+  consoleBaseUrl: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -20,7 +21,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     port: Number(env.PORT ?? 3100),
     host: env.HOST ?? '127.0.0.1',
     databaseUrl,
-    devToken: env.RECALL_DEV_TOKEN || undefined,
-    devHouseholdId: env.RECALL_DEV_HOUSEHOLD_ID ?? DEMO_HOUSEHOLD_ID,
+    speakerConfidenceThreshold: Number(env.SPEAKER_CONFIDENCE_THRESHOLD ?? 0.7),
+    extractionWorker: env.EXTRACTION_WORKER !== 'off',
+    consoleBaseUrl: env.CONSOLE_BASE_URL ?? 'http://localhost:3000',
   };
 }

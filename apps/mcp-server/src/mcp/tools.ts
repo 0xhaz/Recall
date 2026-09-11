@@ -12,10 +12,20 @@ const logger = new Logger('mcp');
 // knows they are absent rather than inventing them.
 const NOT_YET_AVAILABLE = ['rules', 'context_scores', 'quiet_hours', 'device_state'];
 
-const speakerArg = z
-  .string()
-  .optional()
-  .describe('Who is speaking: their name or person id as identified by the device. Omit if unknown — never guess.');
+const speakerArgs = {
+  speaker: z
+    .string()
+    .optional()
+    .describe('Who is speaking: their name or person id as identified by the device. Omit if unknown — never guess.'),
+  speaker_confidence: z
+    .number()
+    .min(0)
+    .max(1)
+    .optional()
+    .describe(
+      'How sure the device is about the speaker (e.g. a voice-match score). Defaults to 1 when named explicitly.',
+    ),
+};
 
 function json(value: unknown): CallToolResult {
   return { content: [{ type: 'text', text: JSON.stringify(value) }] };
@@ -33,7 +43,7 @@ async function timed(tool: string, fn: () => Promise<CallToolResult>): Promise<C
 
 /** One MCP server per request (stateless Streamable HTTP), bound to the caller's household. */
 export function buildMcpServer(ctx: HouseholdContext, memory: MemoryService): McpServer {
-  const server = new McpServer({ name: 'recall', version: '0.1.0' });
+  const server = new McpServer({ name: 'recall', version: '0.2.0' });
 
   server.registerTool(
     'session_brief',
@@ -42,26 +52,29 @@ export function buildMcpServer(ctx: HouseholdContext, memory: MemoryService): Mc
       description:
         'Call this FIRST for every user request. One call returns what you need to answer: the current local date/time, ' +
         'who is speaking, and the most relevant remembered facts (with source and confidence). ' +
-        'Only state facts that appear here or in recall; if ask_who_is_speaking is true, ask before using anything personal.',
+        'Only state facts that appear here or in recall. If ask_who_is_speaking is true, ask before using anything personal; ' +
+        'if speaker_candidate is present, confirm it ("Is this Aisyah?") first.',
       inputSchema: {
-        speaker: speakerArg,
+        ...speakerArgs,
         hint: z.string().optional().describe("The user's request, used to pick relevant facts."),
       },
       annotations: { readOnlyHint: true },
     },
-    ({ speaker, hint }) =>
+    ({ speaker, speaker_confidence, hint }) =>
       timed('session_brief', async () => {
-        const [household, resolved] = await Promise.all([
+        const [household, identity] = await Promise.all([
           memory.household(ctx.householdId),
-          memory.resolveSpeaker(ctx.householdId, speaker),
+          memory.identify(ctx.householdId, speaker, speaker_confidence),
         ]);
         if (!household) throw new Error('Household not found');
-        const facts = await memory.recall(ctx.householdId, resolved, hint ?? '', 8);
+        const facts = await memory.recall(ctx.householdId, identity.speaker, hint ?? '', 8);
+        const who = identity.speaker;
         return json({
           temporal: temporalStamp(household.timezone),
           household: household.name,
-          speaker: resolved && { id: resolved.person_id, name: resolved.display_name, role: resolved.role },
-          ask_who_is_speaking: !resolved,
+          speaker: who && { id: who.person_id, name: who.display_name, role: who.role },
+          ask_who_is_speaking: !who,
+          ...(identity.candidate ? { speaker_candidate: identity.candidate } : {}),
           facts,
           not_yet_available: NOT_YET_AVAILABLE,
         });
@@ -74,23 +87,24 @@ export function buildMcpServer(ctx: HouseholdContext, memory: MemoryService): Mc
       title: 'Recall',
       description:
         "Search remembered facts visible to the speaker (their own plus the household's), ranked, with source and confidence. " +
-        'If the speaker is unknown, only household facts are returned.',
+        "Facts marked why='pending_extraction' are the speaker's own recent words, not yet processed. " +
+        'If the speaker is unknown or unconfirmed, only household facts are returned.',
       inputSchema: {
-        speaker: speakerArg,
+        ...speakerArgs,
         query: z.string().describe('What to look for, in plain words.'),
         limit: z.number().int().min(1).max(20).default(5),
       },
       annotations: { readOnlyHint: true },
     },
-    ({ speaker, query, limit }) =>
+    ({ speaker, speaker_confidence, query, limit }) =>
       timed('recall', async () => {
-        const [household, resolved] = await Promise.all([
+        const [household, identity] = await Promise.all([
           memory.household(ctx.householdId),
-          memory.resolveSpeaker(ctx.householdId, speaker),
+          memory.identify(ctx.householdId, speaker, speaker_confidence),
         ]);
         if (!household) throw new Error('Household not found');
-        const facts = await memory.recall(ctx.householdId, resolved, query, limit);
-        return json({ temporal: temporalStamp(household.timezone), speaker_resolved: !!resolved, facts });
+        const facts = await memory.recall(ctx.householdId, identity.speaker, query, limit);
+        return json({ temporal: temporalStamp(household.timezone), speaker_resolved: !!identity.speaker, facts });
       }),
   );
 
@@ -99,18 +113,19 @@ export function buildMcpServer(ctx: HouseholdContext, memory: MemoryService): Mc
     {
       title: 'Remember',
       description:
-        'Store something the speaker asked you to remember, or a stable preference they stated. Acknowledges immediately. ' +
-        "Use scope 'household' only for things that belong to everyone (shared lists, family restaurants).",
+        'Store something the speaker asked you to remember, or a stable preference they stated. Acknowledges immediately; ' +
+        "facts are extracted in the background. Use scope 'household' only for things that belong to everyone. " +
+        'Card or account numbers, passwords, ID numbers and diagnoses are never stored: if the result has a message, say it plainly.',
       inputSchema: {
-        speaker: speakerArg,
+        ...speakerArgs,
         text: z.string().min(1).max(2000).describe("What to remember, in the speaker's words."),
         scope: z.enum(['person', 'household']).default('person'),
       },
     },
-    ({ speaker, text, scope }) =>
+    ({ speaker, speaker_confidence, text, scope }) =>
       timed('remember', async () => {
-        const resolved = await memory.resolveSpeaker(ctx.householdId, speaker);
-        return json(await memory.remember(ctx.householdId, resolved, text, scope));
+        const identity = await memory.identify(ctx.householdId, speaker, speaker_confidence);
+        return json(await memory.remember(ctx.householdId, identity.speaker, text, scope));
       }),
   );
 

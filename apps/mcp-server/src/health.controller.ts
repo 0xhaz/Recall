@@ -1,8 +1,7 @@
 import { Controller, Get, Inject } from '@nestjs/common';
 import type { LlmProvider } from '@recall/llm';
 import { Db } from './db/db.js';
-
-export const LLM_PROVIDER = Symbol('LLM_PROVIDER');
+import { LLM_PROVIDER } from './llm/tokens.js';
 
 @Controller('health')
 export class HealthController {

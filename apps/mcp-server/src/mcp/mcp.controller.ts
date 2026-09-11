@@ -21,7 +21,7 @@ export class McpController {
 
   @Post()
   async handle(@Req() req: Request, @Res() res: Response): Promise<void> {
-    const ctx = this.auth.authenticate(req.headers.authorization);
+    const ctx = await this.auth.authenticate(req.headers.authorization);
     if (!ctx) {
       res.setHeader('WWW-Authenticate', 'Bearer');
       rpcError(res, 401, -32001, 'Unauthorized');

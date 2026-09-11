@@ -13,4 +13,5 @@ app.enableShutdownHooks();
 await app.listen(config.port, config.host);
 
 Logger.log(`Recall MCP server on http://${config.host}:${config.port}/mcp`, 'Bootstrap');
-if (!config.devToken) Logger.warn('RECALL_DEV_TOKEN is empty — MCP endpoint is unauthenticated', 'Bootstrap');
+if (!config.extractionWorker)
+  Logger.warn('EXTRACTION_WORKER=off — statements stay pending until a worker runs', 'Bootstrap');

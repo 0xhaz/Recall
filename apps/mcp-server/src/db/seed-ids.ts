@@ -1,8 +1,12 @@
-// Fixed ids so the demo household is stable across re-seeds and the dev token can point at it.
+// Fixed ids so the demo households are stable across re-seeds.
 export const DEMO_HOUSEHOLD_ID = '00000000-0000-4000-8000-000000000001';
+export const FARAH_HOUSEHOLD_ID = '00000000-0000-4000-8000-000000000002';
 
 export const DEMO_PEOPLE = {
   aisyah: '00000000-0000-4000-8000-0000000000a1',
   daniel: '00000000-0000-4000-8000-0000000000a2',
   sofia: '00000000-0000-4000-8000-0000000000a3',
+  som: '00000000-0000-4000-8000-0000000000a4',
+  farah: '00000000-0000-4000-8000-0000000000a5',
+  ravi: '00000000-0000-4000-8000-0000000000a6',
 } as const;

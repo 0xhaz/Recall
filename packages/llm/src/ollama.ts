@@ -1,8 +1,16 @@
-import type { ChatRequest, ChatResponse, LlmProvider } from './provider.js';
+import {
+  type ChatRequest,
+  type ChatResponse,
+  EMBEDDING_DIMENSIONS,
+  type Embedder,
+  type LlmProvider,
+} from './provider.js';
 
 interface OllamaChatReply {
   model: string;
   message: { content: string };
+  prompt_eval_count?: number;
+  eval_count?: number;
 }
 
 export class OllamaProvider implements LlmProvider {
@@ -39,6 +47,8 @@ export class OllamaProvider implements LlmProvider {
       text: body.message.content,
       model: body.model,
       latencyMs: Math.round(performance.now() - started),
+      inputTokens: body.prompt_eval_count ?? 0,
+      outputTokens: body.eval_count ?? 0,
     };
   }
 
@@ -49,5 +59,34 @@ export class OllamaProvider implements LlmProvider {
     } catch {
       return false;
     }
+  }
+}
+
+export class OllamaEmbedder implements Embedder {
+  readonly dimensions = EMBEDDING_DIMENSIONS;
+
+  constructor(
+    private readonly baseUrl: string,
+    readonly model: string,
+  ) {}
+
+  async embed(texts: string[]): Promise<number[][]> {
+    if (texts.length === 0) return [];
+    const res = await fetch(`${this.baseUrl}/api/embed`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: this.model, input: texts }),
+    });
+    if (!res.ok) {
+      throw new Error(`Ollama embed ${res.status}: ${await res.text()}`);
+    }
+    const { embeddings } = (await res.json()) as { embeddings: number[][] };
+    const wrong = embeddings.find((e) => e.length !== this.dimensions);
+    if (wrong) {
+      throw new Error(
+        `${this.model} returned ${wrong.length} dims; the fact.embedding column expects ${this.dimensions}`,
+      );
+    }
+    return embeddings;
   }
 }

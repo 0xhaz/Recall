@@ -17,6 +17,19 @@ Each work item has a week, a priority, and a "done when". Priorities:
 
 ## Progress
 
+**W2 (started early, as of 2026-09-11)**
+
+- ✅ Migration `0002`: grants, audit log, household tokens, magic-link sign-in, utterances, job queue, fact embeddings (1024-dim, HNSW), LLM usage metering
+- ✅ Per-household MCP bearer tokens (only SHA-256 stored, cached lookup, revoke); owner-only token API; console magic-link sign-in and `/me`
+- ✅ Access rules as pure functions in `@recall/core` (caregiver grants, parental access, revocation with capacity flag), with tests
+- ✅ Write-time sensitivity screen (card, credential, account and ID numbers; diagnoses) before anything is stored or sent to a model
+- ✅ Async extraction: utterance + job → `qwen3:8b` drafts → rules set scope, confidence, sensitivity and expiry → embeddings → LLM judge → reinforce / supersede / insert. Pending statements are recallable at once
+- ✅ `speaker_confidence` + `speaker_candidate` (Q5 closed); Bee has no heart-rate export (Q6 closed)
+- ✅ Demo seed for both directions (cared-for elder, caregiver living elsewhere, guest, child)
+- ✅ 81 tests (unit + e2e on `recall_test` with a scripted LLM); prompt tests pass against the real `qwen3:8b`; live extraction verified on the dev server (8 s)
+- ⏳ Entity edge table, retrieval fusion (vector + keyword + graph), consolidation, forget → W3 as planned
+- ⏳ Membership management API (grant or revoke caregivers) → with the console in W5; rules and audit table are ready
+
 **W1 (as of 2026-09-11)**
 
 - ✅ Monorepo (pnpm workspaces, TS 5.9 strict, ESM), docs moved to `docs/`, F1–F5 fixed, MIT licence, friction log + feedback started
@@ -27,9 +40,9 @@ Each work item has a week, a priority, and a "done when". Priorities:
 - ✅ 17 tests passing (unit + end-to-end over HTTP/Postgres); `pnpm smoke`; warm `session_brief` round trip 6–8 ms
 - ⏳ Devpost registration + $150 AWS credits request — Haz
 - ⏳ Connect Claude Desktop / Claude Code (project `.mcp.json` + README instructions ready)
-- ⏳ Bee HR export spike (Q6)
-- ⏳ Confirm the must-ship list (§3), queue choice and auth method (§2.2); then F6/F7
-- ⏳ Lint/format, CI, public GitHub repo + About
+- ✅ Bee heart-rate export spike: not exposed, so the stream is replayed (Q6 closed)
+- ⏳ Confirm the must-ship list (§3); queue and auth defaults applied (decision log); then F6/F7
+- ✅ Biome lint/format and GitHub Actions CI (green); repo at github.com/0xhaz/Recall (private: make public and set About before submission)
 
 ---
 
@@ -89,15 +102,15 @@ Deterministic smart-home routing, companion app rebuild, pricing/ads, Kindle Ass
 
 | # | Question | Close by | Blocks | Default if nobody decides |
 |---|---|---|---|---|
-| Q5 | Speaker resolution in the simulator: explicit `speaker_id` or confidence faked from a hint | End of W2 (earlier than the doc's W3, because `resolve_speaker` shape affects `session_brief`) | WS5, WS12 | Simulator sends an explicit `speaker_id` plus an optional `confidence` override so low-confidence paths can be demoed |
-| Q6 | Can Bee CLI/MCP export Apple Watch HR at useful granularity? | W1 spike, final answer W3 | WS9 real-data claim | Recorded stream only; no "real Bee data" claim in the video |
+| Q5 ✅ | Speaker resolution in the simulator: explicit `speaker_id` or confidence faked from a hint | End of W2 (earlier than the doc's W3, because `resolve_speaker` shape affects `session_brief`) | WS5, WS12 | Closed 2026-09-11: explicit `speaker` + optional `speaker_confidence`; below 0.7 → unknown, household only, `speaker_candidate` to confirm |
+| Q6 ✅ | Can Bee CLI/MCP export Apple Watch HR at useful granularity? | W1 spike, final answer W3 | WS9 real-data claim | Closed 2026-09-11: not exposed. Recorded stream only; no "real Bee data" claim in the video. Bee utterance/location events are an optional second signal |
 | Q7 | Routines write-back: offers only, or also create real Alexa+ Routines? | W3 | WS8 | Offers only |
 | Q8 | Music metadata: real provider or a mocked catalogue labelled honestly | W3 | WS9 | Mocked catalogue with tempo/energy fields, labelled in the UI and the video |
 | Q9 | Demo direction A vs B | W5 dry run | WS18 | — (scheduled) |
 | Q10 | Opener: forgotten recipe vs `explain_memory` "no uncle" beat | W5 | WS18 | — (scheduled) |
-| New | Job queue: BullMQ + Redis vs Postgres-backed queue [T§1] | W1 | WS13 | Postgres-backed queue (one less container; Redis only if sync demo needs it) |
-| New | Local model: Qwen3 8B vs Gemma 4, Ollama vs MLX [T§3] | W1 | WS13 | Ollama + Qwen3 8B, non-think mode |
-| New | Auth: magic link vs passkeys [T§1, D§9] | W2 | WS1 | Magic link |
+| New ✅ | Job queue: BullMQ + Redis vs Postgres-backed queue [T§1] | W1 | WS13 | Default applied: Postgres-backed queue (one less container; Redis only if sync demo needs it) |
+| New ✅ | Local model: Qwen3 8B vs Gemma 4, Ollama vs MLX [T§3] | W1 | WS13 | Ollama + Qwen3 8B, non-think mode; `qwen3-embedding:0.6b` for embeddings |
+| New ✅ | Auth: magic link vs passkeys [T§1, D§9] | W2 | WS1 | Default applied: magic link |
 
 Each closed question gets a line in the decision log [A§10].
 
@@ -132,7 +145,7 @@ Checkboxes are the tasks. "Done when" is the acceptance test.
 - [ ] Register on Devpost; request the $150 AWS credits [D§10]
 - [ ] Read the MCP Streamable HTTP transport spec, Agent Skills docs, Amazon Devices Builder Tools [T§6]
 - [x] Create a pnpm workspaces monorepo following T§2 — `apps/mcp-server`, `packages/{core,llm}`, `docker/`, `docs/` exist; `apps/console`, `packages/{miner,context,skill}`, `scripts/{replay,seed}` get added in the week they start
-- [ ] Node 22, TypeScript strict, lint/format, CI (typecheck + tests + latency checks later)
+- [x] Node 22, TypeScript strict, lint/format, CI (typecheck + tests + latency checks later)
 - [ ] MIT licence; set the public GitHub repo's About [T§1, T§7]
 - [x] Move `design.md`, `architecture.md`, `techstack.md`, `workplan.md` into `docs/`
 - [x] Create `docs/friction-log.md` (task, steps, expected vs actual, severity, workaround, suggestion) and `docs/feedback.md`; **log from day one** [D§8, T§7]
@@ -142,17 +155,17 @@ Checkboxes are the tasks. "Done when" is the acceptance test.
 **Done when:** a fresh clone runs `docker compose up` and `pnpm dev`, and the friction log has its first entry.
 
 ### WS1 — Data model, tenancy, identity, auth (W2, P0)
-- [ ] `household_id` + `region` on every household-owned table; every query filters on `household_id` (enforce with a repository layer or Postgres RLS) [A§1.2, D§9]
-- [ ] `person` (global, no `household_id`) + `membership {household_id, person_id, role, granted_by, granted_at, revoked_at, capacity_flag}`; roles: owner, adult, child, guest, caregiver, cared_for [A§1.3]
-- [ ] Caregiver grants per membership: `edit_care_plan`, `view_daily`, `enter_facts`, `set_rules` (default on), `view_full_memory` (opt-in); never other members' memory [A§1.3]
-- [ ] Revocation rules: owner always; cared-for person unless `capacity_flag` is set (flag visible to the person + logged) [A§1.3]
-- [ ] Audit log for membership, role and grant changes
-- [ ] Magic-link auth for the console; per-household bearer token on the MCP endpoint [D§9, T§1]
-- [ ] Guest = ephemeral (store nothing by default); child = minimal retention + parental deletion [A§1.3]
-- [ ] Usage metering on LLM calls per household (free-tier protection) [D§9]
-- [ ] Migrations + seed script for the demo household (two adults, a child, a guest, a cared-for elder, a caregiver in another household) [T§2 `scripts/seed`]
+- [x] `household_id` + `region` on every household-owned table; every query filters on `household_id` (enforce with a repository layer or Postgres RLS) [A§1.2, D§9] — repository layer
+- [x] `person` (global, no `household_id`) + `membership {household_id, person_id, role, granted_by, granted_at, revoked_at, capacity_flag}`; roles: owner, adult, child, guest, caregiver, cared_for [A§1.3]
+- [x] Caregiver grants per membership: `edit_care_plan`, `view_daily`, `enter_facts`, `set_rules` (default on), `view_full_memory` (opt-in); never other members' memory [A§1.3] — `@recall/core` access rules
+- [ ] Revocation rules: owner always; cared-for person unless `capacity_flag` is set (flag visible to the person + logged) [A§1.3] — rules and tests done; API with the console (W5)
+- [ ] Audit log for membership, role and grant changes — table done, token and sign-in changes logged; membership changes get logged when their API lands (W5)
+- [x] Magic-link auth for the console; per-household bearer token on the MCP endpoint [D§9, T§1]
+- [ ] Guest = ephemeral (store nothing by default); child = minimal retention + parental deletion [A§1.3] — guest ✓, child facts expire within 30 days ✓; parental deletion needs the forget path (W3)
+- [x] Usage metering on LLM calls per household (free-tier protection) [D§9]
+- [x] Migrations + seed script for the demo household (two adults, a child, a guest, a cared-for elder, a caregiver in another household) [T§2 `scripts/seed`] — in `src/db/seed.ts` for now; moves to `scripts/seed` with the replay scripts
 
-**Done when:** an integration test shows household A's token cannot read household B's data through any tool, and a caregiver can't read another member's facts.
+**Done when:** an integration test shows household A's token cannot read household B's data through any tool, and a caregiver can't read another member's facts. ✅ Met 2026-09-11 (`auth.e2e`, `access.test`).
 
 ### WS2 — Event log, HLC, sync, retention (W3, P0)
 - [ ] Event shape `{event_id, household_id, hlc, device_id, person_id, person_confidence, location, kind, payload}` [A§2]
@@ -170,15 +183,15 @@ Checkboxes are the tasks. "Done when" is the acceptance test.
 **Done when:** a two-device replay test converges to identical projections; a stale device replaying old events can't bring back a forgotten fact; a device with a cursor older than retention gets `mode: snapshot`.
 
 ### WS3 — Persona memory (W2–W3, P0)
-- [ ] Fact record exactly as in A§1.2 (scope, type, entities, source with speaker confidence, bi-temporal validity, confidence, sensitivity tag, TTL, `superseded_by`)
-- [ ] Bi-temporal supersession: never delete on update; "true now" is a filter [A§1.2]
-- [ ] Stable vs transient: durable traits have no TTL; transient context gets a TTL and expires [A§1.2]
-- [ ] Calibrated claims: one mention ≠ a trait; generalise only after it recurs [A§1.2]
-- [ ] Sensitivity classifier at write time; blocked categories never stored (passwords, card/account numbers, raw HR, diagnoses, non-consenting third parties) [A§1.2, D§4.2]
-- [ ] Extraction worker via `LlmProvider`: single-pass salient facts → dedupe → supersede; runs async after `remember` acks [A§1.4]
-- [ ] pgvector embeddings + keyword index + entity edge table [A§1.4]
+- [x] Fact record exactly as in A§1.2 (scope, type, entities, source with speaker confidence, bi-temporal validity, confidence, sensitivity tag, TTL, `superseded_by`)
+- [x] Bi-temporal supersession: never delete on update; "true now" is a filter [A§1.2]
+- [x] Stable vs transient: durable traits have no TTL; transient context gets a TTL and expires [A§1.2] — end words resolved by `resolveEnd()`
+- [x] Calibrated claims: one mention ≠ a trait; generalise only after it recurs [A§1.2] — 0.5 per mention, +0.1 per recurrence
+- [x] Sensitivity classifier at write time; blocked categories never stored (passwords, card/account numbers, raw HR, diagnoses, non-consenting third parties) [A§1.2, D§4.2] — deterministic screen; third parties are skipped by the prompt only
+- [x] Extraction worker via `LlmProvider`: single-pass salient facts → dedupe → supersede; runs async after `remember` acks [A§1.4]
+- [ ] pgvector embeddings + keyword index + entity edge table [A§1.4] — embeddings ✓, keyword index ✓; entity edges → W3
 - [ ] Retrieval: fuse vector + keyword + graph hops → rerank → top-k compact results [A§1.4]
-- [ ] Speaker scoping: below the confidence threshold, return household-scoped facts only and ask who's speaking [A§1.3]
+- [x] Speaker scoping: below the confidence threshold, return household-scoped facts only and ask who's speaking [A§1.3]
 - [ ] Preference conflicts: household rule → speaker identity → ask; never favour the owner [A§1.3]
 - [ ] Consolidation worker: merge duplicates, expire TTLs, decay unused facts; per-person size budget → "review these" prompt, not silent pruning [A§1.4]
 - [ ] Forget: by fact id or topic → tombstone, close `valid_to`; "forget me" cascades across all memberships [A§1.3]
@@ -309,10 +322,10 @@ Not a general chatbot. Must-show moments: fixing a wrong fact, a rule blocking a
 - [ ] Simulator source included in the repo [T§7]
 
 ### WS13 — LLM provider and workers (W1 local → W4 Bedrock, P0)
-- [ ] `LlmProvider` interface + adapters: Ollama/MLX (local), Anthropic API, Bedrock (Nova Lite for extraction; Claude on Bedrock for pre-flight/propose if budget allows) [T§1, T§4]
-- [ ] Bedrock adapter written and documented early; switching is one env var [T§3]
-- [ ] Job queue (per the decision in §2.2) and stateless workers: extractor, consolidator, pre-flight checker, explainer, rule parser. One orchestrator; workers hold no memory and don't talk to each other [A§7]
-- [ ] Keep the LLM off the read path entirely [A§7.1]
+- [ ] `LlmProvider` interface + adapters: Ollama/MLX (local), Anthropic API, Bedrock (Nova Lite for extraction; Claude on Bedrock for pre-flight/propose if budget allows) [T§1, T§4] — interface + Ollama ✓ (chat and embeddings); Bedrock stubbed
+- [ ] Bedrock adapter written and documented early; switching is one env var [T§3] — env switch ✓; Converse and Titan calls when credits land
+- [ ] Job queue (per the decision in §2.2) and stateless workers: extractor, consolidator, pre-flight checker, explainer, rule parser. One orchestrator; workers hold no memory and don't talk to each other [A§7] — Postgres queue ✓, extractor + judge ✓; the rest as their features land
+- [x] Keep the LLM off the read path entirely [A§7.1] — `recall` and `session_brief` are SQL only
 
 ### WS14 — AWS deployment (W4 first deploy, W6 final, P0)
 - [x] Dockerfile for the server from W1 [T§3]
