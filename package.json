@@ -17,7 +17,9 @@
     "db:down": "docker compose -f docker/docker-compose.yml down",
     "db:migrate": "pnpm --filter @recall/mcp-server migrate",
     "db:seed": "pnpm --filter @recall/mcp-server seed",
-    "smoke": "pnpm --filter @recall/mcp-server smoke"
+    "smoke": "pnpm --filter @recall/mcp-server smoke",
+    "sim": "pnpm --filter @recall/simulator dev",
+    "replay": "pnpm --filter @recall/simulator replay"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.13",

@@ -26,7 +26,9 @@ Each work item has a week, a priority, and a "done when". Priorities:
 - ✅ Live: the demo's pre-flight beat flags the office address against the home address on record; confirm → undo → "already undone"; the 2 am couch notice is withheld; a workout offers Running Mix on an idle device but not over the news already playing; pre-flight p95 35 ms once its address and venue lookups became keyword-only
 - ✅ 4d: care mode for `cared_for` speakers: caregiver-only facts enforced in search, the repeat detector (a loop normally; any repeat that day in care mode, with the last answer), `set_care_policy` (correct / redirect over built-in defaults) and what is shared, said plainly; presence alerts to carers for a door or movement at night that isn't usual
 - ✅ Live on the demo household: Mak Som hears only the caregiver-entered fact, gets her earlier answer back when she asks again from another session, Farah's redirect for "Ahmad" applies (Daniel may not set one), and a door opening at 23:53 reached the carers through the worker; `session_brief` p50 55 ms
-- ⏳ 4e simulator + replay scripts; orientation routine and sundowning → W5; AgentCore deploy waits on AWS credits
+- ✅ 4e: simulated Alexa+ (`pnpm sim`): two synced devices, speaker and voice-match pickers, browser speech, device-event buttons; the assistant (`qwen3:8b`, tool calling) gets the brief as a compact digest and reaches Recall only through MCP; commands Recall sends are carried out and reported back by the simulated device. Replays (`pnpm replay`) for heart rate, mornings, check-ins, evening, a night-time door
+- ✅ Live: the whole loop works; the model is the weak link. `qwen3:8b` gives thin answers and once swapped the address the person asked for with the one on record, so pre-flight now also checks the request's own words against the details ("the request says Menara KL, but this would go to 12 Jalan Setiawangsa. Which one?"). On the rerun the pre-flight beat landed as designed: the office address flagged against the one on record, plus the repeat order, and the assistant asked instead of ordering. Still weak: to an unknown voice asking "what do you know about me?" it lists household facts instead of asking who it is (only household facts are returned, so nothing personal leaks). Replies take 3–25 s on this machine (the model reloads under memory pressure). Bedrock (Nova) for the assistant is worth trying once credits arrive
+- ⏳ Orientation routine and sundowning → W5; AgentCore deploy waits on AWS credits
 
 **W3 (started early, as of 2026-09-11)**
 
@@ -339,12 +341,12 @@ Caregiver view (Direction B):
 Not a general chatbot. Must-show moments: fixing a wrong fact, a rule blocking an action, a caregiver catching a missed reminder [D§7].
 
 ### WS12 — Simulated Alexa+, devices, replay (W4, P0)
-- [ ] Simulated Alexa+ web app: browser speech in/out, speaker picker (per Q5), talks to Recall only via MCP [A§9]
-- [ ] Two simulated devices side by side for the forget-propagation beat
-- [ ] Simulated Ring / Fire TV / coffee machine / lights event producers
-- [ ] Replay scripts: heart rate, door, check-in, playback, morning routine (JSON streams with fake device ids + HLC) [T§2]
-- [ ] Demo seed data for both directions
-- [ ] Simulator source included in the repo [T§7]
+- [x] Simulated Alexa+ web app: browser speech in/out, speaker picker (per Q5), talks to Recall only via MCP [A§9] — `apps/simulator` (`pnpm sim`): a voice-match slider, and `qwen3:8b` with tool calling as the assistant; every reply shows its Recall calls
+- [x] Two simulated devices side by side for the forget-propagation beat — each keeps its own synced projection and carries out the commands Recall sends
+- [x] Simulated Ring / Fire TV / coffee machine / lights event producers — buttons for coffee, lights, phone, Ring, front door, sleep; Fire TV noise level in the `evening` replay
+- [x] Replay scripts: heart rate, door, check-in, playback, morning routine (JSON streams with fake device ids + HLC) [T§2] — `heart-rate`, `door-night`, `checkins`, `mornings` (with the news playback), `evening`; `pnpm replay <name>`
+- [x] Demo seed data for both directions — since W2; a home delivery address added for the pre-flight beat
+- [x] Simulator source included in the repo [T§7]
 
 ### WS13 — LLM provider and workers (W1 local → W4 Bedrock, P0)
 - [ ] `LlmProvider` interface + adapters: Ollama/MLX (local), Anthropic API, Bedrock (Nova Lite for extraction; Claude on Bedrock for pre-flight/propose if budget allows) [T§1, T§4] — interface + Ollama ✓ (chat and embeddings); Bedrock stubbed

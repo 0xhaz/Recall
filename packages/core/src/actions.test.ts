@@ -136,6 +136,40 @@ describe('evaluatePreflight', () => {
     );
   });
 
+  it('catches details that disagree with the request itself', () => {
+    const swapped = evaluatePreflight(
+      base({
+        action: {
+          intent: 'order.food',
+          summary: 'Order dinner from the usual place to Menara KL, level 30',
+          topics: [],
+          details: { venue: 'Warung Mak Teh', address: '12 Jalan Setiawangsa, Kuala Lumpur' },
+        },
+        venueFacts: [{ fact_id: 'f4', content: 'The usual takeaway is Warung Mak Teh' }],
+        knownAddresses: [{ fact_id: 'f8', content: 'Home delivery address is 12 Jalan Setiawangsa, Kuala Lumpur' }],
+      }),
+    );
+    expect(swapped.confirm).toEqual([
+      {
+        check: 'address',
+        message:
+          'The request says “Menara KL, level 30”, but this would go to 12 Jalan Setiawangsa, Kuala Lumpur. Which one?',
+      },
+    ]);
+    const toHome = evaluatePreflight(
+      base({
+        action: {
+          intent: 'order.food',
+          summary: 'Order dinner to home',
+          topics: [],
+          details: { address: '12 Jalan Setiawangsa' },
+        },
+        knownAddresses: [{ fact_id: 'f8', content: 'Home delivery address is 12 Jalan Setiawangsa, Kuala Lumpur' }],
+      }),
+    );
+    expect(toHome.decision).toBe('allow');
+  });
+
   it('asks about a repeat order, an unusual amount, and a ride that clashes with a routine', () => {
     const orders = [order(20), order(3000, { amount: 25 }), order(6000, { amount: 32 })];
     const again = evaluatePreflight(base({ ...food({ venue: 'Warung Mak Teh', amount: 90 }), orders }));

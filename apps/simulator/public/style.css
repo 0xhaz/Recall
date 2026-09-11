@@ -1,0 +1,236 @@
+:root {
+  --bg: #0f1720;
+  --panel: #17212c;
+  --line: #243242;
+  --text: #e6edf3;
+  --muted: #8b9aab;
+  --accent: #36c5f0;
+  --user: #1f3b57;
+  --assistant: #22303f;
+  --warn: #f0b429;
+  --error: #f47067;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.bar h1 {
+  font-size: 18px;
+  margin: 0 12px 0 0;
+}
+
+.bar h1 small {
+  color: var(--muted);
+  font-weight: normal;
+  font-size: 13px;
+}
+
+select,
+input[type="text"],
+button {
+  font: inherit;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.error {
+  color: var(--error);
+}
+
+.panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 16px;
+  padding: 16px 20px;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  min-height: 460px;
+}
+
+.panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ring {
+  width: 44px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--accent);
+  opacity: 0.6;
+}
+
+.now {
+  font-size: 13px;
+}
+
+.log {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bubble {
+  padding: 8px 10px;
+  border-radius: 10px;
+  max-width: 92%;
+}
+
+.bubble.user {
+  align-self: flex-end;
+  background: var(--user);
+}
+
+.bubble.assistant {
+  align-self: flex-start;
+  background: var(--assistant);
+}
+
+.bubble.pending {
+  color: var(--muted);
+}
+
+.bubble.error {
+  color: var(--error);
+}
+
+.trace {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.trace pre {
+  white-space: pre-wrap;
+  max-height: 200px;
+  overflow: auto;
+  background: var(--bg);
+  padding: 6px;
+  border-radius: 6px;
+}
+
+form {
+  display: flex;
+  gap: 6px;
+}
+
+form input {
+  flex: 1;
+}
+
+.mic.live {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.notices,
+.feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.memory ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.memory .rule {
+  color: var(--warn);
+}
+
+.dock {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  padding: 0 20px 16px;
+}
+
+.dock h2 {
+  font-size: 14px;
+  margin: 8px 0;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.replay p {
+  margin: 2px 0 8px;
+  font-size: 12px;
+}
+
+.replay .status {
+  margin-left: 8px;
+  font-size: 12px;
+}
+
+.tag {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--line);
+}
+
+.tag.carers {
+  background: var(--warn);
+  color: var(--bg);
+}
+
+footer {
+  padding: 8px 20px 20px;
+  font-size: 12px;
+}

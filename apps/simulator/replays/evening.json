@@ -1,0 +1,30 @@
+{
+  "name": "evening",
+  "description": "Winding down: living-room lights dimmed, Aisyah's phone on charge, the house goes quiet. Late in the evening this becomes quiet hours.",
+  "mode": "live",
+  "events": [
+    {
+      "at_s": 0,
+      "device": "living-lights",
+      "location": "Living room",
+      "kind": "lights.living.dim",
+      "payload": { "brightness": 20 }
+    },
+    {
+      "at_s": 2,
+      "device": "aisyah-phone",
+      "kind": "phone.charging",
+      "person": "Aisyah",
+      "payload": { "charging": true }
+    }
+  ],
+  "series": [
+    {
+      "device": "living-firetv",
+      "kind": "sound.level",
+      "field": "db",
+      "every_s": 20,
+      "values": [32, 30, 29, 30, 28, 29, 28, 27]
+    }
+  ]
+}

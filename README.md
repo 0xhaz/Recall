@@ -61,6 +61,26 @@ Things to try, speaking as someone from the demo household:
 - *"What do you know about me?"* and *"Do you know anything about my uncle?"*
 - *"Forget that I'm off coffee."*
 
+## Simulated Alexa+
+
+With the server running (`pnpm dev`), `pnpm sim` serves a stand-in for Alexa+ on http://127.0.0.1:3200. It has:
+
+- two devices side by side, each keeping its own synced view of household memory
+- a speaker picker and a voice-match slider, standing in for Voice ID
+- browser speech in and out
+- buttons for simulated device events: coffee machine, lights, phone, Ring, front door, sleep
+- replays
+
+The assistant is `qwen3:8b` with tool calling. Its only memory is Recall over MCP, and every reply shows the Recall
+calls it made. Commands Recall sends (play this, undo that) are carried out by the simulated device, which reports
+back what it did.
+
+Replays are JSON streams in [`apps/simulator/replays`](apps/simulator/replays). They run from the page or the terminal:
+
+- `pnpm replay mornings`: three weeks of routine history
+- `pnpm replay heart-rate`: a 4-minute run, in real time
+- `pnpm replay checkins`, `pnpm replay evening` and `pnpm replay door-night`
+
 ## Tools
 
 Every tool that concerns a person takes `speaker` and an optional `speaker_confidence` (a voice-match score). Below

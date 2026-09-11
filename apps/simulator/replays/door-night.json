@@ -1,0 +1,6 @@
+{
+  "name": "door-night",
+  "description": "The front door opens. At night, and not usual for the hour, the carers are told.",
+  "mode": "live",
+  "events": [{ "at_s": 0, "device": "front-door", "location": "Front door", "kind": "door.open" }]
+}

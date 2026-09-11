@@ -361,6 +361,19 @@ export function evaluatePreflight(p: PreflightInput): Preflight {
   return { decision, blocked_by, withheld: final, confirm: items, message };
 }
 
+const HOME_WORDS = new Set(['home', 'my home', 'our home', 'the house', 'my place', 'here']);
+
+/** Where the request itself says it should go: the words after its last " to ". */
+function requestedDestination(summary: string): string | null {
+  const at = summary.toLowerCase().lastIndexOf(' to ');
+  if (at < 0) return null;
+  const place = summary
+    .slice(at + 4)
+    .replace(/[.;!?]+$/, '')
+    .trim();
+  return place && !HOME_WORDS.has(place.toLowerCase()) ? place : null;
+}
+
 /** Pre-flight for orders (design.md §3.2 #2): venue used before, the address on record, repeats, amount. */
 function orderChecks(intent: ActionIntent, d: ActionDetails, p: PreflightInput): ConfirmItem[] {
   const items: ConfirmItem[] = [];
@@ -371,7 +384,14 @@ function orderChecks(intent: ActionIntent, d: ActionDetails, p: PreflightInput):
   if (venue && atVenue.length === 0 && !known) items.push({ check: 'venue', message: `First order from ${venue}.` });
 
   const address = d.address?.trim();
-  if (address) {
+  const asked = requestedDestination(p.action.summary);
+  if (address && asked && !mentions(address, asked) && !mentions(asked, address)) {
+    // The request names one place and the details another: the assistant filled in the wrong one.
+    items.push({
+      check: 'address',
+      message: `The request says “${asked}”, but this would go to ${address}. Which one?`,
+    });
+  } else if (address) {
     const onRecord = p.knownAddresses.some((f) => mentions(f.content, address));
     const usedBefore = p.orders.some(
       (o) => o.address && (mentions(o.address, address) || mentions(address, o.address)),

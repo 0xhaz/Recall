@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Recall · simulated Alexa+</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <h1>Simulated Alexa+ <small>memory by Recall</small></h1>
+      <label>Speaking <select id="speaker"></select></label>
+      <label
+        >Voice match
+        <input id="confidence" type="range" min="0" max="1" step="0.05" value="0.95" />
+        <output id="confidence-value">0.95</output></label
+      >
+      <label><input id="voice" type="checkbox" checked /> Speak replies</label>
+      <span id="status" class="muted"></span>
+    </header>
+
+    <main id="panels" class="panels"></main>
+
+    <section class="dock">
+      <div>
+        <h2>Household notices</h2>
+        <ul id="feed" class="feed"></ul>
+      </div>
+      <div>
+        <h2>Device events</h2>
+        <div id="producers" class="buttons"></div>
+      </div>
+      <div>
+        <h2>Replays</h2>
+        <div id="replays"></div>
+      </div>
+    </section>
+
+    <footer class="muted">
+      Everything here reaches Recall only through MCP. The speaker picker stands in for Voice ID. Music titles come
+      from a mock catalogue.
+    </footer>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

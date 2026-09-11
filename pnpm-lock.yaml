@@ -64,6 +64,15 @@ importers:
         specifier: ^8.23.1
         version: 8.23.1
 
+  apps/simulator:
+    dependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: 1.30.0
+        version: 1.30.0(zod@4.6.2)
+      '@recall/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+
   packages/core: {}
 
   packages/llm: {}

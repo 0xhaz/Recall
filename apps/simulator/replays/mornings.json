@@ -1,0 +1,33 @@
+{
+  "name": "mornings",
+  "description": "Three weeks of mornings: Aisyah's coffee around 07:10 then the news on weekdays, and Mak Som's good-morning check-in around 07:30 for the last two weeks.",
+  "mode": "history",
+  "days": 21,
+  "daily": [
+    {
+      "device": "kitchen-echo",
+      "kind": "coffee_machine.start",
+      "person": "Aisyah",
+      "time": "07:10",
+      "jitter_min": 8,
+      "weekdays_only": true
+    },
+    {
+      "device": "kitchen-echo",
+      "kind": "media.play",
+      "person": "Aisyah",
+      "time": "07:25",
+      "jitter_min": 6,
+      "weekdays_only": true,
+      "payload": { "title": "Morning news", "source": "Radio" }
+    },
+    {
+      "device": "bedroom-echo",
+      "kind": "checkin.morning",
+      "person": "Mak Som",
+      "time": "07:30",
+      "jitter_min": 10,
+      "last_days": 14
+    }
+  ]
+}

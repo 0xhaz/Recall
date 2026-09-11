@@ -1,0 +1,29 @@
+{
+  "name": "heart-rate",
+  "description": "A recorded 4-minute run from Aisyah's watch and phone: warm-up, two minutes at pace, cool-down.",
+  "mode": "live",
+  "series": [
+    {
+      "device": "aisyah-watch",
+      "kind": "hr.sample",
+      "person": "Aisyah",
+      "field": "bpm",
+      "every_s": 5,
+      "values": [
+        82, 86, 90, 95, 100, 106, 112, 118, 124, 130, 136, 141, 146, 150, 153, 155, 156, 158, 157, 159, 160, 158, 157,
+        159, 161, 160, 158, 159, 157, 156, 158, 157, 150, 144, 137, 130, 124, 118, 112, 106, 101, 96, 92, 89, 86, 84,
+        83, 82
+      ]
+    },
+    {
+      "device": "aisyah-phone",
+      "kind": "phone.motion",
+      "person": "Aisyah",
+      "field": "steps_per_min",
+      "every_s": 10,
+      "values": [
+        40, 70, 100, 130, 150, 160, 162, 164, 163, 165, 164, 162, 160, 158, 120, 90, 70, 50, 30, 20, 10, 0, 0, 0
+      ]
+    }
+  ]
+}

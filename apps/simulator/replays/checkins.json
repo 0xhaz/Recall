@@ -1,0 +1,10 @@
+{
+  "name": "checkins",
+  "description": "Two weeks of Mak Som's check-ins: good morning around 07:30 and good night around 21:30.",
+  "mode": "history",
+  "days": 14,
+  "daily": [
+    { "device": "bedroom-echo", "kind": "checkin.morning", "person": "Mak Som", "time": "07:30", "jitter_min": 10 },
+    { "device": "bedroom-echo", "kind": "checkin.night", "person": "Mak Som", "time": "21:30", "jitter_min": 15 }
+  ]
+}
