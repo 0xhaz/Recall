@@ -35,6 +35,7 @@ describe('tools', () => {
   it('exposes the memory and device tools', async () => {
     const { tools } = await client.listTools();
     expect(tools.map((tool) => tool.name).sort()).toEqual([
+      'checkin',
       'device_state',
       'explain_memory',
       'forget',

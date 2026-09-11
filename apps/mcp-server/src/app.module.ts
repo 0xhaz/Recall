@@ -18,6 +18,7 @@ import { MembershipService } from './households/membership.service.js';
 import { JobWorker } from './jobs/job-worker.js';
 import { EMBEDDER, LLM_PROVIDER } from './llm/tokens.js';
 import { UsageMeter } from './llm/usage-meter.js';
+import { ModelWarmup } from './llm/warmup.js';
 import { MaintenanceService } from './maintenance/maintenance.service.js';
 import { McpController } from './mcp/mcp.controller.js';
 import { McpTools } from './mcp/tools.js';
@@ -26,6 +27,10 @@ import { ExplainService } from './memory/explain.service.js';
 import { ForgetService } from './memory/forget.service.js';
 import { MemoryService } from './memory/memory.service.js';
 import { LatencyTracker, MetricsController } from './metrics/latency.js';
+import { AbsenceWatcher } from './routines/absence.service.js';
+import { CheckinService } from './routines/checkin.service.js';
+import { RoutineMiner } from './routines/miner.service.js';
+import { NoticeService } from './routines/notice.service.js';
 import { RulesService } from './rules/rules.service.js';
 import { SessionService } from './sessions/session.service.js';
 
@@ -71,6 +76,11 @@ export class AppModule {
         ForgetService,
         ExplainService,
         RulesService,
+        NoticeService,
+        RoutineMiner,
+        AbsenceWatcher,
+        CheckinService,
+        ModelWarmup,
         UsageMeter,
         Extractor,
         MaintenanceService,

@@ -13,6 +13,7 @@ import {
 } from '@recall/core';
 import type { HouseholdContext } from '../auth/household-auth.js';
 import { Db, type Queryable } from '../db/db.js';
+import { isRoutineActivity, recordActivity } from '../routines/activity.js';
 
 export const CLOCK = Symbol('CLOCK');
 
@@ -179,6 +180,11 @@ export class EventLog {
       let state = asDeviceState(rows[0]?.state);
       let stateChanged = false;
       const people = await this.people(tx, ctx.householdId);
+      const { rows: households } = await tx.query<{ timezone: string }>(
+        'SELECT timezone FROM household WHERE id = $1',
+        [ctx.householdId],
+      );
+      const timezone = households[0]?.timezone ?? 'UTC';
 
       for (const event of valid) {
         this.clock.receive(event.hlc);
@@ -205,6 +211,20 @@ export class EventLog {
         );
         if (!inserted.rowCount) continue;
         accepted++;
+
+        if (isRoutineActivity(event.kind, SENSITIVE_KIND.test(event.kind))) {
+          await recordActivity(tx, {
+            householdId: ctx.householdId,
+            region: ctx.region,
+            personId,
+            kind: event.kind,
+            deviceId: device.id,
+            at: hlcWallTime(event.hlc) ?? new Date(),
+            timezone,
+            ok: payload.status !== 'failed',
+            eventId: event.event_id,
+          });
+        }
 
         if (DEVICE_STATE_KIND.test(event.kind)) {
           state = reduceDeviceState(state, { kind: event.kind, hlc: event.hlc, payload });

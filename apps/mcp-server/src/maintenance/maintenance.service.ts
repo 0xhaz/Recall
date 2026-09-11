@@ -10,6 +10,7 @@ const TOMBSTONE_GRACE_DAYS = 30;
 const SENSITIVE_RETENTION_DAYS = 7;
 const DONE_JOB_RETENTION_DAYS = 7;
 const DEPARTED_GRACE_DAYS = 30;
+const ACTIVITY_RETENTION_DAYS = 60;
 const KEEP_SNAPSHOTS = 2;
 
 export interface MaintenanceReport {
@@ -111,6 +112,15 @@ export class MaintenanceService {
             AND seq NOT IN (SELECT seq FROM snapshot WHERE household_id = $1 ORDER BY seq DESC LIMIT ${KEEP_SNAPSHOTS})`,
         [householdId],
       );
+      // Activity is derived data: kept long enough to mine four-week routines, then dropped.
+      await tx.query(
+        `DELETE FROM activity WHERE household_id = $1 AND local_date < current_date - ${ACTIVITY_RETENTION_DAYS}`,
+        [householdId],
+      );
+      await tx.query('DELETE FROM notice WHERE household_id = $1 AND created_at < now() - make_interval(days => $2)', [
+        householdId,
+        retention,
+      ]);
 
       return {
         snapshot_seq: snapshotSeq,
@@ -139,7 +149,13 @@ export class MaintenanceService {
           AND NOT EXISTS (SELECT 1 FROM job j WHERE j.household_id = f.household_id AND j.kind = 'embed'
                                               AND j.status IN ('queued', 'running'))`,
     );
-    return (maintain.rowCount ?? 0) + (embed.rowCount ?? 0);
+    const mine = await this.db.query(
+      `INSERT INTO job (household_id, kind, payload)
+       SELECT DISTINCT a.household_id, 'mine', '{}'::jsonb FROM activity a
+        WHERE NOT EXISTS (SELECT 1 FROM job j WHERE j.household_id = a.household_id AND j.kind = 'mine'
+                            AND (j.status IN ('queued', 'running') OR j.created_at > now() - interval '20 hours'))`,
+    );
+    return (maintain.rowCount ?? 0) + (embed.rowCount ?? 0) + (mine.rowCount ?? 0);
   }
 
   /** People with no membership for 30 days (departed guests, "forget me") are removed entirely. */
@@ -191,10 +207,12 @@ export class MaintenanceService {
         ['device', 'primary_person_id'],
         ['rule', 'author_id'],
         ['rule', 'removed_by'],
+        ['notice', 'person_id'],
+        ['notice', 'acknowledged_by'],
       ] as const) {
         await tx.query(`UPDATE ${table} SET ${column} = NULL WHERE ${column} = $1`, [personId]);
       }
-      for (const table of ['login_token', 'console_session', 'membership'] as const) {
+      for (const table of ['activity', 'routine', 'login_token', 'console_session', 'membership'] as const) {
         await tx.query(`DELETE FROM ${table} WHERE person_id = $1`, [personId]);
       }
       await tx.query('DELETE FROM person WHERE id = $1', [personId]);

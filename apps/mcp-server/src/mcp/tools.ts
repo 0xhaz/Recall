@@ -7,8 +7,10 @@ import { ExplainService } from '../memory/explain.service.js';
 import { ForgetService } from '../memory/forget.service.js';
 import { MemoryService } from '../memory/memory.service.js';
 import { LatencyTracker } from '../metrics/latency.js';
+import { CheckinService } from '../routines/checkin.service.js';
 import { RulesService } from '../rules/rules.service.js';
 import { SessionService } from '../sessions/session.service.js';
+import { registerCareTools } from './care-tools.js';
 import { registerDeviceTools } from './device-tools.js';
 import { registerMemoryTools } from './memory-tools.js';
 import { registerRuleTools } from './rule-tools.js';
@@ -23,6 +25,7 @@ export class McpTools {
     @Inject(ForgetService) private readonly forget: ForgetService,
     @Inject(ExplainService) private readonly explain: ExplainService,
     @Inject(RulesService) private readonly rules: RulesService,
+    @Inject(CheckinService) private readonly checkins: CheckinService,
     @Inject(EventLog) private readonly events: EventLog,
     @Inject(DeviceService) private readonly devices: DeviceService,
     @Inject(SessionService) private readonly sessions: SessionService,
@@ -31,7 +34,7 @@ export class McpTools {
 
   /** One MCP server per request (stateless Streamable HTTP), bound to the caller's household. */
   build(ctx: HouseholdContext): McpServer {
-    const server = new McpServer({ name: 'recall', version: '0.3.0' });
+    const server = new McpServer({ name: 'recall', version: '0.4.0' });
     const timed: Timed = async (tool, fn) => {
       const started = performance.now();
       try {
@@ -42,9 +45,10 @@ export class McpTools {
         this.logger.log(`tool=${tool} ms=${ms.toFixed(1)}`);
       }
     };
-    const { memory, forget, explain, rules, events, devices, sessions } = this;
+    const { memory, forget, explain, rules, checkins, events, devices, sessions } = this;
     registerMemoryTools(server, ctx, { memory, devices, sessions, forget, explain, rules }, timed);
     registerRuleTools(server, ctx, { memory, rules }, timed);
+    registerCareTools(server, ctx, { memory, checkins }, timed);
     registerDeviceTools(server, ctx, { memory, events, devices, sessions }, timed);
     return server;
   }

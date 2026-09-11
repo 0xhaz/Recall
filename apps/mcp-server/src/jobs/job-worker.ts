@@ -4,10 +4,13 @@ import { APP_CONFIG, type AppConfig } from '../config.js';
 import { Db } from '../db/db.js';
 import { Extractor } from '../extraction/extractor.js';
 import { MaintenanceService } from '../maintenance/maintenance.service.js';
+import { AbsenceWatcher } from '../routines/absence.service.js';
+import { RoutineMiner } from '../routines/miner.service.js';
 import { JOBS_CHANNEL, type JobKind } from './queue.js';
 
 const POLL_MS = 5_000;
 const MAINTENANCE_CHECK_MS = 60 * 60_000;
+const ABSENCE_CHECK_MS = 60_000;
 const MAX_ATTEMPTS = 3;
 
 interface JobRow {
@@ -28,6 +31,7 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
   private listener: pg.Client | undefined;
   private timer: NodeJS.Timeout | undefined;
   private maintenanceTimer: NodeJS.Timeout | undefined;
+  private absenceTimer: NodeJS.Timeout | undefined;
   private draining: Promise<number> | undefined;
   private again = false;
   private stopped = false;
@@ -37,6 +41,8 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(Extractor) private readonly extractor: Extractor,
     @Inject(MaintenanceService) private readonly maintenance: MaintenanceService,
+    @Inject(RoutineMiner) private readonly miner: RoutineMiner,
+    @Inject(AbsenceWatcher) private readonly absence: AbsenceWatcher,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -47,8 +53,12 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
     await this.listener.query(`LISTEN ${JOBS_CHANNEL}`);
     // Polling picks up retries whose backoff has elapsed, and any missed notification.
     this.timer = setInterval(() => this.kick(), POLL_MS);
-    // Snapshots and compaction run as ordinary jobs, queued at most once a day per household.
+    // Snapshots, compaction and routine mining run as ordinary jobs, queued at most once a day per household.
     this.maintenanceTimer = setInterval(() => this.scheduleMaintenance(), MAINTENANCE_CHECK_MS);
+    // Missed check-ins are noticed within a minute of becoming late.
+    this.absenceTimer = setInterval(() => {
+      this.absence.check().catch((err: unknown) => this.logger.error(err));
+    }, ABSENCE_CHECK_MS);
     this.scheduleMaintenance();
     this.kick();
   }
@@ -57,6 +67,7 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
     this.stopped = true;
     clearInterval(this.timer);
     clearInterval(this.maintenanceTimer);
+    clearInterval(this.absenceTimer);
     await this.draining?.catch(() => undefined);
     await this.listener?.end();
   }
@@ -139,6 +150,9 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
         return;
       case 'embed':
         await this.extractor.embedMissing(job.household_id);
+        return;
+      case 'mine':
+        await this.miner.mine(job.household_id);
         return;
       default:
         throw new Error(`Unknown job kind ${job.kind satisfies never}`);
