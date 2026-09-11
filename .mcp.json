@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "recall": {
+      "type": "http",
+      "url": "http://localhost:3100/mcp",
+      "headers": {
+        "Authorization": "Bearer ${RECALL_DEV_TOKEN:-dev-token-change-me}"
+      }
+    }
+  }
+}

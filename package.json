@@ -1,0 +1,29 @@
+{
+  "name": "recall",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.12.2",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "dev": "pnpm --filter @recall/mcp-server dev",
+    "db:up": "docker compose -f docker/docker-compose.yml up -d postgres",
+    "db:down": "docker compose -f docker/docker-compose.yml down",
+    "db:migrate": "pnpm --filter @recall/mcp-server migrate",
+    "db:seed": "pnpm --filter @recall/mcp-server seed",
+    "smoke": "pnpm --filter @recall/mcp-server smoke"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.13",
+    "@types/node": "^22.20.2",
+    "tsx": "^4.23.13",
+    "typescript": "5.9.3",
+    "vitest": "^5.0.0"
+  }
+}
