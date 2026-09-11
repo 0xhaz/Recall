@@ -3,6 +3,7 @@ import { type MembershipRole, temporalStamp } from '@recall/core';
 import type { Embedder } from '@recall/llm';
 import type { HouseholdContext } from '../auth/household-auth.js';
 import { Db, type Queryable } from '../db/db.js';
+import { EventLog, lockHousehold } from '../events/event-log.service.js';
 import { EMBEDDER } from '../llm/tokens.js';
 import { UsageMeter } from '../llm/usage-meter.js';
 import { type Candidate, ExtractionReply, normalise } from './normalise.js';
@@ -49,6 +50,7 @@ export class Extractor {
     @Inject(Db) private readonly db: Db,
     @Inject(UsageMeter) private readonly meter: UsageMeter,
     @Inject(EMBEDDER) private readonly embedder: Embedder,
+    @Inject(EventLog) private readonly events: EventLog,
   ) {}
 
   async extractUtterance(utteranceId: string): Promise<string[]> {
@@ -130,24 +132,28 @@ export class Extractor {
 
   private apply(u: UtteranceRow, decisions: Decision[]): Promise<string[]> {
     return this.db.transaction(async (tx) => {
+      await lockHousehold(tx, u.household_id);
       const factIds: string[] = [];
       for (const d of decisions) {
         if (d.action === 'reinforce') {
           // Recurrence is what turns a mention into a trait.
-          await tx.query('UPDATE fact SET confidence = LEAST(0.95, GREATEST(confidence, $2) + 0.1) WHERE id = $1', [
-            d.target,
-            d.candidate.confidence,
-          ]);
+          const { rows } = await tx.query<{ confidence: number }>(
+            'UPDATE fact SET confidence = LEAST(0.95, GREATEST(confidence, $2) + 0.1) WHERE id = $1 RETURNING confidence',
+            [d.target, d.candidate.confidence],
+          );
+          await this.events.factChanged(tx, d.target, 'fact.reinforced', { confidence: rows[0]?.confidence });
           factIds.push(d.target);
           continue;
         }
         const id = await insertFact(tx, u, d);
+        await this.events.factCreated(tx, id);
         if (d.action === 'supersede') {
           // Bi-temporal: close the old fact and link it, never delete it.
           await tx.query('UPDATE fact SET valid_to = now(), superseded_by = $2 WHERE id = $1 AND valid_to IS NULL', [
             d.target,
             id,
           ]);
+          await this.events.factChanged(tx, d.target, 'fact.superseded', { superseded_by: id });
         }
         factIds.push(id);
       }

@@ -32,9 +32,17 @@ beforeAll(async () => {
 afterAll(() => t?.close());
 
 describe('tools', () => {
-  it('exposes the memory tools', async () => {
+  it('exposes the memory and device tools', async () => {
     const { tools } = await client.listTools();
-    expect(tools.map((tool) => tool.name).sort()).toEqual(['recall', 'remember', 'session_brief']);
+    expect(tools.map((tool) => tool.name).sort()).toEqual([
+      'device_state',
+      'ingest_events',
+      'recall',
+      'remember',
+      'session_brief',
+      'session_history',
+      'sync',
+    ]);
   });
 });
 

@@ -2,8 +2,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { Controller, Delete, Get, Inject, Logger, Post, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { HouseholdAuth } from '../auth/household-auth.js';
-import { MemoryService } from '../memory/memory.service.js';
-import { buildMcpServer } from './tools.js';
+import { McpTools } from './tools.js';
 
 function rpcError(res: Response, status: number, code: number, message: string): void {
   res.status(status).json({ jsonrpc: '2.0', error: { code, message }, id: null });
@@ -16,7 +15,7 @@ export class McpController {
 
   constructor(
     @Inject(HouseholdAuth) private readonly auth: HouseholdAuth,
-    @Inject(MemoryService) private readonly memory: MemoryService,
+    @Inject(McpTools) private readonly tools: McpTools,
   ) {}
 
   @Post()
@@ -28,7 +27,7 @@ export class McpController {
       return;
     }
 
-    const server = buildMcpServer(ctx, this.memory);
+    const server = this.tools.build(ctx);
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     res.on('close', () => {
       void transport.close();

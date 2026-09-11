@@ -114,6 +114,12 @@ const facts = [
   },
 ] as const;
 
+const devices = [
+  { id: 'kitchen-echo', name: 'Kitchen Echo Show', location: 'Kitchen', primary: null },
+  { id: 'bedroom-echo', name: "Mak Som's Echo", location: "Mak Som's room", primary: DEMO_PEOPLE.som },
+  { id: 'living-firetv', name: 'Living room Fire TV', location: 'Living room', primary: null },
+];
+
 export async function seed(databaseUrl: string, devToken: string | undefined): Promise<void> {
   const client = new pg.Client({ connectionString: databaseUrl });
   await client.connect();
@@ -165,6 +171,19 @@ export async function seed(databaseUrl: string, devToken: string | undefined): P
         ],
       );
     }
+    // The hackathon build keeps 7 days of raw events so compaction actually runs (architecture.md §4.1).
+    await client.query('UPDATE household SET retention_days = 7 WHERE id = ANY($1)', [households.map((h) => h.id)]);
+    for (const d of devices) {
+      await client.query(
+        `INSERT INTO device (household_id, device_id, region, name, location, primary_person_id)
+         VALUES ($1, $2, 'my', $3, $4, $5)
+         ON CONFLICT (household_id, device_id) DO UPDATE SET
+           name = EXCLUDED.name, location = EXCLUDED.location, primary_person_id = EXCLUDED.primary_person_id`,
+        [DEMO_HOUSEHOLD_ID, d.id, d.name, d.location, d.primary],
+      );
+    }
+    // Seeded facts need fact.created events too, or a device syncing from zero wouldn't see them.
+    await client.query('SELECT recall_backfill_fact_events()');
     if (devToken) {
       // Lets .mcp.json and the smoke script keep using RECALL_DEV_TOKEN against the demo household.
       await client.query(

@@ -3,9 +3,11 @@ import pg from 'pg';
 import { APP_CONFIG, type AppConfig } from '../config.js';
 import { Db } from '../db/db.js';
 import { Extractor } from '../extraction/extractor.js';
+import { MaintenanceService } from '../maintenance/maintenance.service.js';
 import { JOBS_CHANNEL, type JobKind } from './queue.js';
 
 const POLL_MS = 5_000;
+const MAINTENANCE_CHECK_MS = 60 * 60_000;
 const MAX_ATTEMPTS = 3;
 
 interface JobRow {
@@ -25,6 +27,7 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
   private readonly logger = new Logger(JobWorker.name);
   private listener: pg.Client | undefined;
   private timer: NodeJS.Timeout | undefined;
+  private maintenanceTimer: NodeJS.Timeout | undefined;
   private draining: Promise<number> | undefined;
   private again = false;
   private stopped = false;
@@ -33,6 +36,7 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
     @Inject(Db) private readonly db: Db,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(Extractor) private readonly extractor: Extractor,
+    @Inject(MaintenanceService) private readonly maintenance: MaintenanceService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -43,12 +47,16 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
     await this.listener.query(`LISTEN ${JOBS_CHANNEL}`);
     // Polling picks up retries whose backoff has elapsed, and any missed notification.
     this.timer = setInterval(() => this.kick(), POLL_MS);
+    // Snapshots and compaction run as ordinary jobs, queued at most once a day per household.
+    this.maintenanceTimer = setInterval(() => this.scheduleMaintenance(), MAINTENANCE_CHECK_MS);
+    this.scheduleMaintenance();
     this.kick();
   }
 
   async onApplicationShutdown(): Promise<void> {
     this.stopped = true;
     clearInterval(this.timer);
+    clearInterval(this.maintenanceTimer);
     await this.draining?.catch(() => undefined);
     await this.listener?.end();
   }
@@ -67,6 +75,13 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
 
   private kick(): void {
     this.drain().catch((err: unknown) => this.logger.error(err));
+  }
+
+  private scheduleMaintenance(): void {
+    this.maintenance
+      .schedule()
+      .then((queued) => queued > 0 && this.kick())
+      .catch((err: unknown) => this.logger.error(err));
   }
 
   private async loop(): Promise<number> {
@@ -117,6 +132,9 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
     switch (job.kind) {
       case 'extract':
         await this.extractor.extractUtterance(String(job.payload.utterance_id));
+        return;
+      case 'maintain':
+        await this.maintenance.maintain(job.household_id);
         return;
       default:
         throw new Error(`Unknown job kind ${job.kind satisfies never}`);

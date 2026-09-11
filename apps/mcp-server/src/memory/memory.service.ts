@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import {
   type BlockedCategory,
@@ -11,6 +12,7 @@ import {
 } from '@recall/core';
 import { APP_CONFIG, type AppConfig } from '../config.js';
 import { Db } from '../db/db.js';
+import { EventLog, lockHousehold } from '../events/event-log.service.js';
 import { enqueue } from '../jobs/queue.js';
 
 export interface Household {
@@ -100,6 +102,7 @@ export class MemoryService {
   constructor(
     @Inject(Db) private readonly db: Db,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
+    @Inject(EventLog) private readonly events: EventLog,
   ) {}
 
   async household(householdId: string): Promise<Household | null> {
@@ -136,6 +139,7 @@ export class MemoryService {
     speaker: Speaker | null,
     text: string,
     scope: 'person' | 'household',
+    deviceId?: string,
   ): Promise<RememberResult> {
     if (!speaker) {
       return {
@@ -158,17 +162,23 @@ export class MemoryService {
       };
     }
 
-    const utteranceId = await this.db.transaction(async (tx) => {
-      const { rows } = await tx.query<{ id: string }>(
-        `INSERT INTO utterance (household_id, region, person_id, scope_type, text, redactions)
-         SELECT h.id, h.region, $2, $3, $4, $5 FROM household h WHERE h.id = $1
-         RETURNING id`,
-        [householdId, speaker.person_id, scope, screened.text, screened.redactions],
+    const utteranceId = randomUUID();
+    await this.db.transaction(async (tx) => {
+      await lockHousehold(tx, householdId);
+      // The log records that something was said, never the words: raw speech stays on the server.
+      const hlc = await this.events.append(tx, householdId, {
+        kind: 'utterance.recorded',
+        payload: { utterance_id: utteranceId, person_id: speaker.person_id, scope },
+        personId: speaker.person_id,
+        deviceId,
+      });
+      const { rowCount } = await tx.query(
+        `INSERT INTO utterance (id, household_id, region, person_id, scope_type, text, redactions, hlc, device_id)
+         SELECT $1, h.id, h.region, $3, $4, $5, $6, $7, $8 FROM household h WHERE h.id = $2`,
+        [utteranceId, householdId, speaker.person_id, scope, screened.text, screened.redactions, hlc, deviceId ?? null],
       );
-      const row = rows[0];
-      if (!row) throw new Error(`Household ${householdId} not found`);
-      await enqueue(tx, householdId, 'extract', { utterance_id: row.id });
-      return row.id;
+      if (!rowCount) throw new Error(`Household ${householdId} not found`);
+      await enqueue(tx, householdId, 'extract', { utterance_id: utteranceId });
     });
 
     return {

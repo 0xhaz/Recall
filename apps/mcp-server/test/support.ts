@@ -104,7 +104,20 @@ export async function startApp(overrides: AppOverrides = {}): Promise<TestApp> {
     await Promise.all(clients.map((c) => c.close()));
     await app.close();
     for (const id of householdIds) {
-      for (const table of ['fact', 'utterance', 'job', 'llm_usage', 'household_token', 'audit_log', 'membership']) {
+      for (const table of [
+        'session_turn',
+        'session',
+        'snapshot',
+        'event',
+        'device',
+        'fact',
+        'utterance',
+        'job',
+        'llm_usage',
+        'household_token',
+        'audit_log',
+        'membership',
+      ]) {
         await db.query(`DELETE FROM ${table} WHERE household_id = $1`, [id]);
       }
       await db.query('DELETE FROM household WHERE id = $1', [id]);
