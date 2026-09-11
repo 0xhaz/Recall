@@ -3,7 +3,8 @@
 A user-owned memory layer for Alexa+ and any other agent, served as an MCP server over Streamable HTTP.
 Per-person, inspectable, editable, forgettable memory that stays consistent across every device in the house.
 
-**Status:** week 3 of 6 — memory, stated rules, forgetting that reaches every device, device sync and honesty tools. See [docs/workplan.md](docs/workplan.md).
+**Status:** week 4 of 6 — memory, stated rules, forgetting that reaches every device, device sync, honesty tools, routines
+with check-ins, and the context engine with music. See [docs/workplan.md](docs/workplan.md).
 
 ## Quickstart
 
@@ -79,6 +80,11 @@ so the assistant can ask "Is this Aisyah?". Every read carries the device-local 
 | **Rules** | |
 | `set_rule` | Saves a stated rule verbatim with its structured form; reports conflicts, never resolves them |
 | `list_rules` / `remove_rule` | Rules in force, word for word; only the author (or a caregiver) removes one |
+| **Context and care** | |
+| `get_context` | Context scores (workout, wind-down, party, festive, focus) with their reasons, quiet hours, and routines due soon or not working |
+| `set_context` | "Workout mode" / "stop workout mode": wins over the signals for a while and calibrates the person's trigger |
+| `suggest_music` | Picks for the live context from a mock catalogue, ranked by fit and what this person plays or skips in that context; nothing when a rule forbids music |
+| `checkin` | "I'm up" / "good morning": recorded, and the carers are told; a missed usual check-in prompts the person, then the carers |
 | **Devices** | |
 | `resolve_speaker` | Simulated Voice ID: a confident match is the speaker; a weak match or the device's usual person is a candidate |
 | `ingest_events` | Device reports (media, timers, alarms, subscriptions, conversation turns, sensors), idempotent and HLC-ordered |
@@ -102,6 +108,11 @@ statement it came from, past events and snapshots. A statement recorded before t
 **Devices.** The event log is the source of truth. Devices sync by the server's sequence number, merge by hybrid logical
 clock, and restart from a snapshot once old events are compacted (raw events are kept 7 days in this build). Raw health
 signals never leave the server.
+
+**Context.** Heart rate, motion, lights, charging, noise, voices, arrivals and sleep become scores for a few named
+contexts, recomputed by a background job. A context switches on only after its score holds, and off only after it has
+stayed low, so a flight of stairs isn't a workout. Thresholds are relative to the person's own resting rate. Only
+scores and thresholds are kept; raw heart rate is deleted after 7 days. Wind-down or sleep sets quiet hours.
 
 **Rules.** Rules are law, learned memory is evidence. Precedence: a caregiver's safety rule for a cared-for person, then
 a parent's rule for a child, then the person's own and household rules (the most restrictive wins), then other

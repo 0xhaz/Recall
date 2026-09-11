@@ -39,6 +39,7 @@ describe('tools', () => {
       'device_state',
       'explain_memory',
       'forget',
+      'get_context',
       'ingest_events',
       'list_rules',
       'recall',
@@ -48,7 +49,9 @@ describe('tools', () => {
       'session_brief',
       'session_history',
       'set_communication_style',
+      'set_context',
       'set_rule',
+      'suggest_music',
       'sync',
       'verify_claim',
     ]);

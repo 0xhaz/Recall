@@ -12,7 +12,9 @@ import {
   type SyncEvent,
 } from '@recall/core';
 import type { HouseholdContext } from '../auth/household-auth.js';
+import { CONTEXT_SIGNAL_KIND, LISTENING_KIND, recordListening } from '../context/listening.js';
 import { Db, type Queryable } from '../db/db.js';
+import { enqueueOnce } from '../jobs/queue.js';
 import { isRoutineActivity, recordActivity } from '../routines/activity.js';
 
 export const CLOCK = Symbol('CLOCK');
@@ -179,6 +181,7 @@ export class EventLog {
       );
       let state = asDeviceState(rows[0]?.state);
       let stateChanged = false;
+      let contextSignals = false;
       const people = await this.people(tx, ctx.householdId);
       const { rows: households } = await tx.query<{ timezone: string }>(
         'SELECT timezone FROM household WHERE id = $1',
@@ -211,6 +214,8 @@ export class EventLog {
         );
         if (!inserted.rowCount) continue;
         accepted++;
+        const at = hlcWallTime(event.hlc) ?? new Date();
+        if (CONTEXT_SIGNAL_KIND.test(event.kind)) contextSignals = true;
 
         if (isRoutineActivity(event.kind, SENSITIVE_KIND.test(event.kind))) {
           await recordActivity(tx, {
@@ -219,10 +224,21 @@ export class EventLog {
             personId,
             kind: event.kind,
             deviceId: device.id,
-            at: hlcWallTime(event.hlc) ?? new Date(),
+            at,
             timezone,
             ok: payload.status !== 'failed',
             eventId: event.event_id,
+          });
+        }
+        const trackId = text(payload.track_id);
+        if (personId && trackId && LISTENING_KIND.test(event.kind)) {
+          await recordListening(tx, {
+            householdId: ctx.householdId,
+            region: ctx.region,
+            personId,
+            kind: event.kind,
+            trackId,
+            at,
           });
         }
 
@@ -241,6 +257,7 @@ export class EventLog {
           JSON.stringify(state),
         ]);
       }
+      if (contextSignals) await enqueueOnce(tx, ctx.householdId, 'context');
     });
 
     return { accepted, duplicates: valid.length - accepted, rejected };

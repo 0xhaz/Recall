@@ -108,11 +108,8 @@ describe('set_rule', () => {
     });
 
     expect((await listRules('Daniel')).map((r) => r.text)).toEqual(['No music after 10pm on school nights']);
-    const brief = await callTool<{ rules: Rule[]; not_yet_available: string[] }>(client, 'session_brief', {
-      speaker: 'Daniel',
-    });
+    const brief = await callTool<{ rules: Rule[] }>(client, 'session_brief', { speaker: 'Daniel' });
     expect(brief.rules.map((r) => r.text)).toEqual(['No music after 10pm on school nights']);
-    expect(brief.not_yet_available).not.toContain('rules');
     expect(await syncRules()).toEqual(['No music after 10pm on school nights']);
   });
 

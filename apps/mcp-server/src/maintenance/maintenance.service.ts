@@ -212,7 +212,16 @@ export class MaintenanceService {
       ] as const) {
         await tx.query(`UPDATE ${table} SET ${column} = NULL WHERE ${column} = $1`, [personId]);
       }
-      for (const table of ['activity', 'routine', 'login_token', 'console_session', 'membership'] as const) {
+      for (const table of [
+        'activity',
+        'routine',
+        'context_state',
+        'context_baseline',
+        'track_affinity',
+        'login_token',
+        'console_session',
+        'membership',
+      ] as const) {
         await tx.query(`DELETE FROM ${table} WHERE person_id = $1`, [personId]);
       }
       await tx.query('DELETE FROM person WHERE id = $1', [personId]);

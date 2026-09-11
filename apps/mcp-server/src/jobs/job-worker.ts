@@ -1,16 +1,18 @@
 import { Inject, Injectable, Logger, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
 import pg from 'pg';
 import { APP_CONFIG, type AppConfig } from '../config.js';
+import { ContextService } from '../context/context.service.js';
 import { Db } from '../db/db.js';
 import { Extractor } from '../extraction/extractor.js';
 import { MaintenanceService } from '../maintenance/maintenance.service.js';
 import { AbsenceWatcher } from '../routines/absence.service.js';
 import { RoutineMiner } from '../routines/miner.service.js';
-import { JOBS_CHANNEL, type JobKind } from './queue.js';
+import { enqueueOnce, JOBS_CHANNEL, type JobKind } from './queue.js';
 
 const POLL_MS = 5_000;
 const MAINTENANCE_CHECK_MS = 60 * 60_000;
 const ABSENCE_CHECK_MS = 60_000;
+const CONTEXT_CHECK_MS = 30_000;
 const MAX_ATTEMPTS = 3;
 
 interface JobRow {
@@ -32,6 +34,7 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
   private timer: NodeJS.Timeout | undefined;
   private maintenanceTimer: NodeJS.Timeout | undefined;
   private absenceTimer: NodeJS.Timeout | undefined;
+  private contextTimer: NodeJS.Timeout | undefined;
   private draining: Promise<number> | undefined;
   private again = false;
   private stopped = false;
@@ -43,6 +46,7 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
     @Inject(MaintenanceService) private readonly maintenance: MaintenanceService,
     @Inject(RoutineMiner) private readonly miner: RoutineMiner,
     @Inject(AbsenceWatcher) private readonly absence: AbsenceWatcher,
+    @Inject(ContextService) private readonly contexts: ContextService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -59,6 +63,10 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
     this.absenceTimer = setInterval(() => {
       this.absence.check().catch((err: unknown) => this.logger.error(err));
     }, ABSENCE_CHECK_MS);
+    // Debounce and exit holds finish on the clock, not on a new report: re-evaluate contexts in flux.
+    this.contextTimer = setInterval(() => {
+      this.refreshContexts().catch((err: unknown) => this.logger.error(err));
+    }, CONTEXT_CHECK_MS);
     this.scheduleMaintenance();
     this.kick();
   }
@@ -68,6 +76,7 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
     clearInterval(this.timer);
     clearInterval(this.maintenanceTimer);
     clearInterval(this.absenceTimer);
+    clearInterval(this.contextTimer);
     await this.draining?.catch(() => undefined);
     await this.listener?.end();
   }
@@ -94,6 +103,11 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
       .then((queued) => queued > 0 && this.kick())
       .then(() => this.maintenance.purgeDeparted())
       .catch((err: unknown) => this.logger.error(err));
+  }
+
+  private async refreshContexts(): Promise<void> {
+    const households = await this.contexts.pending();
+    for (const householdId of households) await enqueueOnce(this.db, householdId, 'context');
   }
 
   private async loop(): Promise<number> {
@@ -153,6 +167,9 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
         return;
       case 'mine':
         await this.miner.mine(job.household_id);
+        return;
+      case 'context':
+        await this.contexts.evaluate(job.household_id);
         return;
       default:
         throw new Error(`Unknown job kind ${job.kind satisfies never}`);

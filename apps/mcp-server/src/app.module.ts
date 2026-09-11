@@ -9,6 +9,8 @@ import { HouseholdAuth } from './auth/household-auth.js';
 import { HouseholdTokensController } from './auth/household-tokens.controller.js';
 import { HouseholdTokens } from './auth/household-tokens.service.js';
 import { APP_CONFIG, type AppConfig } from './config.js';
+import { ContextService } from './context/context.service.js';
+import { MusicService } from './context/music.service.js';
 import { Db } from './db/db.js';
 import { DeviceService } from './devices/device.service.js';
 import { CLOCK, EventLog } from './events/event-log.service.js';
@@ -80,6 +82,8 @@ export class AppModule {
         RoutineMiner,
         AbsenceWatcher,
         CheckinService,
+        ContextService,
+        MusicService,
         ModelWarmup,
         UsageMeter,
         Extractor,

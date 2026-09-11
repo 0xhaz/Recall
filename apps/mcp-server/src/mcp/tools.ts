@@ -1,6 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { HouseholdContext } from '../auth/household-auth.js';
+import { ContextService } from '../context/context.service.js';
+import { MusicService } from '../context/music.service.js';
 import { DeviceService } from '../devices/device.service.js';
 import { EventLog } from '../events/event-log.service.js';
 import { ExplainService } from '../memory/explain.service.js';
@@ -8,9 +10,11 @@ import { ForgetService } from '../memory/forget.service.js';
 import { MemoryService } from '../memory/memory.service.js';
 import { LatencyTracker } from '../metrics/latency.js';
 import { CheckinService } from '../routines/checkin.service.js';
+import { RoutineMiner } from '../routines/miner.service.js';
 import { RulesService } from '../rules/rules.service.js';
 import { SessionService } from '../sessions/session.service.js';
 import { registerCareTools } from './care-tools.js';
+import { registerContextTools } from './context-tools.js';
 import { registerDeviceTools } from './device-tools.js';
 import { registerMemoryTools } from './memory-tools.js';
 import { registerRuleTools } from './rule-tools.js';
@@ -29,6 +33,9 @@ export class McpTools {
     @Inject(EventLog) private readonly events: EventLog,
     @Inject(DeviceService) private readonly devices: DeviceService,
     @Inject(SessionService) private readonly sessions: SessionService,
+    @Inject(ContextService) private readonly contexts: ContextService,
+    @Inject(MusicService) private readonly music: MusicService,
+    @Inject(RoutineMiner) private readonly routines: RoutineMiner,
     @Inject(LatencyTracker) private readonly latency: LatencyTracker,
   ) {}
 
@@ -45,10 +52,11 @@ export class McpTools {
         this.logger.log(`tool=${tool} ms=${ms.toFixed(1)}`);
       }
     };
-    const { memory, forget, explain, rules, checkins, events, devices, sessions } = this;
-    registerMemoryTools(server, ctx, { memory, devices, sessions, forget, explain, rules }, timed);
+    const { memory, forget, explain, rules, checkins, events, devices, sessions, contexts, music, routines } = this;
+    registerMemoryTools(server, ctx, { memory, devices, sessions, forget, explain, rules, contexts }, timed);
     registerRuleTools(server, ctx, { memory, rules }, timed);
     registerCareTools(server, ctx, { memory, checkins }, timed);
+    registerContextTools(server, ctx, { memory, contexts, music, routines }, timed);
     registerDeviceTools(server, ctx, { memory, events, devices, sessions }, timed);
     return server;
   }

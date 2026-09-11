@@ -17,6 +17,13 @@ Each work item has a week, a priority, and a "done when". Priorities:
 
 ## Progress
 
+**W4 (started early, as of 2026-09-11)**
+
+- ✅ 4a: activity projection (60 days), routine miner (clusters, day patterns, holidays, chains, drift, broken/fading), `checkin` and the absence watcher (prompt the person, then the carers 30 min later), notices delivered once, embedding model warmed at start
+- ✅ 4b: context engine (workout per person; wind-down, party, festive, focus for the household) as a worker-recomputed projection with debounce, hysteresis and manual override that calibrates the trigger; quiet hours; `get_context`, `set_context`, `suggest_music` over a labelled mock catalogue with per-context skips; `session_brief` now carries active contexts and quiet hours
+- ✅ Live on the dev server: a 2-minute heart-rate burst became Aisyah's workout via the worker after its hold; `get_context` p50 9 ms / p95 13 ms; no raw heart rate in any response
+- ⏳ 4c `propose_action` / `action_preflight` / `undo`, offer and auto-start counting; 4d care-mode inversions; 4e simulator + replay scripts; AgentCore deploy waits on AWS credits
+
 **W3 (started early, as of 2026-09-11)**
 
 - ✅ Event log with hybrid logical clocks and a per-household write lock, so the sync cursor never skips a late commit; `ingest_events` (idempotent, memory kinds rejected, clock-skew guard) and `sync` (replay, or snapshot once compacted)
@@ -285,15 +292,15 @@ NestJS, MCP spec 2025-11-25+, Streamable HTTP; the repo must actually call MCP i
 **Done when:** a replayed 3-week event stream produces "coffee 07:10 ± 12 min weekdays" and a morning chain, and holidays don't count as misses.
 
 ### WS9 — Context engine + music policy (W4 engine, W5 music polish, P0)
-- [ ] Context scores 0..1 from weighted signals with per-person weights; several can be live at once [A§3]
-- [ ] Workout and wind-down first (the demo contexts); party, festive, focus if green [A§10]
-- [ ] Debounce (threshold + hold window), exit conditions, manual override that also teaches [A§3]
-- [ ] Relative thresholds from the miner's baselines; **store derived context only, never raw HR** [A§3]
-- [ ] Scores as a worker-recomputed projection so every device sees the same value [A§3]
-- [ ] Quiet-hours flag from wind-down/sleep
-- [ ] Music policy: seed → context-tagged learning (skips are per context) → ranking (fit × affinity × recency) → household blend for shared contexts → offer first, auto-start after 2 accepts; party/festive stay ask-first; rules suppress [A§3.1]
-- [ ] Music catalogue per Q8 (mocked + labelled by default)
-- [ ] Bee HR bridge (optional) per Q6; recorded HR stream otherwise
+- [x] Context scores 0..1 from weighted signals; several can be live at once [A§3] — per-person thresholds rather than per-person weights (below)
+- [x] Workout and wind-down first (the demo contexts); party, festive, focus if green [A§10] — all five scored
+- [x] Debounce (threshold + hold window), exit conditions, manual override that also teaches [A§3] — hysteresis (enter/exit thresholds, each with a hold); `set_context`
+- [x] Relative thresholds; **store derived context only, never raw HR** [A§3] — resting rate from the person's own week of samples (5th percentile, ≥ 200 samples over ≥ 2 days), trigger ratio learned from "workout mode"; context tables hold scores and thresholds only
+- [x] Scores as a worker-recomputed projection so every device sees the same value [A§3] — `context_state`, `context.changed` events
+- [x] Quiet-hours flag from wind-down/sleep — in `session_brief` and `get_context`
+- [ ] Music policy: seed → context-tagged learning (skips are per context) → ranking (fit × affinity × recency) → household blend for shared contexts → offer first, auto-start after 2 accepts; party/festive stay ask-first; rules suppress [A§3.1] — learning, ranking, blend and rule suppression ✓ (`suggest_music`); offer/accept counting and auto-start → with `propose_action` (4c); seeding from stated preferences → W5
+- [x] Music catalogue per Q8 (mocked + labelled by default) — 14 invented titles, every response says `catalogue: 'mock'`
+- [ ] Bee HR bridge (optional) per Q6; recorded HR stream otherwise — Q6 closed: the replay script (4e) streams a recorded session
 
 **Done when:** replaying an HR stream pushes the workout score over threshold → running-mix offer; at 11pm the wind-down playlist is proposed instead; a "no music after 10pm" rule blocks it.
 
@@ -354,7 +361,7 @@ Not a general chatbot. Must-show moments: fixing a wrong fact, a rule blocking a
 ### WS15 — Latency (instrument from W3, publish W5, MS)
 Budgets [T§5]: `session_brief` < 400 ms p95 · `recall` < 300 ms p95 · `get_context`, `device_state`, `list_rules`, `session_history` < 100 ms p95 · `remember` ack < 100 ms.
 - [x] Per-tool timing middleware; p50/p95 histograms — `/metrics/latency`, last 1000 calls per tool
-- [ ] Hot-fact and context caches; warm on `resolve_speaker`; prefetch from the active routine [A§7.1] — query-embedding cache and embedding model keep-alive ✓; hot-fact and context caches when the W4 context engine lands
+- [ ] Hot-fact and context caches; warm on `resolve_speaker`; prefetch from the active routine [A§7.1] — query-embedding cache and embedding model keep-alive ✓; contexts need no cache (one indexed read of the projection, p95 13 ms); hot-fact cache only if `session_brief` misses its budget on a quiet machine
 - [ ] Deterministic fast path for rule hits, routine triggers and check-ins [A§7.1]
 - [x] CI latency check on the replay suite — `latency.e2e` fails CI if any read tool's server-side p95 exceeds its budget
 - [ ] Publish numbers in the README and the console dashboard

@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { DEFAULT_STYLE, RESPONSE_RULES, temporalStamp } from '@recall/core';
 import * as z from 'zod';
 import type { HouseholdContext } from '../auth/household-auth.js';
+import type { ContextService } from '../context/context.service.js';
 import type { DeviceService } from '../devices/device.service.js';
 import type { ExplainService } from '../memory/explain.service.js';
 import type { ForgetService } from '../memory/forget.service.js';
@@ -10,9 +11,6 @@ import type { RulesService } from '../rules/rules.service.js';
 import type { SessionService } from '../sessions/session.service.js';
 import { deviceArg, json, speakerArgs, type Timed } from './tool-kit.js';
 
-// Sections of session_brief that later weeks fill in. Listed explicitly so the model
-// knows they are absent rather than inventing them.
-const NOT_YET_AVAILABLE = ['context_scores', 'quiet_hours'];
 const HANDOFF_TURNS = 6;
 
 export interface MemoryToolDeps {
@@ -22,6 +20,7 @@ export interface MemoryToolDeps {
   forget: ForgetService;
   explain: ExplainService;
   rules: RulesService;
+  contexts: ContextService;
 }
 
 export function registerMemoryTools(
@@ -30,7 +29,7 @@ export function registerMemoryTools(
   deps: MemoryToolDeps,
   timed: Timed,
 ): void {
-  const { memory, devices, sessions, forget, explain, rules } = deps;
+  const { memory, devices, sessions, forget, explain, rules, contexts } = deps;
 
   const whoAndWhere = async (speaker?: string, confidence?: number) => {
     const [household, identity] = await Promise.all([
@@ -49,9 +48,10 @@ export function registerMemoryTools(
         'Call this FIRST for every user request. One call returns what you need to answer: the current local date/time, ' +
         'who is speaking and how they like to be spoken to, the rules that apply (which override anything learned), the ' +
         'most relevant remembered facts (with source and confidence), the conversation in progress (also when it started ' +
-        "on another device) and the device's live state. " +
+        "on another device), the device's live state, and what's going on (active contexts, quiet hours). " +
         'Only state facts that appear here or in recall. If ask_who_is_speaking is true, ask before using anything personal; ' +
-        'if speaker_candidate is present, confirm it ("Is this Aisyah?") first.',
+        'if speaker_candidate is present, confirm it ("Is this Aisyah?") first. During quiet hours, answer briefly and ' +
+        'offer nothing unprompted.',
       inputSchema: {
         ...speakerArgs,
         device: deviceArg,
@@ -63,12 +63,13 @@ export function registerMemoryTools(
       timed('session_brief', async () => {
         const { household, identity } = await whoAndWhere(speaker, speaker_confidence);
         const who = identity.speaker;
-        const [facts, style, applicableRules, session, deviceStates] = await Promise.all([
+        const [facts, style, applicableRules, session, deviceStates, reading] = await Promise.all([
           memory.recall(ctx.householdId, who, hint ?? '', 8),
           who ? memory.style(who.person_id) : DEFAULT_STYLE,
           rules.applicable(ctx.householdId, who?.person_id ?? null, device),
           device ? sessions.active(ctx.householdId, device, who?.person_id ?? null) : null,
           device ? devices.state(ctx.householdId, device) : [],
+          contexts.read(ctx.householdId, who?.person_id ?? null),
         ]);
         return json({
           temporal: temporalStamp(household.timezone),
@@ -96,7 +97,11 @@ export function registerMemoryTools(
               }
             : {}),
           ...(deviceStates[0] ? { device_state: deviceStates[0].state } : {}),
-          not_yet_available: NOT_YET_AVAILABLE,
+          // Only what's on: the full scores are in get_context.
+          contexts: reading.contexts
+            .filter((c) => c.active)
+            .map(({ context, for: whose, since, reasons }) => ({ context, for: whose, since, reasons })),
+          quiet_hours: reading.quiet_hours,
         });
       }),
   );

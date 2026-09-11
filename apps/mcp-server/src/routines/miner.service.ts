@@ -1,7 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { MALAYSIA_HOLIDAYS_2026, type MinedRoutine, mineRoutines, type Occurrence, temporalStamp } from '@recall/core';
+import {
+  type DayPattern,
+  dayMatches,
+  formatMinute,
+  MALAYSIA_HOLIDAYS_2026,
+  type MinedRoutine,
+  mineRoutines,
+  type Occurrence,
+  temporalStamp,
+} from '@recall/core';
 import { Db } from '../db/db.js';
 import { lockHousehold } from '../events/event-log.service.js';
+import { localMinute } from './activity.js';
 
 const WINDOW_DAYS = 28;
 /** A routine not seen for this long is retired; one seen again comes back as a candidate. */
@@ -99,6 +109,49 @@ export class RoutineMiner {
       return { mined: mined.length, inserted, updated: matched.size, faded: unseen.length };
     });
   }
+
+  /** Routines that matter right now: due within the hour today, or not working as they used to. */
+  async list(
+    householdId: string,
+    personId: string | null,
+    timezone: string,
+    now: Date = new Date(),
+  ): Promise<DueRoutine[]> {
+    const { rows } = await this.db.query<ExistingRoutine & { health: string; health_reason: string | null }>(
+      `SELECT id, person_id, kind, days, center_minute, health, health_reason FROM routine
+        WHERE household_id = $1 AND status <> 'retired' AND ($2::uuid IS NULL OR person_id IS NULL OR person_id = $2)
+        ORDER BY center_minute`,
+      [householdId, personId],
+    );
+    const local = localMinute(timezone, now);
+    const today = !MALAYSIA_HOLIDAYS_2026.has(local.date);
+    return rows.flatMap((r) => {
+      const dueIn = r.center_minute - local.minute;
+      const due = today && dayMatches(r.days as DayPattern, local.date) && dueIn >= -15 && dueIn <= DUE_SOON_MIN;
+      if (!due && r.health === 'ok') return [];
+      return [
+        {
+          kind: r.kind,
+          usual_time: formatMinute(r.center_minute),
+          days: r.days,
+          ...(due ? { due_in_minutes: dueIn } : {}),
+          health: r.health,
+          ...(r.health_reason ? { health_reason: r.health_reason } : {}),
+        },
+      ];
+    });
+  }
+}
+
+const DUE_SOON_MIN = 60;
+
+export interface DueRoutine {
+  kind: string;
+  usual_time: string;
+  days: string;
+  due_in_minutes?: number;
+  health: string;
+  health_reason?: string;
 }
 
 function routineValues(r: MinedRoutine): unknown[] {
