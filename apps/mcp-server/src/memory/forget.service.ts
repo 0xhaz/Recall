@@ -163,6 +163,17 @@ export class ForgetService {
           said.map((u) => u.id),
         );
         await tx.query('DELETE FROM session WHERE household_id = $1 AND person_id = $2', [householdId, personId]);
+        const { rows: rules } = await tx.query<{ id: string }>(
+          `SELECT id FROM rule WHERE household_id = $1 AND scope_type = 'person' AND scope_id = $2 AND removed_at IS NULL`,
+          [householdId, personId],
+        );
+        await this.eraser.removeRules(
+          tx,
+          householdId,
+          rules.map((r) => r.id),
+          personId,
+          true,
+        );
         const revoked = await tx.query(
           'UPDATE membership SET revoked_at = now() WHERE household_id = $1 AND person_id = $2 AND revoked_at IS NULL',
           [householdId, personId],

@@ -4,6 +4,7 @@ import {
   canEnterFactsFor,
   canReadPersonMemory,
   canRevokeCaregiver,
+  canSetRulesFor,
   canViewDaily,
   DEFAULT_CAREGIVER_GRANTS,
   type Member,
@@ -57,6 +58,16 @@ describe('caregiver defaults', () => {
     expect(canViewDaily(caregiver, elder)).toBe(true);
     expect(canEnterFactsFor(caregiver, elder)).toBe(true);
     expect(canEnterFactsFor(caregiver, adult)).toBe(false);
+  });
+});
+
+describe('setting rules for someone', () => {
+  it('parents for children, caregivers for the person they care for, nobody for another adult', () => {
+    expect(canSetRulesFor(owner, child)).toBe(true);
+    expect(canSetRulesFor(caregiver, elder)).toBe(true);
+    expect(canSetRulesFor(adult, owner)).toBe(false);
+    expect(canSetRulesFor(caregiver, adult)).toBe(false);
+    expect(canSetRulesFor(child, adult)).toBe(false);
   });
 });
 

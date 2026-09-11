@@ -42,8 +42,9 @@ export function canEnterFactsFor(actor: Member, subject: Member): boolean {
   return isSelf(actor, subject) || caregiverHas(actor, subject, 'enter_facts');
 }
 
+/** Stated rules for someone: yourself, a caregiver with the set_rules grant, or a parent for a child. */
 export function canSetRulesFor(actor: Member, subject: Member): boolean {
-  return isSelf(actor, subject) || caregiverHas(actor, subject, 'set_rules');
+  return isSelf(actor, subject) || caregiverHas(actor, subject, 'set_rules') || isParentOf(actor, subject);
 }
 
 export function canViewDaily(actor: Member, subject: Member): boolean {

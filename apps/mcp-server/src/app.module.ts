@@ -26,6 +26,7 @@ import { ExplainService } from './memory/explain.service.js';
 import { ForgetService } from './memory/forget.service.js';
 import { MemoryService } from './memory/memory.service.js';
 import { LatencyTracker, MetricsController } from './metrics/latency.js';
+import { RulesService } from './rules/rules.service.js';
 import { SessionService } from './sessions/session.service.js';
 
 /** Swap external dependencies in tests (scripted LLM, deterministic embedder, captured email). */
@@ -69,6 +70,7 @@ export class AppModule {
         Eraser,
         ForgetService,
         ExplainService,
+        RulesService,
         UsageMeter,
         Extractor,
         MaintenanceService,

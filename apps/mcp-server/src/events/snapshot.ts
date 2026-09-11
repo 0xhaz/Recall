@@ -1,4 +1,4 @@
-import type { FactView, ProjectionState } from '@recall/core';
+import type { FactView, ProjectionState, RuleView } from '@recall/core';
 import type { Queryable } from '../db/db.js';
 
 /**
@@ -14,15 +14,24 @@ export async function buildSnapshot(tx: Queryable, householdId: string): Promise
     'SELECT id, view FROM fact_view WHERE household_id = $1 AND valid_to IS NULL',
     [householdId],
   );
-  // Tombstones travel with the snapshot so a stale replay can't resurrect a forgotten fact.
-  const { rows: forgotten } = await tx.query<{ id: string; hlc: string }>(
-    'SELECT id, hlc FROM fact WHERE household_id = $1 AND forgotten_at IS NOT NULL AND hlc IS NOT NULL',
+  const { rows: rules } = await tx.query<{ id: string; view: RuleView }>(
+    'SELECT id, view FROM rule_view WHERE household_id = $1 AND removed_at IS NULL',
+    [householdId],
+  );
+  // Tombstones travel with the snapshot so a stale replay can't resurrect a forgotten fact or removed rule.
+  const { rows: tombstones } = await tx.query<{ id: string; hlc: string; reason: 'forgotten' | 'removed' }>(
+    `SELECT id, hlc, 'forgotten' AS reason FROM fact
+      WHERE household_id = $1 AND forgotten_at IS NOT NULL AND hlc IS NOT NULL
+     UNION ALL
+     SELECT id, hlc, 'removed' FROM rule
+      WHERE household_id = $1 AND removed_at IS NOT NULL AND hlc IS NOT NULL`,
     [householdId],
   );
 
   return {
     cursor: Number(last[0]?.seq ?? 0),
     facts: Object.fromEntries(facts.map((f) => [f.id, f.view])),
-    removed: Object.fromEntries(forgotten.map((f) => [f.id, { hlc: f.hlc, reason: 'forgotten' as const }])),
+    rules: Object.fromEntries(rules.map((r) => [r.id, r.view])),
+    removed: Object.fromEntries(tombstones.map((t) => [t.id, { hlc: t.hlc, reason: t.reason }])),
   };
 }

@@ -1,3 +1,4 @@
+import type { RuleView } from './rules.js';
 import type { FactType, ScopeType, SensitivityTag } from './types.js';
 
 // The memory view a device derives from the event log (architecture.md §4). Devices never
@@ -30,19 +31,21 @@ export interface ProjectionState {
   /** Server sequence number of the last event applied; the device's sync cursor. */
   cursor: number;
   facts: Record<string, FactView>;
-  /** Facts that must never come back: forgotten (tombstones) or superseded. */
-  removed: Record<string, { hlc: string; reason: 'forgotten' | 'superseded' }>;
+  rules: Record<string, RuleView>;
+  /** Facts and rules that must never come back: forgotten or superseded facts, removed rules. */
+  removed: Record<string, { hlc: string; reason: 'forgotten' | 'superseded' | 'removed' }>;
 }
 
 export function emptyProjection(): ProjectionState {
-  return { cursor: 0, facts: {}, removed: {} };
+  return { cursor: 0, facts: {}, rules: {}, removed: {} };
 }
 
 export class MemoryProjection {
   private readonly state: ProjectionState;
 
-  constructor(state: ProjectionState = emptyProjection()) {
-    this.state = structuredClone(state);
+  constructor(state: Partial<ProjectionState> = emptyProjection()) {
+    // Snapshots taken before rules existed have no `rules` key.
+    this.state = { ...emptyProjection(), ...structuredClone(state) };
   }
 
   get cursor(): number {
@@ -70,10 +73,23 @@ export class MemoryProjection {
         return;
       }
       case 'fact.superseded':
-        this.remove(String(p.fact_id), event.hlc, 'superseded');
+        delete this.state.facts[String(p.fact_id)];
+        this.markRemoved(String(p.fact_id), event.hlc, 'superseded');
         return;
       case 'fact.forgotten':
-        this.remove(String(p.fact_id), event.hlc, 'forgotten');
+        delete this.state.facts[String(p.fact_id)];
+        this.markRemoved(String(p.fact_id), event.hlc, 'forgotten');
+        return;
+      case 'rule.set': {
+        const rule = p.rule as RuleView | undefined;
+        if (!rule || this.state.removed[rule.id]) return;
+        const current = this.state.rules[rule.id];
+        if (!current || current.hlc < event.hlc) this.state.rules[rule.id] = { ...rule, hlc: event.hlc };
+        return;
+      }
+      case 'rule.removed':
+        delete this.state.rules[String(p.rule_id)];
+        this.markRemoved(String(p.rule_id), event.hlc, 'removed');
         return;
       default:
         return;
@@ -91,12 +107,18 @@ export class MemoryProjection {
       .sort((a, b) => a.id.localeCompare(b.id));
   }
 
+  /** Rules in force now, in a stable order. */
+  currentRules(now: Date = new Date()): RuleView[] {
+    return Object.values(this.state.rules)
+      .filter((r) => !r.expires_at || Date.parse(r.expires_at) > now.getTime())
+      .sort((a, b) => a.id.localeCompare(b.id));
+  }
+
   snapshot(): ProjectionState {
     return structuredClone(this.state);
   }
 
-  private remove(id: string, hlc: string, reason: 'forgotten' | 'superseded'): void {
-    delete this.state.facts[id];
+  private markRemoved(id: string, hlc: string, reason: 'forgotten' | 'superseded' | 'removed'): void {
     const previous = this.state.removed[id];
     if (!previous || previous.hlc < hlc) this.state.removed[id] = { hlc, reason };
   }

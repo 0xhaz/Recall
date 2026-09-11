@@ -114,6 +114,7 @@ export async function startApp(overrides: AppOverrides = {}): Promise<TestApp> {
         'snapshot',
         'event',
         'device',
+        'rule',
         'fact',
         'utterance',
         'job',

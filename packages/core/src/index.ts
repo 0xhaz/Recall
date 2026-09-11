@@ -3,6 +3,7 @@ export * from './device-state.js';
 export * from './fusion.js';
 export * from './hlc.js';
 export * from './projection.js';
+export * from './rules.js';
 export * from './sensitivity.js';
 export * from './style.js';
 export * from './temporal.js';

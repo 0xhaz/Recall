@@ -6,12 +6,13 @@ import type { DeviceService } from '../devices/device.service.js';
 import type { ExplainService } from '../memory/explain.service.js';
 import type { ForgetService } from '../memory/forget.service.js';
 import type { MemoryService } from '../memory/memory.service.js';
+import type { RulesService } from '../rules/rules.service.js';
 import type { SessionService } from '../sessions/session.service.js';
 import { deviceArg, json, speakerArgs, type Timed } from './tool-kit.js';
 
 // Sections of session_brief that later weeks fill in. Listed explicitly so the model
 // knows they are absent rather than inventing them.
-const NOT_YET_AVAILABLE = ['rules', 'context_scores', 'quiet_hours'];
+const NOT_YET_AVAILABLE = ['context_scores', 'quiet_hours'];
 const HANDOFF_TURNS = 6;
 
 export interface MemoryToolDeps {
@@ -20,6 +21,7 @@ export interface MemoryToolDeps {
   sessions: SessionService;
   forget: ForgetService;
   explain: ExplainService;
+  rules: RulesService;
 }
 
 export function registerMemoryTools(
@@ -28,7 +30,7 @@ export function registerMemoryTools(
   deps: MemoryToolDeps,
   timed: Timed,
 ): void {
-  const { memory, devices, sessions, forget, explain } = deps;
+  const { memory, devices, sessions, forget, explain, rules } = deps;
 
   const whoAndWhere = async (speaker?: string, confidence?: number) => {
     const [household, identity] = await Promise.all([
@@ -45,8 +47,9 @@ export function registerMemoryTools(
       title: 'Session brief',
       description:
         'Call this FIRST for every user request. One call returns what you need to answer: the current local date/time, ' +
-        'who is speaking and how they like to be spoken to, the most relevant remembered facts (with source and ' +
-        "confidence), the conversation in progress (also when it started on another device) and the device's live state. " +
+        'who is speaking and how they like to be spoken to, the rules that apply (which override anything learned), the ' +
+        'most relevant remembered facts (with source and confidence), the conversation in progress (also when it started ' +
+        "on another device) and the device's live state. " +
         'Only state facts that appear here or in recall. If ask_who_is_speaking is true, ask before using anything personal; ' +
         'if speaker_candidate is present, confirm it ("Is this Aisyah?") first.',
       inputSchema: {
@@ -60,9 +63,10 @@ export function registerMemoryTools(
       timed('session_brief', async () => {
         const { household, identity } = await whoAndWhere(speaker, speaker_confidence);
         const who = identity.speaker;
-        const [facts, style, session, deviceStates] = await Promise.all([
+        const [facts, style, applicableRules, session, deviceStates] = await Promise.all([
           memory.recall(ctx.householdId, who, hint ?? '', 8),
           who ? memory.style(who.person_id) : DEFAULT_STYLE,
+          rules.applicable(ctx.householdId, who?.person_id ?? null, device),
           device ? sessions.active(ctx.householdId, device, who?.person_id ?? null) : null,
           device ? devices.state(ctx.householdId, device) : [],
         ]);
@@ -73,6 +77,13 @@ export function registerMemoryTools(
           ask_who_is_speaking: !who,
           ...(identity.candidate ? { speaker_candidate: identity.candidate } : {}),
           response_style: { ...style, rules: RESPONSE_RULES },
+          rules: applicableRules.map(({ id, text, summary, effect, severity }) => ({
+            id,
+            text,
+            summary,
+            effect,
+            severity,
+          })),
           facts,
           ...(session
             ? {

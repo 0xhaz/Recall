@@ -7,9 +7,11 @@ import { ExplainService } from '../memory/explain.service.js';
 import { ForgetService } from '../memory/forget.service.js';
 import { MemoryService } from '../memory/memory.service.js';
 import { LatencyTracker } from '../metrics/latency.js';
+import { RulesService } from '../rules/rules.service.js';
 import { SessionService } from '../sessions/session.service.js';
 import { registerDeviceTools } from './device-tools.js';
 import { registerMemoryTools } from './memory-tools.js';
+import { registerRuleTools } from './rule-tools.js';
 import type { Timed } from './tool-kit.js';
 
 @Injectable()
@@ -20,6 +22,7 @@ export class McpTools {
     @Inject(MemoryService) private readonly memory: MemoryService,
     @Inject(ForgetService) private readonly forget: ForgetService,
     @Inject(ExplainService) private readonly explain: ExplainService,
+    @Inject(RulesService) private readonly rules: RulesService,
     @Inject(EventLog) private readonly events: EventLog,
     @Inject(DeviceService) private readonly devices: DeviceService,
     @Inject(SessionService) private readonly sessions: SessionService,
@@ -39,8 +42,9 @@ export class McpTools {
         this.logger.log(`tool=${tool} ms=${ms.toFixed(1)}`);
       }
     };
-    const { memory, forget, explain, events, devices, sessions } = this;
-    registerMemoryTools(server, ctx, { memory, devices, sessions, forget, explain }, timed);
+    const { memory, forget, explain, rules, events, devices, sessions } = this;
+    registerMemoryTools(server, ctx, { memory, devices, sessions, forget, explain, rules }, timed);
+    registerRuleTools(server, ctx, { memory, rules }, timed);
     registerDeviceTools(server, ctx, { memory, events, devices, sessions }, timed);
     return server;
   }

@@ -137,6 +137,21 @@ export class EventLog {
     return hlc;
   }
 
+  /** rule.set carries the canonical rule_view; rule.removed is a tombstone. */
+  async ruleChanged(tx: Queryable, ruleId: string, kind: 'rule.set' | 'rule.removed'): Promise<string> {
+    const hlc = this.clock.tick();
+    await tx.query('UPDATE rule SET hlc = $2 WHERE id = $1', [ruleId, hlc]);
+    await tx.query(
+      `INSERT INTO event (event_id, household_id, region, hlc, kind, payload, tombstone)
+       SELECT $1, v.household_id, v.region, $2, $3,
+              CASE WHEN $3 = 'rule.set' THEN jsonb_build_object('rule', v.view) ELSE jsonb_build_object('rule_id', v.id) END,
+              $3 = 'rule.removed'
+         FROM rule_view v WHERE v.id = $4`,
+      [randomUUID(), hlc, kind, ruleId],
+    );
+    return hlc;
+  }
+
   /** Idempotent batch append from a device, projecting device state and sessions as it goes. */
   async ingest(ctx: HouseholdContext, device: DeviceInput, events: IncomingEvent[]): Promise<IngestResult> {
     const now = Date.now();

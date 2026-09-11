@@ -189,6 +189,8 @@ export class MaintenanceService {
         ['household_token', 'created_by'],
         ['audit_log', 'actor_id'],
         ['device', 'primary_person_id'],
+        ['rule', 'author_id'],
+        ['rule', 'removed_by'],
       ] as const) {
         await tx.query(`UPDATE ${table} SET ${column} = NULL WHERE ${column} = $1`, [personId]);
       }

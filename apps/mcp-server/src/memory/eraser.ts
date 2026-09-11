@@ -73,4 +73,36 @@ export class Eraser {
     );
     return rowCount ?? 0;
   }
+
+  /**
+   * Remove rules, tombstoned in the log so every device drops them. With `erase` (forget me) the
+   * rule's words go too, from the row and from past rule.set events. Caller holds lockHousehold.
+   */
+  async removeRules(
+    tx: Queryable,
+    householdId: string,
+    ruleIds: string[],
+    by: string | null,
+    erase = false,
+  ): Promise<number> {
+    let removed = 0;
+    for (const id of ruleIds) {
+      const { rowCount } = await tx.query(
+        `UPDATE rule SET removed_at = now(), removed_by = $3, text = CASE WHEN $4 THEN '' ELSE text END
+          WHERE household_id = $1 AND id = $2 AND removed_at IS NULL`,
+        [householdId, id, by, erase],
+      );
+      if (!rowCount) continue;
+      await this.events.ruleChanged(tx, id, 'rule.removed');
+      removed++;
+    }
+    if (erase && ruleIds.length > 0) {
+      await tx.query(
+        `UPDATE event SET payload = jsonb_set(payload, '{rule,text}', '""')
+          WHERE household_id = $1 AND kind = 'rule.set' AND payload->'rule'->>'id' = ANY($2::text[])`,
+        [householdId, ruleIds],
+      );
+    }
+    return removed;
+  }
 }
