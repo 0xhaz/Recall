@@ -36,12 +36,16 @@ describe('tools', () => {
     const { tools } = await client.listTools();
     expect(tools.map((tool) => tool.name).sort()).toEqual([
       'device_state',
+      'explain_memory',
+      'forget',
       'ingest_events',
       'recall',
       'remember',
       'session_brief',
       'session_history',
+      'set_communication_style',
       'sync',
+      'verify_claim',
     ]);
   });
 });

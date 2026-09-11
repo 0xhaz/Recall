@@ -31,11 +31,17 @@ export interface LlmProvider {
   ping(): Promise<boolean>;
 }
 
+/**
+ * 'document' for stored facts and fact-to-fact comparison; 'query' for search input, which some
+ * models (Qwen3-Embedding) embed with a task instruction so questions land near relevant facts.
+ */
+export type EmbedPurpose = 'document' | 'query';
+
 /** Text embeddings for dedupe and semantic recall. Separate from chat: the two may come from different providers. */
 export interface Embedder {
   readonly model: string;
   readonly dimensions: number;
-  embed(texts: string[]): Promise<number[][]>;
+  embed(texts: string[], purpose?: EmbedPurpose): Promise<number[][]>;
 }
 
 /** Must match the fact.embedding column (migration 0002). */

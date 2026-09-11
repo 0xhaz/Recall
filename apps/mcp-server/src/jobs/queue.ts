@@ -2,7 +2,7 @@ import type { Queryable } from '../db/db.js';
 
 export const JOBS_CHANNEL = 'recall_jobs';
 
-export type JobKind = 'extract' | 'maintain';
+export type JobKind = 'extract' | 'maintain' | 'embed';
 
 /** Enqueue inside the caller's transaction; the NOTIFY is only delivered if it commits. */
 export async function enqueue(

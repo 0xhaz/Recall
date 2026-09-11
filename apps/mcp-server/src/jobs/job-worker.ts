@@ -81,6 +81,7 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
     this.maintenance
       .schedule()
       .then((queued) => queued > 0 && this.kick())
+      .then(() => this.maintenance.purgeDeparted())
       .catch((err: unknown) => this.logger.error(err));
   }
 
@@ -135,6 +136,9 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
         return;
       case 'maintain':
         await this.maintenance.maintain(job.household_id);
+        return;
+      case 'embed':
+        await this.extractor.embedMissing(job.household_id);
         return;
       default:
         throw new Error(`Unknown job kind ${job.kind satisfies never}`);

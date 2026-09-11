@@ -15,6 +15,8 @@ import { EXTRACTION_SCHEMA, extractionMessages, JUDGE_SCHEMA, JudgeReply, judgeM
  * Duplicates and updates overlap (0.95–0.99), so similarity alone never decides.
  */
 const NEIGHBOUR_SIMILARITY = 0.72;
+/** A statement made before a forget that is this close to the forgotten fact is not stored again. */
+const STALE_SIMILARITY = 0.85;
 
 interface UtteranceRow {
   id: string;
@@ -23,6 +25,7 @@ interface UtteranceRow {
   person_id: string;
   text: string;
   status: string;
+  hlc: string | null;
   display_name: string;
   role: MembershipRole | null;
   timezone: string;
@@ -37,6 +40,7 @@ interface Neighbour {
 
 type Decision = { candidate: Candidate; scopeId: string; vector: string } & (
   | { action: 'insert' }
+  | { action: 'skip' }
   | { action: 'reinforce' | 'supersede'; target: string }
 );
 
@@ -55,7 +59,7 @@ export class Extractor {
 
   async extractUtterance(utteranceId: string): Promise<string[]> {
     const { rows } = await this.db.query<UtteranceRow>(
-      `SELECT u.id, u.household_id, u.region, u.person_id, u.text, u.status, p.display_name, m.role, h.timezone
+      `SELECT u.id, u.household_id, u.region, u.person_id, u.text, u.status, u.hlc, p.display_name, m.role, h.timezone
          FROM utterance u
          JOIN person p ON p.id = u.person_id
          JOIN household h ON h.id = u.household_id
@@ -64,7 +68,7 @@ export class Extractor {
       [utteranceId],
     );
     const u = rows[0];
-    if (!u || u.status === 'done') return [];
+    if (!u || u.status === 'done' || u.status === 'forgotten') return [];
 
     const ctx: HouseholdContext = { householdId: u.household_id, region: u.region };
     const now = new Date();
@@ -89,6 +93,28 @@ export class Extractor {
     return this.apply(u, decisions);
   }
 
+  /** Embed facts written without one (seed data, older rows) so semantic search can find them. */
+  async embedMissing(householdId: string, limit = 100): Promise<number> {
+    const { rows } = await this.db.query<{ id: string; content: string }>(
+      `SELECT id, content FROM fact
+        WHERE household_id = $1 AND embedding IS NULL AND forgotten_at IS NULL AND content <> ''
+        ORDER BY created_at LIMIT $2`,
+      [householdId, limit],
+    );
+    if (rows.length === 0) return 0;
+    const vectors = await this.embedder.embed(rows.map((r) => r.content));
+    for (const [i, row] of rows.entries()) {
+      const vector = vectors[i];
+      if (vector) {
+        await this.db.query('UPDATE fact SET embedding = $2::vector WHERE id = $1 AND embedding IS NULL', [
+          row.id,
+          JSON.stringify(vector),
+        ]);
+      }
+    }
+    return rows.length;
+  }
+
   private async decide(
     ctx: HouseholdContext,
     u: UtteranceRow,
@@ -98,6 +124,20 @@ export class Extractor {
     const scopeId = candidate.scope === 'person' ? u.person_id : u.household_id;
     const literal = JSON.stringify(vector);
     const base = { candidate, scopeId, vector: literal };
+
+    // Something said before a forget (e.g. uploaded late by an offline device) can't bring the
+    // forgotten fact back. Said again after the forget, it is stored as new.
+    if (u.hlc) {
+      const { rows: tombstones } = await this.db.query<{ similarity: number }>(
+        `SELECT 1 - (embedding <=> $4::vector) AS similarity FROM fact
+          WHERE household_id = $1 AND scope_type = $2 AND scope_id = $3
+            AND forgotten_at IS NOT NULL AND embedding IS NOT NULL AND hlc > $5
+          ORDER BY embedding <=> $4::vector
+          LIMIT 1`,
+        [u.household_id, candidate.scope, scopeId, literal, u.hlc],
+      );
+      if ((tombstones[0]?.similarity ?? 0) >= STALE_SIMILARITY) return { ...base, action: 'skip' };
+    }
 
     const { rows } = await this.db.query<Neighbour>(
       `SELECT id, content, 1 - (embedding <=> $4::vector) AS similarity, ttl IS NULL AS durable
@@ -133,8 +173,15 @@ export class Extractor {
   private apply(u: UtteranceRow, decisions: Decision[]): Promise<string[]> {
     return this.db.transaction(async (tx) => {
       await lockHousehold(tx, u.household_id);
+      const { rows: current } = await tx.query<{ status: string }>(
+        'SELECT status FROM utterance WHERE id = $1 FOR UPDATE',
+        [u.id],
+      );
+      // Forgotten while the model was working on it: write nothing.
+      if (current[0]?.status === 'forgotten') return [];
       const factIds: string[] = [];
       for (const d of decisions) {
+        if (d.action === 'skip') continue;
         if (d.action === 'reinforce') {
           // Recurrence is what turns a mention into a trait.
           const { rows } = await tx.query<{ confidence: number }>(

@@ -14,6 +14,7 @@ import { loadConfig } from '../src/config.js';
 import { loadDotEnv } from '../src/env.js';
 import { JobWorker } from '../src/jobs/job-worker.js';
 import { testDatabaseUrl } from './database.js';
+import { TopicEmbedder } from './fakes.js';
 
 export interface TestHousehold {
   id: string;
@@ -52,7 +53,10 @@ export async function startApp(overrides: AppOverrides = {}): Promise<TestApp> {
 
   const db = new pg.Client({ connectionString: config.databaseUrl });
   await db.connect();
-  const app = await NestFactory.create(AppModule.register(config, overrides), { logger: false });
+  // Deterministic embeddings by default, so no test depends on a running model.
+  const app = await NestFactory.create(AppModule.register(config, { embedder: new TopicEmbedder(), ...overrides }), {
+    logger: false,
+  });
   await app.listen(0, '127.0.0.1');
   const baseUrl = await app.getUrl();
 

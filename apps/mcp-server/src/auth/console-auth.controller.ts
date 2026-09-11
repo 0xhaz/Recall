@@ -12,16 +12,20 @@ import {
 import * as z from 'zod';
 import { MembershipService } from '../households/membership.service.js';
 import { parseBody } from '../http/validation.js';
+import { ForgetService } from '../memory/forget.service.js';
 import { ConsoleAuthService } from './console-auth.service.js';
 
 const MagicLinkBody = z.object({ email: z.email() });
 const VerifyBody = z.object({ token: z.string().min(1) });
+/** Typed confirmation, so "forget me" can't happen by accident. */
+const ForgetMeBody = z.object({ confirm: z.literal('forget me') });
 
 @Controller()
 export class ConsoleAuthController {
   constructor(
     @Inject(ConsoleAuthService) private readonly auth: ConsoleAuthService,
     @Inject(MembershipService) private readonly memberships: MembershipService,
+    @Inject(ForgetService) private readonly forget: ForgetService,
   ) {}
 
   @Post('auth/magic-link')
@@ -47,5 +51,14 @@ export class ConsoleAuthController {
     const profile = await this.memberships.profile(personId);
     if (!profile) throw new NotFoundException();
     return profile;
+  }
+
+  /** Forget me: erase this person's memory in every household and revoke their access. */
+  @Post('me/forget')
+  @HttpCode(200)
+  async forgetMe(@Headers('authorization') authorization: string | undefined, @Body() body: unknown) {
+    const personId = await this.auth.requirePerson(authorization);
+    parseBody(ForgetMeBody, body);
+    return this.forget.forgetPerson(personId);
   }
 }

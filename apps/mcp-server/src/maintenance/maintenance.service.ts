@@ -1,12 +1,15 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { audit } from '../audit.js';
 import { Db } from '../db/db.js';
 import { lockHousehold } from '../events/event-log.service.js';
 import { buildSnapshot } from '../events/snapshot.js';
+import { Eraser } from '../memory/eraser.js';
 
 // Retention rules (architecture.md §4.1).
 const TOMBSTONE_GRACE_DAYS = 30;
 const SENSITIVE_RETENTION_DAYS = 7;
 const DONE_JOB_RETENTION_DAYS = 7;
+const DEPARTED_GRACE_DAYS = 30;
 const KEEP_SNAPSHOTS = 2;
 
 export interface MaintenanceReport {
@@ -20,7 +23,10 @@ export interface MaintenanceReport {
 
 @Injectable()
 export class MaintenanceService {
-  constructor(@Inject(Db) private readonly db: Db) {}
+  constructor(
+    @Inject(Db) private readonly db: Db,
+    @Inject(Eraser) private readonly eraser: Eraser,
+  ) {}
 
   /** Record every projection as of the latest event. */
   async snapshot(householdId: string): Promise<number> {
@@ -117,15 +123,86 @@ export class MaintenanceService {
     });
   }
 
-  /** Queue maintenance for every household without a snapshot in the last day. */
+  /** Queue daily maintenance, and embedding backfill for facts that have none yet. */
   async schedule(): Promise<number> {
-    const { rowCount } = await this.db.query(
+    const maintain = await this.db.query(
       `INSERT INTO job (household_id, kind, payload)
        SELECT h.id, 'maintain', '{}' FROM household h
         WHERE NOT EXISTS (SELECT 1 FROM snapshot s WHERE s.household_id = h.id AND s.created_at > now() - interval '1 day')
           AND NOT EXISTS (SELECT 1 FROM job j WHERE j.household_id = h.id AND j.kind = 'maintain'
                                               AND j.status IN ('queued', 'running'))`,
     );
-    return rowCount ?? 0;
+    const embed = await this.db.query(
+      `INSERT INTO job (household_id, kind, payload)
+       SELECT DISTINCT f.household_id, 'embed', '{}'::jsonb FROM fact f
+        WHERE f.embedding IS NULL AND f.forgotten_at IS NULL AND f.content <> ''
+          AND NOT EXISTS (SELECT 1 FROM job j WHERE j.household_id = f.household_id AND j.kind = 'embed'
+                                              AND j.status IN ('queued', 'running'))`,
+    );
+    return (maintain.rowCount ?? 0) + (embed.rowCount ?? 0);
+  }
+
+  /** People with no membership for 30 days (departed guests, "forget me") are removed entirely. */
+  async purgeDeparted(): Promise<number> {
+    const { rows } = await this.db.query<{ id: string }>(
+      `SELECT p.id FROM person p
+        WHERE p.created_at < now() - make_interval(days => ${DEPARTED_GRACE_DAYS})
+          AND NOT EXISTS (
+            SELECT 1 FROM membership m WHERE m.person_id = p.id
+               AND (m.revoked_at IS NULL OR m.revoked_at > now() - make_interval(days => ${DEPARTED_GRACE_DAYS})))`,
+    );
+    for (const { id } of rows) await this.purgePerson(id);
+    return rows.length;
+  }
+
+  private async purgePerson(personId: string): Promise<void> {
+    // Anything still on record is tombstoned first, so devices drop it too.
+    const { rows: households } = await this.db.query<{ household_id: string }>(
+      `SELECT DISTINCT household_id FROM fact WHERE scope_type = 'person' AND scope_id = $1 AND forgotten_at IS NULL`,
+      [personId],
+    );
+    for (const { household_id: householdId } of households) {
+      await this.db.transaction(async (tx) => {
+        await lockHousehold(tx, householdId);
+        const { rows: facts } = await tx.query<{ id: string }>(
+          `SELECT id FROM fact WHERE household_id = $1 AND scope_type = 'person' AND scope_id = $2 AND forgotten_at IS NULL`,
+          [householdId, personId],
+        );
+        await this.eraser.forgetFacts(
+          tx,
+          householdId,
+          facts.map((f) => f.id),
+          null,
+        );
+      });
+    }
+
+    await this.db.transaction(async (tx) => {
+      const own = `SELECT id FROM fact WHERE scope_type = 'person' AND scope_id = $1`;
+      await tx.query(`UPDATE fact SET superseded_by = NULL WHERE superseded_by IN (${own})`, [personId]);
+      await tx.query(`DELETE FROM fact WHERE id IN (${own})`, [personId]);
+      await tx.query('DELETE FROM utterance WHERE person_id = $1', [personId]);
+      for (const [table, column] of [
+        ['event', 'person_id'],
+        ['session', 'person_id'],
+        ['membership', 'granted_by'],
+        ['household_token', 'created_by'],
+        ['audit_log', 'actor_id'],
+        ['device', 'primary_person_id'],
+      ] as const) {
+        await tx.query(`UPDATE ${table} SET ${column} = NULL WHERE ${column} = $1`, [personId]);
+      }
+      for (const table of ['login_token', 'console_session', 'membership'] as const) {
+        await tx.query(`DELETE FROM ${table} WHERE person_id = $1`, [personId]);
+      }
+      await tx.query('DELETE FROM person WHERE id = $1', [personId]);
+      await audit(tx, {
+        householdId: null,
+        actorId: null,
+        action: 'person.purged',
+        targetType: 'person',
+        targetId: personId,
+      });
+    });
   }
 }

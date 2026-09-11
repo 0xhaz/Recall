@@ -3,6 +3,7 @@ import {
   type ChatResponse,
   EMBEDDING_DIMENSIONS,
   type Embedder,
+  type EmbedPurpose,
   type LlmProvider,
 } from './provider.js';
 
@@ -62,6 +63,10 @@ export class OllamaProvider implements LlmProvider {
   }
 }
 
+/** Qwen3-Embedding's documented query format; stored facts are embedded without it. */
+const QUERY_INSTRUCTION =
+  'Instruct: Given a request or question from a household member, retrieve remembered facts that are relevant to it\nQuery: ';
+
 export class OllamaEmbedder implements Embedder {
   readonly dimensions = EMBEDDING_DIMENSIONS;
 
@@ -70,12 +75,13 @@ export class OllamaEmbedder implements Embedder {
     readonly model: string,
   ) {}
 
-  async embed(texts: string[]): Promise<number[][]> {
+  async embed(texts: string[], purpose: EmbedPurpose = 'document'): Promise<number[][]> {
     if (texts.length === 0) return [];
+    const input = purpose === 'query' ? texts.map((t) => `${QUERY_INSTRUCTION}${t}`) : texts;
     const res = await fetch(`${this.baseUrl}/api/embed`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ model: this.model, input: texts }),
+      body: JSON.stringify({ model: this.model, input }),
     });
     if (!res.ok) {
       throw new Error(`Ollama embed ${res.status}: ${await res.text()}`);

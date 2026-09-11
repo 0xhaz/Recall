@@ -3,6 +3,8 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { HouseholdContext } from '../auth/household-auth.js';
 import { DeviceService } from '../devices/device.service.js';
 import { EventLog } from '../events/event-log.service.js';
+import { ExplainService } from '../memory/explain.service.js';
+import { ForgetService } from '../memory/forget.service.js';
 import { MemoryService } from '../memory/memory.service.js';
 import { LatencyTracker } from '../metrics/latency.js';
 import { SessionService } from '../sessions/session.service.js';
@@ -16,6 +18,8 @@ export class McpTools {
 
   constructor(
     @Inject(MemoryService) private readonly memory: MemoryService,
+    @Inject(ForgetService) private readonly forget: ForgetService,
+    @Inject(ExplainService) private readonly explain: ExplainService,
     @Inject(EventLog) private readonly events: EventLog,
     @Inject(DeviceService) private readonly devices: DeviceService,
     @Inject(SessionService) private readonly sessions: SessionService,
@@ -35,8 +39,8 @@ export class McpTools {
         this.logger.log(`tool=${tool} ms=${ms.toFixed(1)}`);
       }
     };
-    const { memory, events, devices, sessions } = this;
-    registerMemoryTools(server, ctx, { memory, devices, sessions }, timed);
+    const { memory, forget, explain, events, devices, sessions } = this;
+    registerMemoryTools(server, ctx, { memory, devices, sessions, forget, explain }, timed);
     registerDeviceTools(server, ctx, { memory, events, devices, sessions }, timed);
     return server;
   }

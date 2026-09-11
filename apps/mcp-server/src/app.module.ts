@@ -21,6 +21,9 @@ import { UsageMeter } from './llm/usage-meter.js';
 import { MaintenanceService } from './maintenance/maintenance.service.js';
 import { McpController } from './mcp/mcp.controller.js';
 import { McpTools } from './mcp/tools.js';
+import { Eraser } from './memory/eraser.js';
+import { ExplainService } from './memory/explain.service.js';
+import { ForgetService } from './memory/forget.service.js';
 import { MemoryService } from './memory/memory.service.js';
 import { LatencyTracker, MetricsController } from './metrics/latency.js';
 import { SessionService } from './sessions/session.service.js';
@@ -63,6 +66,9 @@ export class AppModule {
         DeviceService,
         SessionService,
         MemoryService,
+        Eraser,
+        ForgetService,
+        ExplainService,
         UsageMeter,
         Extractor,
         MaintenanceService,
