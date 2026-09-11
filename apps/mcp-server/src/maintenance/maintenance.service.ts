@@ -209,11 +209,13 @@ export class MaintenanceService {
         ['rule', 'removed_by'],
         ['notice', 'person_id'],
         ['notice', 'acknowledged_by'],
+        ['care_policy', 'author_id'],
       ] as const) {
         await tx.query(`UPDATE ${table} SET ${column} = NULL WHERE ${column} = $1`, [personId]);
       }
       for (const table of [
         'action',
+        'care_policy',
         'activity',
         'routine',
         'context_state',

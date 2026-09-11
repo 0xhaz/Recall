@@ -1,5 +1,6 @@
 export * from './access.js';
 export * from './actions.js';
+export * from './care.js';
 export * from './context.js';
 export * from './device-state.js';
 export * from './fusion.js';

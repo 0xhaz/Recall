@@ -24,7 +24,9 @@ Each work item has a week, a priority, and a "done when". Priorities:
 - ✅ Live on the dev server: a 2-minute heart-rate burst became Aisyah's workout via the worker after its hold; `get_context` p50 9 ms / p95 13 ms; no raw heart rate in any response
 - ✅ 4c: `action_preflight` (rules quoted, quiet hours, the address on record, venues known from memory or past orders, repeat orders, amounts, routine clashes, guests, delivery notices with no matching order), `propose_action` (due routines, chains, music for the live context; one offer with its source; auto-start after two accepts for low-risk ones), `decide_action`, `undo` (per-intent windows, a tombstone carrying the inverse command)
 - ✅ Live: the demo's pre-flight beat flags the office address against the home address on record; confirm → undo → "already undone"; the 2 am couch notice is withheld; a workout offers Running Mix on an idle device but not over the news already playing; pre-flight p95 35 ms once its address and venue lookups became keyword-only
-- ⏳ 4d care-mode inversions; 4e simulator + replay scripts; AgentCore deploy waits on AWS credits
+- ✅ 4d: care mode for `cared_for` speakers: caregiver-only facts enforced in search, the repeat detector (a loop normally; any repeat that day in care mode, with the last answer), `set_care_policy` (correct / redirect over built-in defaults) and what is shared, said plainly; presence alerts to carers for a door or movement at night that isn't usual
+- ✅ Live on the demo household: Mak Som hears only the caregiver-entered fact, gets her earlier answer back when she asks again from another session, Farah's redirect for "Ahmad" applies (Daniel may not set one), and a door opening at 23:53 reached the carers through the worker; `session_brief` p50 55 ms
+- ⏳ 4e simulator + replay scripts; orientation routine and sundowning → W5; AgentCore deploy waits on AWS credits
 
 **W3 (started early, as of 2026-09-11)**
 
@@ -269,7 +271,7 @@ NestJS, MCP spec 2025-11-25+, Streamable HTTP; the repo must actually call MCP i
 ### WS6 — Honesty mechanisms (W3–W4, MS)
 - [ ] State-of-record: every "turn X off" is re-read from `device_state` after the change [A§5]
 - [ ] Assert in tests that `session_history` / `device_state` are consulted before any state claim [A§8]
-- [ ] Repeat detector on the session projection: the same answer N times → abstain + offer an alternative; **inverted in care mode** (answer consistently) [A§5, D§5]
+- [x] Repeat detector on the session projection: the same answer N times → abstain + offer an alternative; **inverted in care mode** (answer consistently) [A§5, D§5] — N = 2 within the conversation; in care mode any repeat that day, with the last answer
 - [x] Undo log: every action through Recall gets an undo handle with a window [D§3.2 #3] — per-intent windows (orders and rides 2 min, device changes 10 min, bookings 15 min, purchases 30 min, calls none); `action.undone` is a tombstone carrying the inverse command; locks are never reversed
 - [x] Pre-flight checks: known addresses, venues used before, routine conflicts, order history, quiet hours → "confirm these N things" payload [D§3.2 #2] — plus repeat orders, unusual amounts, guests and an unknown speaker
 
@@ -307,16 +309,16 @@ NestJS, MCP spec 2025-11-25+, Streamable HTTP; the repo must actually call MCP i
 **Done when:** replaying an HR stream pushes the workout score over threshold → running-mix offer; at 11pm the wind-down playlist is proposed instead; a "no music after 10pm" rule blocks it.
 
 ### WS10 — Care mode and check-in (W4 core, W5 polish; MS if Direction B is live)
-- [ ] Inversions keyed off `membership.role = cared_for` for the requesting household [A§1.3]
-- [ ] Repeat handling inverted: consistent, warm, never "I already told you" [D§5]
-- [ ] Absolute provenance: only caregiver-entered/confirmed facts get stated; no inference about people or events [D§5]
-- [ ] Correction/redirect policy as caregiver rules: correct for safety (stove, door, medication), redirect on reality-orientation topics [D§5]
+- [x] Inversions keyed off `membership.role = cared_for` for the requesting household [A§1.3] — `session_brief` adds a `care` block for them
+- [x] Repeat handling inverted: consistent, warm, never "I already told you" [D§5] — across the whole day, with the last answer to give again
+- [x] Absolute provenance: only caregiver-entered/confirmed facts get stated; no inference about people or events [D§5] — enforced inside memory search (recall, brief, explain, verify); a caregiver fact-entry tool comes with the console (W5)
+- [x] Correction/redirect policy as caregiver rules: correct for safety (stove, door, medication), redirect on reality-orientation topics [D§5] — `care_policy` per topic via `set_care_policy` (caregiver with the care-plan grant, or the owner), over built-in defaults
 - [ ] Orientation routine (date/time/weather/plan/visitors); medication and meal reminders with spoken confirmation logged for the caregiver [D§5]
 - [ ] Sundowning → wind-down context [D§5]
-- [ ] Presence escalation: door/motion at unusual hours → caregiver alert [D§5]
-- [ ] Plain statement to the person of what is shared ("your daughter can see your reminders") [D§5]
-- [ ] **No diagnosis stored**; not a medical device; document the never-initiate-on-health rule so nobody "fixes" it later [D§5]
-- [ ] Check-in: "Good morning/Good night" → family group message; absence by the usual time → gentle prompt → escalation [D§3.3]
+- [x] Presence escalation: door/motion at unusual hours → caregiver alert [D§5] — at night (22:00–06:00) unless the same thing happened near that time on ≥ 3 of the last 14 days; once per night and kind
+- [x] Plain statement to the person of what is shared ("your daughter can see your reminders") [D§5] — `care.shared_with`, from each caregiver's grants
+- [x] **No diagnosis stored**; not a medical device; document the never-initiate-on-health rule so nobody "fixes" it later [D§5] — diagnoses blocked at write time (W2); the rule is in `CARE_MODE_RULES` and the decision log
+- [x] Check-in: "Good morning/Good night" → family group message; absence by the usual time → gentle prompt → escalation [D§3.3] — 4a
 
 ### WS11 — Console (Next.js) (W5, P0 for the demo moments)
 Hackathon scope [D§6]:

@@ -72,6 +72,17 @@ export class SessionService {
     return session ? this.withTurns(session) : null;
   }
 
+  /** Everything a person said and heard since a time, across sessions and devices (care mode's repeat window). */
+  async turnsSince(householdId: string, personId: string, since: Date): Promise<Turn[]> {
+    const { rows } = await this.db.query<{ role: Turn['role']; text: string; at: Date }>(
+      `SELECT t.role, t.text, t.at FROM session_turn t JOIN session s ON s.id = t.session_id
+        WHERE t.household_id = $1 AND s.person_id = $2 AND t.at >= $3
+        ORDER BY t.at, t.hlc LIMIT 200`,
+      [householdId, personId, since],
+    );
+    return rows.map((t) => ({ role: t.role, text: t.text, at: t.at.toISOString() }));
+  }
+
   private async withTurns(session: SessionRow): Promise<SessionView> {
     const { rows } = await this.db.query<{ role: Turn['role']; text: string; at: Date }>(
       'SELECT role, text, at FROM session_turn WHERE session_id = $1 ORDER BY hlc DESC LIMIT $2',

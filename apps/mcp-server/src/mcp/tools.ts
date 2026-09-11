@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ActionService } from '../actions/action.service.js';
 import type { HouseholdContext } from '../auth/household-auth.js';
+import { CareService } from '../care/care.service.js';
 import { ContextService } from '../context/context.service.js';
 import { MusicService } from '../context/music.service.js';
 import { DeviceService } from '../devices/device.service.js';
@@ -39,6 +40,7 @@ export class McpTools {
     @Inject(MusicService) private readonly music: MusicService,
     @Inject(RoutineMiner) private readonly routines: RoutineMiner,
     @Inject(ActionService) private readonly actions: ActionService,
+    @Inject(CareService) private readonly care: CareService,
     @Inject(LatencyTracker) private readonly latency: LatencyTracker,
   ) {}
 
@@ -55,11 +57,11 @@ export class McpTools {
         this.logger.log(`tool=${tool} ms=${ms.toFixed(1)}`);
       }
     };
-    const { memory, forget, explain, rules, checkins, events, devices, sessions, contexts, music, routines, actions } =
-      this;
-    registerMemoryTools(server, ctx, { memory, devices, sessions, forget, explain, rules, contexts }, timed);
+    const { memory, forget, explain, rules, checkins, events, devices, sessions } = this;
+    const { contexts, music, routines, actions, care } = this;
+    registerMemoryTools(server, ctx, { memory, devices, sessions, forget, explain, rules, contexts, care }, timed);
     registerRuleTools(server, ctx, { memory, rules }, timed);
-    registerCareTools(server, ctx, { memory, checkins }, timed);
+    registerCareTools(server, ctx, { memory, checkins, care }, timed);
     registerContextTools(server, ctx, { memory, contexts, music, routines }, timed);
     registerActionTools(server, ctx, { memory, actions }, timed);
     registerDeviceTools(server, ctx, { memory, events, devices, sessions }, timed);

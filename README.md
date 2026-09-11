@@ -85,6 +85,7 @@ so the assistant can ask "Is this Aisyah?". Every read carries the device-local 
 | `set_context` | "Workout mode" / "stop workout mode": wins over the signals for a while and calibrates the person's trigger |
 | `suggest_music` | Picks for the live context from a mock catalogue, ranked by fit and what this person plays or skips in that context; nothing when a rule forbids music |
 | `checkin` | "I'm up" / "good morning": recorded, and the carers are told; a missed usual check-in prompts the person, then the carers |
+| `set_care_policy` | A caregiver's instruction for a topic with the person they care for: correct (safety) or redirect (reassure, turn to something familiar) |
 | **Actions** | |
 | `action_preflight` | Before any order, booking, ride, call or device change: rules (quoted), quiet hours, the address on record, venues used before, repeat orders, unusual amounts and routine clashes decide whether to allow it, confirm specific things first, or block it |
 | `propose_action` | At most one offer, with its source: a routine that's due, the next step of a routine chain, or music for the live context. Nothing in quiet hours; after two accepts, low-risk ones just start |
@@ -122,6 +123,11 @@ scores and thresholds are kept; raw heart rate is deleted after 7 days. Wind-dow
 **Actions.** Anything done on someone's behalf is checked first, recorded, and can be undone for a while. Offers come
 only from a routine or a live context, carry their source, never come during quiet hours, and never raise health,
 money or loss. Anything that costs money is only ever drafted for the person to confirm.
+
+**Care mode.** For someone being cared for, the defaults invert. They are told only what a caregiver entered. A
+repeated question gets the same warm answer as earlier that day, never "I already told you". Safety topics are
+corrected, and painful ones redirected the way the caregiver asked. A door or movement at night that isn't usual tells
+the carers. `session_brief` also says plainly who can see what.
 
 **Rules.** Rules are law, learned memory is evidence. Precedence: a caregiver's safety rule for a cared-for person, then
 a parent's rule for a child, then the person's own and household rules (the most restrictive wins), then other

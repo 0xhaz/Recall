@@ -142,6 +142,7 @@ const VISIBLE_FACT = `f.household_id = $1 AND f.forgotten_at IS NULL
   AND (f.scope_type = 'household' OR (f.scope_type = 'person' AND f.scope_id = $2::uuid))`;
 const CURRENT = 'f.valid_to IS NULL AND (f.ttl IS NULL OR f.valid_from + f.ttl > now())';
 const CLOSED = 'f.valid_to IS NOT NULL';
+const CAREGIVER_ONLY = "f.source->>'origin' = 'caregiver'";
 const FACT_COLUMNS = `f.id, 'fact' AS kind, f.content, f.scope_type, f.scope_id::text AS scope_id, f.type,
   f.confidence, f.sensitivity_tag, f.source, f.valid_from AS at, f.valid_to, f.valid_from + f.ttl AS expires_at,
   f.superseded_by`;
@@ -295,11 +296,15 @@ export class MemoryService {
     opts: { limit: number; closed?: boolean; mode?: SearchMode; keywordOnly?: boolean },
   ): Promise<SearchHit[]> {
     const personId = speaker?.person_id ?? null;
-    const when = opts.closed ? CLOSED : CURRENT;
+    // Care mode: only what a caregiver entered is ever stated to the person, nothing inferred (design.md §5).
+    const careMode = speaker?.role === 'cared_for';
+    const period = opts.closed ? CLOSED : CURRENT;
+    const when = careMode ? `${period} AND ${CAREGIVER_ONLY}` : period;
     // The speaker's own name would match every fact about them, so it never counts as a keyword.
     const tsquery = toTsQuery(query, nameWords(speaker?.display_name));
+    const withPending = !opts.closed && !careMode;
     const [keyword, vector] = await Promise.all([
-      this.keywordHits(householdId, personId, tsquery, when, !opts.closed, Math.max(opts.limit, CANDIDATES)),
+      this.keywordHits(householdId, personId, tsquery, when, withPending, Math.max(opts.limit, CANDIDATES)),
       query.trim() && !opts.keywordOnly
         ? this.vectorHits(householdId, personId, query, when, opts.mode ?? 'query')
         : [],

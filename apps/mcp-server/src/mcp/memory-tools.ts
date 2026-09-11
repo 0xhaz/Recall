@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { DEFAULT_STYLE, RESPONSE_RULES, temporalStamp } from '@recall/core';
 import * as z from 'zod';
 import type { HouseholdContext } from '../auth/household-auth.js';
+import type { CareService } from '../care/care.service.js';
 import type { ContextService } from '../context/context.service.js';
 import type { DeviceService } from '../devices/device.service.js';
 import type { ExplainService } from '../memory/explain.service.js';
@@ -21,6 +22,7 @@ export interface MemoryToolDeps {
   explain: ExplainService;
   rules: RulesService;
   contexts: ContextService;
+  care: CareService;
 }
 
 export function registerMemoryTools(
@@ -29,7 +31,7 @@ export function registerMemoryTools(
   deps: MemoryToolDeps,
   timed: Timed,
 ): void {
-  const { memory, devices, sessions, forget, explain, rules, contexts } = deps;
+  const { memory, devices, sessions, forget, explain, rules, contexts, care } = deps;
 
   const whoAndWhere = async (speaker?: string, confidence?: number) => {
     const [household, identity] = await Promise.all([
@@ -51,7 +53,8 @@ export function registerMemoryTools(
         "on another device), the device's live state, and what's going on (active contexts, quiet hours). " +
         'Only state facts that appear here or in recall. If ask_who_is_speaking is true, ask before using anything personal; ' +
         'if speaker_candidate is present, confirm it ("Is this Aisyah?") first. During quiet hours, answer briefly and ' +
-        'offer nothing unprompted.',
+        'offer nothing unprompted. If `repeat` is present, follow its guidance. For a person being cared for (`care`), ' +
+        'follow care.rules and any policy listed; only caregiver-entered facts are returned for them.',
       inputSchema: {
         ...speakerArgs,
         device: deviceArg,
@@ -71,6 +74,7 @@ export function registerMemoryTools(
           device ? devices.state(ctx.householdId, device) : [],
           contexts.read(ctx.householdId, who?.person_id ?? null),
         ]);
+        const extras = await care.brief(household, who, hint, session);
         return json({
           temporal: temporalStamp(household.timezone),
           household: household.name,
@@ -102,6 +106,7 @@ export function registerMemoryTools(
             .filter((c) => c.active)
             .map(({ context, for: whose, since, reasons }) => ({ context, for: whose, since, reasons })),
           quiet_hours: reading.quiet_hours,
+          ...extras,
         });
       }),
   );

@@ -9,6 +9,7 @@ import { ConsoleEmailSender, EMAIL_SENDER, type EmailSender } from './auth/email
 import { HouseholdAuth } from './auth/household-auth.js';
 import { HouseholdTokensController } from './auth/household-tokens.controller.js';
 import { HouseholdTokens } from './auth/household-tokens.service.js';
+import { CareService } from './care/care.service.js';
 import { APP_CONFIG, type AppConfig } from './config.js';
 import { ContextService } from './context/context.service.js';
 import { MusicService } from './context/music.service.js';
@@ -34,6 +35,7 @@ import { AbsenceWatcher } from './routines/absence.service.js';
 import { CheckinService } from './routines/checkin.service.js';
 import { RoutineMiner } from './routines/miner.service.js';
 import { NoticeService } from './routines/notice.service.js';
+import { PresenceWatcher } from './routines/presence.service.js';
 import { RulesService } from './rules/rules.service.js';
 import { SessionService } from './sessions/session.service.js';
 
@@ -86,6 +88,8 @@ export class AppModule {
         ContextService,
         MusicService,
         ActionService,
+        CareService,
+        PresenceWatcher,
         ModelWarmup,
         UsageMeter,
         Extractor,

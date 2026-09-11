@@ -51,6 +51,7 @@ describe('tools', () => {
       'resolve_speaker',
       'session_brief',
       'session_history',
+      'set_care_policy',
       'set_communication_style',
       'set_context',
       'set_rule',

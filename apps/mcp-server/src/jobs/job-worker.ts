@@ -7,6 +7,7 @@ import { Extractor } from '../extraction/extractor.js';
 import { MaintenanceService } from '../maintenance/maintenance.service.js';
 import { AbsenceWatcher } from '../routines/absence.service.js';
 import { RoutineMiner } from '../routines/miner.service.js';
+import { PresenceWatcher } from '../routines/presence.service.js';
 import { enqueueOnce, JOBS_CHANNEL, type JobKind } from './queue.js';
 
 const POLL_MS = 5_000;
@@ -47,6 +48,7 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
     @Inject(RoutineMiner) private readonly miner: RoutineMiner,
     @Inject(AbsenceWatcher) private readonly absence: AbsenceWatcher,
     @Inject(ContextService) private readonly contexts: ContextService,
+    @Inject(PresenceWatcher) private readonly presence: PresenceWatcher,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -170,6 +172,9 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
         return;
       case 'context':
         await this.contexts.evaluate(job.household_id);
+        return;
+      case 'presence':
+        await this.presence.check(job.household_id);
         return;
       default:
         throw new Error(`Unknown job kind ${job.kind satisfies never}`);

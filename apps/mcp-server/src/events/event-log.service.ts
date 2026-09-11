@@ -6,6 +6,7 @@ import {
   DEVICE_STATE_KIND,
   type HybridClock,
   hlcWallTime,
+  PRESENCE_KIND,
   type ProjectionState,
   parseHlc,
   reduceDeviceState,
@@ -182,6 +183,7 @@ export class EventLog {
       let state = asDeviceState(rows[0]?.state);
       let stateChanged = false;
       let contextSignals = false;
+      let presenceSignals = false;
       const people = await this.people(tx, ctx.householdId);
       const { rows: households } = await tx.query<{ timezone: string }>(
         'SELECT timezone FROM household WHERE id = $1',
@@ -216,6 +218,7 @@ export class EventLog {
         accepted++;
         const at = hlcWallTime(event.hlc) ?? new Date();
         if (CONTEXT_SIGNAL_KIND.test(event.kind)) contextSignals = true;
+        if (PRESENCE_KIND.test(event.kind)) presenceSignals = true;
 
         if (isRoutineActivity(event.kind, SENSITIVE_KIND.test(event.kind))) {
           await recordActivity(tx, {
@@ -258,6 +261,7 @@ export class EventLog {
         ]);
       }
       if (contextSignals) await enqueueOnce(tx, ctx.householdId, 'context');
+      if (presenceSignals) await enqueueOnce(tx, ctx.householdId, 'presence');
     });
 
     return { accepted, duplicates: valid.length - accepted, rejected };
