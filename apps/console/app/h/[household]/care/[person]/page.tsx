@@ -2,11 +2,28 @@ import { Bell, HeartPulse, MessageCircleWarning } from 'lucide-react';
 import { CarePolicyForm } from '@/components/care-policy-form';
 import { Empty, Panel, when } from '@/components/panel';
 import { describeKind, sentence } from '@/lib/format';
-import { getCarePlan } from '@/lib/recall';
+import { ApiError, type CarePlan, getCarePlan } from '@/lib/recall';
 
 export default async function Care({ params }: { params: Promise<{ household: string; person: string }> }) {
   const { household, person } = await params;
-  const plan = await getCarePlan(household, person);
+
+  // The person comes straight from the URL, so "no such person" and "not yours to see" are ordinary
+  // answers here, not crashes: Recall's own words, shown as written.
+  let plan: CarePlan;
+  try {
+    plan = await getCarePlan(household, person);
+  } catch (err) {
+    if (!(err instanceof ApiError)) throw err;
+    return (
+      <Panel title="Nothing to show here" icon={HeartPulse}>
+        <p className="text-sm text-slate-300">{err.message}</p>
+        <p className="mt-1 text-xs text-slate-500">
+          Care pages exist only for someone being cared for in this household, and only for the people looking after
+          them.
+        </p>
+      </Panel>
+    );
+  }
 
   return (
     <>
