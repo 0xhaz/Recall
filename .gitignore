@@ -7,3 +7,6 @@ coverage/
 *.log
 .DS_Store
 .next/
+
+# The uploaded v0 dashboard, kept as a design reference only: apps/console is the real thing.
+futuristic-dashboard/

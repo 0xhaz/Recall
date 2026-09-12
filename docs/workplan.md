@@ -17,6 +17,14 @@ Each work item has a week, a priority, and a "done when". Priorities:
 
 ## Progress
 
+**W5 (started early, as of 2026-09-13)**
+
+- ✅ Console API on the server (`/console/households/:id/...`): the 30-day console session rather than a household token, every read and write under the signed-in person's own access rules, reusing the voice path's services and the same event log
+- ✅ Console app (`apps/console`, Next 15 + Tailwind + shadcn, from the uploaded dashboard reference): overview, memory browser, rules with the blocked log, routines review, action history with undo, context, people, devices, settings with JSON export, and the caregiver view
+- ✅ Live on the demo household: magic-link sign-in through to all nine pages with real data; a correction supersedes and announces, a delete tombstones on every device
+- ⏳ "What do you know about me" page, chat with memory (the simulator covers it), delete by day/range, temporary mode, connect/disconnect sources, adjustable thresholds, the latency panel
+- ⏳ AgentCore deploy and Nova as the assistant wait on AWS credits
+
 **W4 (started early, as of 2026-09-11)**
 
 - ✅ 4a: activity projection (60 days), routine miner (clusters, day patterns, holidays, chains, drift, broken/fading), `checkin` and the absence watcher (prompt the person, then the carers 30 min later), notices delivered once, embedding model warmed at start
@@ -324,19 +332,19 @@ NestJS, MCP spec 2025-11-25+, Streamable HTTP; the repo must actually call MCP i
 
 ### WS11 — Console (Next.js) (W5, P0 for the demo moments)
 Hackathon scope [D§6]:
-- [ ] Memory browser: source, date, confidence, scope; edit / delete / mark wrong; filters
-- [ ] "What do you know about me" page (same content as the voice answer)
-- [ ] Rules manager: add/edit/expire/remove, conflicts explained, blocked-action log
-- [ ] Routines review: candidates accept/dismiss, active/retired, broken-routine flags
-- [ ] Household transparency: members, scopes, guest/child settings (basic) — B
-- [ ] Retention and export: retention window, delete by item/day/range, JSON export, temporary-mode toggle — B
-- [ ] Action history and undo (basic)
+- [x] Memory browser: source, date, confidence, scope; edit / delete / mark wrong; filters — a correction supersedes (never overwrites) and reaches every device; a delete writes the same tombstone a spoken "forget" does
+- [ ] "What do you know about me" page (same content as the voice answer) — needs an `explain`-shaped console endpoint; the memory browser covers the same ground meanwhile
+- [x] Rules manager: add/edit/expire/remove, conflicts explained, blocked-action log — rules word for word, removal, and the log of what each one blocked; adding a rule is still spoken, since it goes through the parser
+- [x] Routines review: candidates accept/dismiss, active/retired, broken-routine flags
+- [x] Household transparency: members, scopes, guest/child settings (basic) — B
+- [x] Retention and export: retention window, delete by item/day/range, JSON export, temporary-mode toggle — B — retention window, fact-by-fact delete and the JSON export; by day/range and temporary mode are not built
+- [x] Action history and undo (basic)
 - [ ] Chat with your memory (the simulator doubles as this)
-- [ ] Context dashboard: live scores, contributing signals, adjustable thresholds, **p50/p95 per tool**
-- [ ] Sources and devices: connect/disconnect, last sync per device (basic)
+- [x] Context dashboard: live scores, contributing signals, adjustable thresholds, **p50/p95 per tool** — scores, what raised them and each person's learned thresholds; thresholds are shown but not yet adjustable, and latency stays at `/metrics/latency`
+- [x] Sources and devices: connect/disconnect, last sync per device (basic) — devices, what they are playing and how far they have synced; connect/disconnect is not built
 
 Caregiver view (Direction B):
-- [ ] Care plan editor · daily view · alerts with adjustable delay · shared-view statement
+- [x] Care plan editor · daily view · alerts with adjustable delay · shared-view statement — correct/redirect policies in the caregiver's own words, the day's check-ins, the alerts that went out, and what the person is told is shared; the escalation delay is still fixed at 30 minutes
 
 Not a general chatbot. Must-show moments: fixing a wrong fact, a rule blocking an action, a caregiver catching a missed reminder [D§7].
 

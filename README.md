@@ -61,6 +61,24 @@ Things to try, speaking as someone from the demo household:
 - *"What do you know about me?"* and *"Do you know anything about my uncle?"*
 - *"Forget that I'm off coffee."*
 
+## Console
+
+With the server running, `pnpm console` serves the console on http://localhost:3000: what Recall remembers, and the
+controls over it.
+
+- **Memory** — every fact with where it came from, how sure it is, and whose it is. Fix one and the old wording is kept
+  as history; forget one and the tombstone reaches every device.
+- **Rules** — your rules word for word, and the log of what each one blocked.
+- **Routines** — what the miner noticed, waiting for a yes or no, plus the ones that have stopped working.
+- **Actions** — everything done on your behalf, what pre-flight asked first, and undo while the window is open.
+- **Context** — live scores with what raised them, quiet hours, and each person's learned thresholds.
+- **People, devices, settings** — who can see what, what has synced, how long raw events are kept, and a JSON export.
+- **Care** — for someone being cared for: the correct/redirect policies in the caregiver's own words, the day's
+  check-ins, and the alerts that went out.
+
+Sign in with a magic link. In development the mailer prints the link in the Recall server log; the demo owner is
+`aisyah@demo.recall.local`.
+
 ## Simulated Alexa+
 
 With the server running (`pnpm dev`), `pnpm sim` serves a stand-in for Alexa+ on http://127.0.0.1:3200. It has:

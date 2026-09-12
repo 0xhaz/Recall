@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/dist", "!pnpm-lock.yaml"]
+    "includes": ["**", "!**/dist", "!pnpm-lock.yaml", "!futuristic-dashboard", "!**/components/ui"]
   },
   "formatter": {
     "indentStyle": "space",
@@ -21,10 +21,21 @@
       "unsafeParameterDecoratorsEnabled": true
     }
   },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    },
+    "linter": {
+      "enabled": true
+    }
+  },
   "linter": {
     "enabled": true,
     "rules": {
-      "preset": "recommended"
+      "preset": "recommended",
+      "suspicious": {
+        "noUnknownAtRules": "off"
+      }
     }
   },
   "assist": {

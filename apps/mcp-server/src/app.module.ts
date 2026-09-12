@@ -11,6 +11,8 @@ import { HouseholdTokensController } from './auth/household-tokens.controller.js
 import { HouseholdTokens } from './auth/household-tokens.service.js';
 import { CareService } from './care/care.service.js';
 import { APP_CONFIG, type AppConfig } from './config.js';
+import { ConsoleController } from './console/console.controller.js';
+import { ConsoleService } from './console/console.service.js';
 import { ContextService } from './context/context.service.js';
 import { MusicService } from './context/music.service.js';
 import { Db } from './db/db.js';
@@ -59,6 +61,7 @@ export class AppModule {
         HealthController,
         MetricsController,
         ConsoleAuthController,
+        ConsoleController,
         HouseholdTokensController,
       ],
       providers: [
@@ -89,6 +92,7 @@ export class AppModule {
         MusicService,
         ActionService,
         CareService,
+        ConsoleService,
         PresenceWatcher,
         ModelWarmup,
         UsageMeter,
