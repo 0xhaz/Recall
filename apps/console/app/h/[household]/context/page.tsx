@@ -9,7 +9,7 @@ export default async function Context({ params }: { params: Promise<{ household:
   const sorted = [...reading.contexts].sort((a, b) => b.score - a.score);
 
   return (
-    <>
+    <div className="grid flex-1 gap-8 xl:grid-cols-2">
       <Panel
         title="What Recall thinks is going on"
         icon={Radio}
@@ -21,24 +21,24 @@ export default async function Context({ params }: { params: Promise<{ household:
           <ul className="space-y-4">
             {sorted.map((c) => (
               <li key={`${c.context}-${c.for}`}>
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between text-base">
                   <span className="text-slate-100">
                     {c.context.replace('_', '-')} <span className="text-slate-500">· {c.for}</span>
                     {c.active ? (
-                      <span className="ml-2 rounded-full border border-cyan-500/40 px-2 py-0.5 text-[10px] uppercase tracking-wider text-cyan-300">
+                      <span className="ml-2 rounded-full border border-cyan-500/40 px-2 py-0.5 text-xs uppercase tracking-wider text-cyan-300">
                         on{c.manual ? ' · set by hand' : ''}
                       </span>
                     ) : null}
                   </span>
                   <span className="font-mono text-xs text-slate-400">{percent(c.score)}</span>
                 </div>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-800">
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-800">
                   <div
                     className={`h-full rounded-full ${c.active ? 'bg-gradient-to-r from-cyan-500 to-blue-500' : 'bg-slate-600'}`}
                     style={{ width: percent(c.score) }}
                   />
                 </div>
-                <p className="mt-1 text-[11px] text-slate-500">
+                <p className="mt-1 text-xs text-slate-500">
                   {c.reasons.length > 0 ? c.reasons.join(', ') : 'nothing pointing that way'}
                   {c.active && c.since ? ` · since ${when(c.since)}` : ''}
                 </p>
@@ -76,6 +76,6 @@ export default async function Context({ params }: { params: Promise<{ household:
           </ul>
         )}
       </Panel>
-    </>
+    </div>
   );
 }

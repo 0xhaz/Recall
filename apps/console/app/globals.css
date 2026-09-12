@@ -42,6 +42,11 @@
     @apply border-border;
   }
 
+  /* Read across a room as often as at a desk: type and spacing both scale from here. */
+  html {
+    font-size: 17px;
+  }
+
   body {
     @apply bg-background text-foreground;
     background-image:
@@ -58,6 +63,6 @@
   }
 
   .label-xs {
-    @apply font-mono text-[11px] uppercase tracking-wider text-slate-500;
+    @apply font-mono text-[0.72rem] uppercase tracking-wider text-slate-500;
   }
 }

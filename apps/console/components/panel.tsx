@@ -18,20 +18,21 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={`panel ${className}`}>
+    <section className={`panel flex flex-col ${className}`}>
       {title ? (
-        <header className="flex items-start justify-between gap-4 border-b border-slate-700/50 px-5 py-3">
+        <header className="flex items-start justify-between gap-4 border-b border-slate-700/50 px-6 py-4">
           <div>
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-100">
-              {Icon ? <Icon className="h-4 w-4 text-cyan-400" /> : null}
+            <h2 className="flex items-center gap-2.5 text-base font-semibold text-slate-100">
+              {Icon ? <Icon className="h-5 w-5 text-cyan-400" /> : null}
               {title}
             </h2>
-            {subtitle ? <p className="mt-0.5 text-xs text-slate-400">{subtitle}</p> : null}
+            {subtitle ? <p className="mt-1 text-sm text-slate-400">{subtitle}</p> : null}
           </div>
           {action}
         </header>
       ) : null}
-      <div className="p-5">{children}</div>
+      {/* flex-1 so panels sitting side by side come out the same height, filling the page. */}
+      <div className="flex-1 p-6">{children}</div>
     </section>
   );
 }
@@ -54,16 +55,19 @@ export function Metric({
     slate: 'border-slate-600/40 text-slate-300',
   };
   return (
-    <div className={`rounded-lg border bg-slate-800/40 p-4 ${tones[tone]}`}>
+    <div className={`rounded-xl border bg-slate-800/40 p-5 ${tones[tone]}`}>
       <div className="label-xs">{label}</div>
-      <div className="mt-1 font-mono text-2xl text-slate-100">{value}</div>
-      {detail ? <div className="mt-1 text-xs text-slate-400">{detail}</div> : null}
+      <div className="mt-1.5 font-mono text-4xl text-slate-100">{value}</div>
+      {detail ? <div className="mt-1.5 text-sm text-slate-400">{detail}</div> : null}
     </div>
   );
 }
 
 export function Empty({ children }: { children: ReactNode }) {
-  return <p className="py-6 text-center text-sm text-slate-500">{children}</p>;
+  // Generous height: an empty panel beside a full one shouldn't look starved.
+  return (
+    <p className="flex h-full min-h-32 items-center justify-center py-10 text-center text-slate-500">{children}</p>
+  );
 }
 
 /** Relative time, phrased the way a person would say it. */

@@ -68,9 +68,7 @@ export default async function Overview({ params }: { params: Promise<{ household
               {notices.notices.slice(0, 6).map((n) => (
                 <li key={n.id} className="text-sm">
                   <span className="text-slate-200">{n.text}</span>
-                  <span className="ml-2 font-mono text-[11px] uppercase tracking-wider text-slate-500">
-                    {n.audience}
-                  </span>
+                  <span className="ml-2 font-mono text-xs uppercase tracking-wider text-slate-500">{n.audience}</span>
                 </li>
               ))}
             </ul>

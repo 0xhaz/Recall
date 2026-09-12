@@ -15,7 +15,7 @@ export default async function Rules({ params }: { params: Promise<{ household: s
   const { rules, blocked } = await getRules(household);
 
   return (
-    <>
+    <div className="grid flex-1 gap-8 xl:grid-cols-2">
       <Panel
         title="Rules you have set"
         icon={Shield}
@@ -33,9 +33,9 @@ export default async function Rules({ params }: { params: Promise<{ household: s
                 }`}
               >
                 <div>
-                  <p className="text-sm text-slate-100">“{rule.text}”</p>
-                  <p className="mt-1 text-xs text-slate-400">{rule.summary}</p>
-                  <p className="mt-1 text-[11px] text-slate-500">
+                  <p className="text-base text-slate-100">“{rule.text}”</p>
+                  <p className="mt-1.5 text-sm text-slate-400">{rule.summary}</p>
+                  <p className="mt-1 text-xs text-slate-500">
                     {rule.author ? `set by ${rule.author}` : 'set by someone no longer here'} · {rule.severity}
                     {rule.expires_at ? ` · until ${rule.expires_at.slice(0, 10)}` : ''}
                   </p>
@@ -64,14 +64,14 @@ export default async function Rules({ params }: { params: Promise<{ household: s
             {blocked.map((item) => (
               <li key={item.action_id} className="rounded-lg border border-slate-700/50 bg-slate-800/40 p-4">
                 <div className="flex items-center justify-between gap-4">
-                  <p className="text-sm text-slate-100">{item.summary}</p>
-                  <span className="shrink-0 text-[11px] text-slate-500">{when(item.at)}</span>
+                  <p className="text-base text-slate-100">{item.summary}</p>
+                  <span className="shrink-0 text-xs text-slate-500">{when(item.at)}</span>
                 </div>
                 <p className="mt-1 text-xs text-amber-300">
                   {item.rule ? `Blocked by your rule: “${item.rule.text}”` : null}
                   {item.withheld ? `Withheld: ${item.withheld.reason.replaceAll('_', ' ')}` : null}
                 </p>
-                <p className="mt-1 text-[11px] text-slate-500">
+                <p className="mt-1 text-xs text-slate-500">
                   {item.intent.replace('.', ' · ')}
                   {item.person ? ` · for ${item.person}` : ''}
                 </p>
@@ -80,6 +80,6 @@ export default async function Rules({ params }: { params: Promise<{ household: s
           </ul>
         )}
       </Panel>
-    </>
+    </div>
   );
 }

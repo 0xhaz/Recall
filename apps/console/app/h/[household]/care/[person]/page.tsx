@@ -26,11 +26,12 @@ export default async function Care({ params }: { params: Promise<{ household: st
   }
 
   return (
-    <>
+    <div className="grid flex-1 gap-8 xl:grid-cols-2">
       <Panel
         title={`How Recall speaks with ${plan.person.name}`}
         icon={MessageCircleWarning}
         subtitle="Correct for safety; reassure and turn elsewhere where correcting would only hurt. Your wording is used as you write it."
+        className="xl:row-span-2"
       >
         <ul className="space-y-3">
           {plan.policies.map((policy) => (
@@ -41,9 +42,9 @@ export default async function Care({ params }: { params: Promise<{ household: st
               }`}
             >
               <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-slate-100">{sentence(policy.topic)}</p>
+                <p className="text-base text-slate-100">{sentence(policy.topic)}</p>
                 <span
-                  className={`font-mono text-[11px] uppercase tracking-wider ${
+                  className={`font-mono text-xs uppercase tracking-wider ${
                     policy.policy === 'correct' ? 'text-amber-300' : 'text-violet-300'
                   }`}
                 >
@@ -51,8 +52,8 @@ export default async function Care({ params }: { params: Promise<{ household: st
                   {policy.set_by === 'default' ? ' · built in' : ''}
                 </span>
               </div>
-              {policy.guidance ? <p className="mt-1 text-xs text-slate-400">{policy.guidance}</p> : null}
-              <p className="mt-1 text-[11px] text-slate-500">brought up by: {policy.keywords.join(', ')}</p>
+              {policy.guidance ? <p className="mt-1.5 text-sm text-slate-400">{policy.guidance}</p> : null}
+              <p className="mt-1 text-xs text-slate-500">brought up by: {policy.keywords.join(', ')}</p>
             </li>
           ))}
         </ul>
@@ -72,12 +73,12 @@ export default async function Care({ params }: { params: Promise<{ household: st
         ) : (
           <ul className="space-y-2">
             {plan.day.map((entry) => (
-              <li key={`${entry.kind}-${entry.at}`} className="flex items-center justify-between text-sm">
+              <li key={`${entry.kind}-${entry.at}`} className="flex items-center justify-between text-base">
                 <span className={entry.ok ? 'text-slate-200' : 'text-red-300'}>
                   {sentence(describeKind(entry.kind))}
                   {entry.ok ? '' : ' (did not work)'}
                 </span>
-                <span className="font-mono text-[11px] text-slate-500">
+                <span className="font-mono text-xs text-slate-500">
                   {new Date(entry.at).toISOString().slice(11, 16)} · {when(entry.at)}
                 </span>
               </li>
@@ -92,9 +93,9 @@ export default async function Care({ params }: { params: Promise<{ household: st
         ) : (
           <ul className="space-y-2">
             {plan.alerts.map((alert) => (
-              <li key={`${alert.kind}-${alert.at}`} className="text-sm">
+              <li key={`${alert.kind}-${alert.at}`} className="text-base">
                 <span className="text-slate-200">{alert.text}</span>
-                <span className="ml-2 text-[11px] text-slate-500">
+                <span className="ml-2 text-xs text-slate-500">
                   {alert.kind.replaceAll('_', ' ')} · {when(alert.at)}
                   {alert.acknowledged_at ? ' · seen' : ''}
                 </span>
@@ -104,10 +105,10 @@ export default async function Care({ params }: { params: Promise<{ household: st
         )}
       </Panel>
 
-      <p className="px-1 text-xs text-slate-500">
+      <p className="px-1 text-xs text-slate-500 xl:col-span-2">
         {plan.person.name} is told plainly what is shared: Recall says so whenever she asks. Nothing here is a medical
         record, and no diagnosis is ever stored.
       </p>
-    </>
+    </div>
   );
 }

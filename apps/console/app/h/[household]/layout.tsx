@@ -21,10 +21,10 @@ export default async function HouseholdLayout({
 
   return (
     <div className="min-h-screen">
-      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-700/50 px-6 py-3">
-        <Link href="/" className="flex items-center gap-2">
-          <Hexagon className="h-6 w-6 text-cyan-400" />
-          <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-lg font-bold text-transparent">
+      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-700/50 px-8 py-4">
+        <Link href="/" className="flex items-center gap-2.5">
+          <Hexagon className="h-7 w-7 text-cyan-400" />
+          <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-xl font-bold text-transparent">
             RECALL
           </span>
         </Link>
@@ -61,18 +61,18 @@ export default async function HouseholdLayout({
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-[1400px] grid-cols-12 gap-6 px-6 py-6">
-        <aside className="col-span-12 md:col-span-3 lg:col-span-2">
-          <div className="panel p-3">
+      <div className="mx-auto grid min-h-[calc(100vh-5.5rem)] max-w-[1800px] grid-cols-12 gap-8 px-8 py-8">
+        <aside className="col-span-12 self-start md:col-span-3 lg:col-span-2">
+          <div className="panel p-4">
             <Nav household={household} carePersonId={caredFor?.person_id ?? null} />
           </div>
-          <p className="mt-3 px-3 text-[11px] leading-relaxed text-slate-500">
+          <p className="mt-4 px-3 text-xs leading-relaxed text-slate-500">
             {settings.name} · {settings.timezone}
             <br />
             Raw events kept {settings.retention_days} days
           </p>
         </aside>
-        <main className="col-span-12 space-y-6 md:col-span-9 lg:col-span-10">{children}</main>
+        <main className="col-span-12 flex flex-col gap-8 md:col-span-9 lg:col-span-10">{children}</main>
       </div>
     </div>
   );

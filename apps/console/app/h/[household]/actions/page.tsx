@@ -31,7 +31,7 @@ export default async function Actions({ params }: { params: Promise<{ household:
             <li key={action.id} className="flex items-start justify-between gap-4 px-5 py-3">
               <div className="min-w-0">
                 <p className="text-sm text-slate-100">{action.summary}</p>
-                <p className="mt-1 flex flex-wrap items-center gap-x-3 text-[11px] text-slate-500">
+                <p className="mt-1 flex flex-wrap items-center gap-x-3 text-xs text-slate-500">
                   <span className={`font-mono uppercase tracking-wider ${STATUS[action.status] ?? 'text-slate-400'}`}>
                     {action.status}
                   </span>
@@ -63,11 +63,11 @@ export default async function Actions({ params }: { params: Promise<{ household:
                     className="border-violet-500/40 text-violet-200"
                   />
                 ) : action.status === 'undone' ? (
-                  <span className="flex items-center gap-1 text-[11px] text-violet-300">
+                  <span className="flex items-center gap-1 text-xs text-violet-300">
                     <Undo2 className="h-3 w-3" /> undone
                   </span>
                 ) : action.undo_until ? (
-                  <span className="text-[11px] text-slate-600">window closed</span>
+                  <span className="text-xs text-slate-600">window closed</span>
                 ) : null}
               </div>
             </li>

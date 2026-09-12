@@ -16,22 +16,20 @@ function RoutineCard({ household, routine, decide }: { household: string; routin
     <li className="rounded-lg border border-slate-700/50 bg-slate-800/40 p-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-slate-100">
+          <p className="text-base text-slate-100">
             {sentence(describeKind(routine.kind))}{' '}
             <span className="text-slate-400">
               around {hhmm(routine.center_minute)} ± {routine.spread_minutes} min, {routine.days}
             </span>
           </p>
-          <p className="mt-1 text-[11px] text-slate-500">
+          <p className="mt-1.5 text-xs text-slate-500">
             {routine.person ? `${routine.person} · ` : 'everyone · '}
             seen {routine.support} times · {Math.round(routine.confidence * 100)}% sure
             {routine.last_seen ? ` · last on ${routine.last_seen}` : ''}
             {routine.shifted_from !== null ? ` · moved from ${hhmm(routine.shifted_from)}` : ''}
           </p>
           {routine.sequence.length > 0 ? (
-            <p className="mt-1 text-[11px] text-slate-500">
-              then usually: {routine.sequence.map(describeKind).join(', ')}
-            </p>
+            <p className="mt-1 text-xs text-slate-500">then usually: {routine.sequence.map(describeKind).join(', ')}</p>
           ) : null}
           {routine.health !== 'ok' ? (
             <p className={`mt-1 flex items-center gap-1 text-xs ${HEALTH[routine.health]}`}>
@@ -57,9 +55,7 @@ function RoutineCard({ household, routine, decide }: { household: string; routin
             />
           </div>
         ) : (
-          <span className="shrink-0 font-mono text-[11px] uppercase tracking-wider text-slate-500">
-            {routine.status}
-          </span>
+          <span className="shrink-0 font-mono text-xs uppercase tracking-wider text-slate-500">{routine.status}</span>
         )}
       </div>
     </li>
@@ -74,7 +70,7 @@ export default async function Routines({ params }: { params: Promise<{ household
   const retired = routines.filter((r) => r.status === 'retired');
 
   return (
-    <>
+    <div className="grid flex-1 gap-8 xl:grid-cols-2">
       <Panel
         title="Noticed, not yet confirmed"
         icon={Activity}
@@ -104,7 +100,11 @@ export default async function Routines({ params }: { params: Promise<{ household
       </Panel>
 
       {retired.length > 0 ? (
-        <Panel title="Retired" subtitle="Not seen for a while, or dismissed. Kept so Recall doesn't ask again.">
+        <Panel
+          title="Retired"
+          subtitle="Not seen for a while, or dismissed. Kept so Recall doesn't ask again."
+          className="xl:col-span-2"
+        >
           <ul className="space-y-3">
             {retired.map((r) => (
               <RoutineCard key={r.id} household={household} routine={r} decide={false} />
@@ -112,6 +112,6 @@ export default async function Routines({ params }: { params: Promise<{ household
           </ul>
         </Panel>
       ) : null}
-    </>
+    </div>
   );
 }

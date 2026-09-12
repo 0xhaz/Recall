@@ -35,13 +35,13 @@ export default async function People({ params }: { params: Promise<{ household: 
             <div>
               <p className="text-sm text-slate-100">
                 {person.name}
-                <span className="ml-2 font-mono text-[11px] uppercase tracking-wider text-cyan-300">
+                <span className="ml-2 font-mono text-xs uppercase tracking-wider text-cyan-300">
                   {person.role.replace('_', ' ')}
                 </span>
               </p>
               <p className="mt-0.5 text-xs text-slate-400">{ROLES[person.role] ?? ''}</p>
               {person.grants.length > 0 ? (
-                <ul className="mt-1 space-y-0.5 text-[11px] text-slate-500">
+                <ul className="mt-1 space-y-0.5 text-xs text-slate-500">
                   {person.grants.map((grant) => (
                     <li key={grant}>· {GRANTS[grant] ?? grant}</li>
                   ))}

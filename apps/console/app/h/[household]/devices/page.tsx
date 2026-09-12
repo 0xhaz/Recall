@@ -23,7 +23,7 @@ export default async function Devices({ params }: { params: Promise<{ household:
                   {device.name ?? device.device_id}
                   {device.location ? <span className="text-slate-500"> · {device.location}</span> : null}
                 </p>
-                <p className="mt-1 text-[11px] text-slate-500">
+                <p className="mt-1 text-xs text-slate-500">
                   <span className="font-mono">{device.device_id}</span>
                   {device.primary_person ? ` · usually ${device.primary_person}` : ''} · first seen{' '}
                   {device.first_seen_at.slice(0, 10)}
@@ -34,7 +34,7 @@ export default async function Devices({ params }: { params: Promise<{ household:
                   </p>
                 ) : null}
               </div>
-              <div className="text-right text-[11px] text-slate-500">
+              <div className="text-right text-xs text-slate-500">
                 <div>last seen {when(device.last_seen_at)}</div>
                 <div className="font-mono">synced to #{device.last_cursor}</div>
               </div>

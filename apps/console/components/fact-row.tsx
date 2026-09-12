@@ -33,7 +33,7 @@ export function FactRow({ household, fact }: { household: string; fact: Fact }) 
   const gone = fact.forgotten_at !== null || forgotten.message !== undefined;
 
   return (
-    <li className={`px-5 py-3 ${gone ? 'opacity-50' : ''}`}>
+    <li className={`px-6 py-4 ${gone ? 'opacity-50' : ''}`}>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           {editing ? (
@@ -57,10 +57,10 @@ export function FactRow({ household, fact }: { household: string; fact: Fact }) 
               </div>
             </form>
           ) : (
-            <p className="text-sm text-slate-100">{gone ? <em>Forgotten</em> : fact.content}</p>
+            <p className="text-base text-slate-100">{gone ? <em>Forgotten</em> : fact.content}</p>
           )}
 
-          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
             <span className="font-mono uppercase tracking-wider text-slate-400">
               {fact.scope === 'household' ? 'Household' : (fact.scope_name ?? 'Someone')}
             </span>
