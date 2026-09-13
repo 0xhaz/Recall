@@ -15,6 +15,7 @@ import {
 import { ActionService } from '../actions/action.service.js';
 import { audit } from '../audit.js';
 import { type CarePolicyInput, CareService } from '../care/care.service.js';
+import { type ReminderInput, ReminderService } from '../care/reminder.service.js';
 import { ContextService } from '../context/context.service.js';
 import { Db } from '../db/db.js';
 import { EventLog, lockHousehold } from '../events/event-log.service.js';
@@ -90,6 +91,7 @@ export class ConsoleService {
     @Inject(ActionService) private readonly actionService: ActionService,
     @Inject(ContextService) private readonly contexts: ContextService,
     @Inject(CareService) private readonly care: CareService,
+    @Inject(ReminderService) private readonly reminders: ReminderService,
   ) {}
 
   // ---------------------------------------------------------------- who is asking
@@ -552,7 +554,8 @@ export class ConsoleService {
       actor.role === 'adult';
     if (!maySee) throw new ForbiddenException('Not yours to see');
 
-    const [policies, day, alerts] = await Promise.all([
+    const household = await this.household(householdId);
+    const [policies, day, alerts, reminders, doses, vitals] = await Promise.all([
       this.db.query<Omit<CarePolicy, 'set_by'>>(
         `SELECT topic, keywords, policy, guidance FROM care_policy
           WHERE household_id = $1 AND person_id = $2 AND removed_at IS NULL ORDER BY created_at`,
@@ -571,12 +574,49 @@ export class ConsoleService {
           ORDER BY created_at DESC LIMIT 30`,
         [householdId, subjectId],
       ),
+      this.reminders.list(householdId, subjectId),
+      this.reminders.today(household, subjectId),
+      // What a worn tracker last reported, against this person's own learned resting rate. Readings
+      // only: Recall records a number and a time, and never turns either into a diagnosis.
+      this.db.query<{
+        bpm: number | null;
+        at: Date | null;
+        device: string | null;
+        steps: number | null;
+        moved_at: Date | null;
+        resting: number | null;
+      }>(
+        `SELECT h.bpm, h.at, h.device, m.steps, m.moved_at, b.resting_hr AS resting
+           FROM (SELECT (payload->>'bpm')::real AS bpm, occurred_at AS at, device_id AS device
+                   FROM event WHERE household_id = $1 AND person_id = $2 AND kind = 'hr.sample'
+                  ORDER BY occurred_at DESC LIMIT 1) h
+           FULL JOIN (SELECT (payload->>'steps_per_min')::real AS steps, occurred_at AS moved_at
+                        FROM event WHERE household_id = $1 AND person_id = $2 AND kind = 'phone.motion'
+                       ORDER BY occurred_at DESC LIMIT 1) m ON true
+           FULL JOIN (SELECT resting_hr FROM context_baseline
+                       WHERE household_id = $1 AND person_id = $2) b ON true`,
+        [householdId, subjectId],
+      ),
     ]);
 
+    const reading = vitals.rows[0];
     return {
       person: { id: subject.person_id, name: subject.display_name },
       can_edit: canEditCarePlan(actor, subject) || actor.role === 'owner',
       policies: mergeCarePolicies(policies.rows.map((p) => ({ ...p, set_by: 'caregiver' as const }))),
+      reminders,
+      doses,
+      vitals:
+        reading && (reading.bpm !== null || reading.steps !== null)
+          ? {
+              device: reading.device,
+              bpm: reading.bpm === null ? null : Math.round(reading.bpm),
+              resting: reading.resting === null ? null : Math.round(reading.resting),
+              at: iso(reading.at),
+              moving: reading.steps === null ? null : reading.steps > 0,
+              moved_at: iso(reading.moved_at),
+            }
+          : null,
       day: day.rows.map((a) => ({ kind: a.kind, at: a.at.toISOString(), ok: a.ok })),
       alerts: alerts.rows.map((n) => ({
         kind: n.kind,
@@ -591,6 +631,25 @@ export class ConsoleService {
     await this.requireMember(householdId, personId);
     const [household, actor] = await Promise.all([this.household(householdId), this.speaker(householdId, personId)]);
     return this.care.setPolicy(household, actor, input);
+  }
+
+  async setReminder(householdId: string, personId: string, input: ReminderInput) {
+    await this.requireMember(householdId, personId);
+    const [household, actor] = await Promise.all([this.household(householdId), this.speaker(householdId, personId)]);
+    return this.reminders.set(household, actor, input);
+  }
+
+  async removeReminder(householdId: string, personId: string, reminderId: string) {
+    await this.requireMember(householdId, personId);
+    const [household, actor] = await Promise.all([this.household(householdId), this.speaker(householdId, personId)]);
+    return this.reminders.remove(household, actor, reminderId);
+  }
+
+  /** Recording a dose from the console: marked as entered by a carer, not as the person's own word. */
+  async confirmDose(householdId: string, personId: string, logId: string, note: string | undefined) {
+    await this.requireMember(householdId, personId);
+    const [household, actor] = await Promise.all([this.household(householdId), this.speaker(householdId, personId)]);
+    return this.reminders.confirmManually(household, actor, logId, note);
   }
 
   // ---------------------------------------------------------------- settings and export

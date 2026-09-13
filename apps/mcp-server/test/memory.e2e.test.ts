@@ -37,6 +37,7 @@ describe('tools', () => {
     expect(tools.map((tool) => tool.name).sort()).toEqual([
       'action_preflight',
       'checkin',
+      'confirm_reminder',
       'decide_action',
       'device_state',
       'explain_memory',
@@ -54,6 +55,7 @@ describe('tools', () => {
       'set_care_policy',
       'set_communication_style',
       'set_context',
+      'set_reminder',
       'set_rule',
       'suggest_music',
       'sync',

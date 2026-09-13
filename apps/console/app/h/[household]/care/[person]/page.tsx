@@ -1,5 +1,6 @@
-import { Bell, HeartPulse, MessageCircleWarning } from 'lucide-react';
+import { Activity, Bell, HeartPulse, MessageCircleWarning, Pill } from 'lucide-react';
 import { CarePolicyForm } from '@/components/care-policy-form';
+import { ReminderForm, RemoveReminder, TodaysDoses } from '@/components/care-reminders';
 import { Empty, Panel, when } from '@/components/panel';
 import { describeKind, sentence } from '@/lib/format';
 import { ApiError, type CarePlan, getCarePlan } from '@/lib/recall';
@@ -66,6 +67,85 @@ export default async function Care({ params }: { params: Promise<{ household: st
           <p className="mt-4 text-xs text-slate-500">Only a caregiver with the care-plan grant can change these.</p>
         )}
       </Panel>
+
+      <Panel
+        title="Medication and meals"
+        icon={Pill}
+        subtitle={`${plan.person.name} is asked on her own device when a dose is due. Confirming is hers to do — by voice or here — and the carers hear about it only if it goes unanswered.`}
+      >
+        {plan.doses.length === 0 ? (
+          <Empty>Nothing on the schedule yet.</Empty>
+        ) : (
+          <TodaysDoses household={household} doses={plan.doses} />
+        )}
+
+        {plan.reminders.length > 0 ? (
+          <ul className="mt-5 space-y-1.5 border-t border-slate-700/50 pt-4">
+            {plan.reminders.map((reminder) => (
+              <li key={reminder.id} className="flex items-center justify-between gap-3 text-sm">
+                <span className="text-slate-300">
+                  {reminder.label}
+                  {reminder.dose ? <span className="text-slate-500"> · {reminder.dose}</span> : null}
+                  <span className="ml-2 font-mono text-xs text-slate-500">
+                    {reminder.times.join(', ')}
+                    {reminder.days === 'daily' ? '' : ` · ${reminder.days}`}
+                  </span>
+                </span>
+                {plan.can_edit ? <RemoveReminder household={household} reminder={reminder} /> : null}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        {plan.can_edit ? (
+          <div className="mt-5 border-t border-slate-700/50 pt-4">
+            <ReminderForm household={household} person={plan.person.name} />
+          </div>
+        ) : (
+          <p className="mt-4 text-xs text-slate-500">
+            Only a caregiver with the care-plan grant can change the schedule.
+          </p>
+        )}
+      </Panel>
+
+      {plan.vitals ? (
+        <Panel
+          title="Worn tracker"
+          icon={Activity}
+          subtitle="The last readings from what she is wearing. Numbers and times only — Recall reads nothing into them, and stores no diagnosis."
+        >
+          <div className="flex flex-wrap gap-8">
+            {plan.vitals.bpm !== null ? (
+              <div>
+                <p className="label-xs">Heart rate</p>
+                <p className="text-3xl text-slate-100">
+                  {plan.vitals.bpm} <span className="text-base text-slate-500">bpm</span>
+                </p>
+                <p className="text-xs text-slate-500">
+                  {plan.vitals.resting === null
+                    ? 'not enough readings yet for her usual resting rate'
+                    : `her usual resting rate is ${plan.vitals.resting}`}
+                  {plan.vitals.at ? ` · ${when(plan.vitals.at)}` : ''}
+                </p>
+              </div>
+            ) : null}
+            {plan.vitals.moving !== null ? (
+              <div>
+                <p className="label-xs">Movement</p>
+                <p className="text-3xl text-slate-100">{plan.vitals.moving ? 'Up and about' : 'Still'}</p>
+                <p className="text-xs text-slate-500">
+                  {plan.vitals.moved_at ? when(plan.vitals.moved_at) : ''}
+                  {plan.vitals.device ? ` · ${plan.vitals.device}` : ''}
+                </p>
+              </div>
+            ) : null}
+          </div>
+          <p className="mt-4 text-xs text-slate-500">
+            A tracker says where someone is and how they are moving, which is exactly why it is worth saying plainly:{' '}
+            {plan.person.name} is told this is being shared, and can have it switched off.
+          </p>
+        </Panel>
+      ) : null}
 
       <Panel title="Today" icon={HeartPulse} subtitle="Check-ins and what happened, from the last day and a half.">
         {plan.day.length === 0 ? (

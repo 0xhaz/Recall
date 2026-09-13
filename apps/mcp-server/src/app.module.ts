@@ -10,6 +10,8 @@ import { HouseholdAuth } from './auth/household-auth.js';
 import { HouseholdTokensController } from './auth/household-tokens.controller.js';
 import { HouseholdTokens } from './auth/household-tokens.service.js';
 import { CareService } from './care/care.service.js';
+import { ReminderService } from './care/reminder.service.js';
+import { ReminderWatcher } from './care/reminder.watcher.js';
 import { APP_CONFIG, type AppConfig } from './config.js';
 import { ConsoleController } from './console/console.controller.js';
 import { ConsoleService } from './console/console.service.js';
@@ -92,6 +94,8 @@ export class AppModule {
         MusicService,
         ActionService,
         CareService,
+        ReminderService,
+        ReminderWatcher,
         ConsoleService,
         PresenceWatcher,
         ModelWarmup,

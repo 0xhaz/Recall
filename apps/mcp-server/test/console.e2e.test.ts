@@ -280,3 +280,62 @@ describe('household, settings and care', () => {
     expect(after.body.policies.find((p) => p.topic === 'Ahmad')).toMatchObject({ set_by: 'caregiver' });
   });
 });
+
+describe('medication reminders', () => {
+  it('takes a schedule from the caregiver and records a dose confirmed in the console', async () => {
+    const som = personId(hh, 'Som');
+    const saved = await api<{ saved: boolean; id: string }>('Farah', '/care/reminders', {
+      method: 'POST',
+      body: {
+        person: 'Som',
+        label: 'Blood pressure tablet',
+        dose: 'one tablet',
+        times: ['08:00', '20:00'],
+        escalate_after_minutes: 30,
+      },
+    });
+    expect(saved.status).toBe(200);
+
+    const plan = await api<{
+      reminders: { label: string; times: string[] }[];
+      doses: { due: string }[];
+    }>('Farah', `/care/${som}`);
+    expect(plan.body.reminders[0]).toMatchObject({ label: 'Blood pressure tablet', times: ['08:00', '20:00'] });
+    expect(plan.body.doses.map((d) => d.due)).toEqual(['08:00', '20:00']);
+
+    // A dose the watcher has already asked about, still waiting to be confirmed.
+    const { rows } = await t.db.query<{ id: string }>(
+      `INSERT INTO care_reminder_log (household_id, region, reminder_id, person_id, local_date, local_minute,
+                                      due_at, status, prompted_at)
+       VALUES ($1, 'my', $2, $3, (now() AT TIME ZONE (SELECT timezone FROM household WHERE id = $1))::date, 480,
+               now() - interval '1 hour', 'pending', now() - interval '1 hour')
+       RETURNING id`,
+      [hh.id, saved.body.id, som],
+    );
+    const logId = rows[0]?.id;
+    const done = await api<{ confirmed: boolean }>('Farah', `/care/doses/${logId}/confirm`, {
+      method: 'POST',
+      body: { note: 'took it with breakfast' },
+    });
+    expect(done.body.confirmed).toBe(true);
+
+    // Confirmed, and kept as what it is: recorded by a carer, not the person's own word.
+    const morning = await api<{ doses: { due: string; status: string; how: string | null; note: string | null }[] }>(
+      'Farah',
+      `/care/${som}`,
+    );
+    expect(morning.body.doses.find((d) => d.due === '08:00')).toMatchObject({
+      status: 'confirmed',
+      how: 'console',
+      note: 'took it with breakfast',
+    });
+  });
+
+  it('refuses a guest who tries to set one', async () => {
+    const res = await api('Ravi', '/care/reminders', {
+      method: 'POST',
+      body: { person: 'Som', label: 'Something', times: ['09:00'] },
+    });
+    expect(res.status).toBe(403);
+  });
+});

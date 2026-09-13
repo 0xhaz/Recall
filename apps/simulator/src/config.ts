@@ -72,4 +72,29 @@ export const PRODUCERS: Producer[] = [
   { id: 'door', label: 'Front door opens', device: 'front-door', location: 'Front door', kind: 'door.open' },
   { id: 'sleep', label: 'Mak Som goes to sleep', device: 'bedroom-echo', kind: 'sleep.start', person: 'Mak Som' },
   { id: 'wake', label: 'Mak Som wakes up', device: 'bedroom-echo', kind: 'sleep.end', person: 'Mak Som' },
+  // Mak Som's Bee: worn, never spoken to. Only derived context outlives the 7-day window.
+  {
+    id: 'bee-resting',
+    label: 'Bee: Mak Som resting (72 bpm)',
+    device: 'som-bee',
+    kind: 'hr.sample',
+    person: 'Mak Som',
+    payload: { bpm: 72 },
+  },
+  {
+    id: 'bee-up',
+    label: 'Bee: Mak Som up and about',
+    device: 'som-bee',
+    kind: 'phone.motion',
+    person: 'Mak Som',
+    payload: { steps_per_min: 70 },
+  },
+  {
+    id: 'bee-still',
+    label: 'Bee: no movement',
+    device: 'som-bee',
+    kind: 'phone.motion',
+    person: 'Mak Som',
+    payload: { steps_per_min: 0 },
+  },
 ];

@@ -208,10 +208,51 @@ export interface CarePolicy {
   set_by: 'default' | 'caregiver';
 }
 
+export type ReminderKind = 'medication' | 'meal' | 'other';
+
+export interface Reminder {
+  id: string;
+  kind: ReminderKind;
+  label: string;
+  dose: string | null;
+  times: string[];
+  days: 'daily' | 'weekdays' | 'weekends';
+  device_id: string | null;
+  grace_minutes: number;
+  escalate_after_minutes: number;
+}
+
+export interface DueDose {
+  log_id: string | null;
+  reminder_id: string;
+  label: string;
+  dose: string | null;
+  kind: ReminderKind;
+  due: string;
+  status: 'pending' | 'confirmed' | 'missed' | 'skipped' | 'not_due';
+  confirmed_at: string | null;
+  how: 'voice' | 'console' | null;
+  note: string | null;
+  by: string | null;
+}
+
+/** What a worn tracker reports. Readings, never a diagnosis. */
+export interface Vitals {
+  device: string | null;
+  bpm: number | null;
+  resting: number | null;
+  at: string | null;
+  moving: boolean | null;
+  moved_at: string | null;
+}
+
 export interface CarePlan {
   person: { id: string; name: string };
   can_edit: boolean;
   policies: CarePolicy[];
+  reminders: Reminder[];
+  doses: DueDose[];
+  vitals: Vitals | null;
   day: { kind: string; at: string; ok: boolean }[];
   alerts: { kind: string; text: string; at: string; acknowledged_at: string | null }[];
 }
@@ -271,6 +312,18 @@ export const setRetention = (id: string, days: number) =>
 
 export const setCarePolicy = (id: string, body: Record<string, unknown>) =>
   call<{ saved: boolean; message: string }>(`${household(id)}/care/policies`, { method: 'POST', body });
+
+export const setReminder = (id: string, body: Record<string, unknown>) =>
+  call<{ saved: boolean; id: string }>(`${household(id)}/care/reminders`, { method: 'POST', body });
+
+export const removeReminder = (id: string, reminderId: string) =>
+  call<{ removed: boolean }>(`${household(id)}/care/reminders/${encodeURIComponent(reminderId)}`, { method: 'DELETE' });
+
+export const confirmDose = (id: string, logId: string, note?: string) =>
+  call<{ confirmed: boolean; message: string }>(`${household(id)}/care/doses/${encodeURIComponent(logId)}/confirm`, {
+    method: 'POST',
+    body: note ? { note } : {},
+  });
 
 // ---------------------------------------------------------------- sign-in
 

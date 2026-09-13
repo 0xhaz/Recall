@@ -129,6 +129,9 @@ const devices = [
   { id: 'kitchen-echo', name: 'Kitchen Echo Show', location: 'Kitchen', primary: null },
   { id: 'bedroom-echo', name: "Mak Som's Echo", location: "Mak Som's room", primary: DEMO_PEOPLE.som },
   { id: 'living-firetv', name: 'Living room Fire TV', location: 'Living room', primary: null },
+  // Worn, not spoken to: it reports heart rate and movement, and only derived context is kept.
+  { id: 'som-bee', name: "Mak Som's Bee", location: 'Worn', primary: DEMO_PEOPLE.som },
+  { id: 'aisyah-watch', name: "Aisyah's watch", location: 'Worn', primary: DEMO_PEOPLE.aisyah },
 ];
 
 export async function seed(databaseUrl: string, devToken: string | undefined): Promise<void> {

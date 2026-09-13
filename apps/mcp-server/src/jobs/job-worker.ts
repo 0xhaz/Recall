@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
 import pg from 'pg';
+import { ReminderWatcher } from '../care/reminder.watcher.js';
 import { APP_CONFIG, type AppConfig } from '../config.js';
 import { ContextService } from '../context/context.service.js';
 import { Db } from '../db/db.js';
@@ -49,6 +50,7 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
     @Inject(AbsenceWatcher) private readonly absence: AbsenceWatcher,
     @Inject(ContextService) private readonly contexts: ContextService,
     @Inject(PresenceWatcher) private readonly presence: PresenceWatcher,
+    @Inject(ReminderWatcher) private readonly reminders: ReminderWatcher,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -61,9 +63,10 @@ export class JobWorker implements OnApplicationBootstrap, OnApplicationShutdown 
     this.timer = setInterval(() => this.kick(), POLL_MS);
     // Snapshots, compaction and routine mining run as ordinary jobs, queued at most once a day per household.
     this.maintenanceTimer = setInterval(() => this.scheduleMaintenance(), MAINTENANCE_CHECK_MS);
-    // Missed check-ins are noticed within a minute of becoming late.
+    // Missed check-ins, and doses that are due, are noticed within a minute.
     this.absenceTimer = setInterval(() => {
       this.absence.check().catch((err: unknown) => this.logger.error(err));
+      this.reminders.check().catch((err: unknown) => this.logger.error(err));
     }, ABSENCE_CHECK_MS);
     // Debounce and exit holds finish on the clock, not on a new report: re-evaluate contexts in flux.
     this.contextTimer = setInterval(() => {

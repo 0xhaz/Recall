@@ -4,12 +4,15 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import {
   ApiError,
+  confirmDose,
   correctFact,
   decideRoutine,
   forgetFact,
+  removeReminder,
   removeRule,
   requestMagicLink,
   setCarePolicy,
+  setReminder,
   setRetention,
   undoAction,
 } from '@/lib/recall';
@@ -167,5 +170,52 @@ export async function setCarePolicyAction(_state: ActionState, form: FormData): 
       ...(remove ? { remove } : {}),
     });
     return saved.message;
+  });
+}
+
+export async function setReminderAction(_state: ActionState, form: FormData): Promise<ActionState> {
+  const household = text(form, 'household');
+  const person = text(form, 'person');
+  const label = text(form, 'label');
+  const dose = text(form, 'dose');
+  const times = text(form, 'times')
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean);
+  const days = text(form, 'days');
+  const escalate = Number(text(form, 'escalate'));
+  if (!label) return { error: 'Say what is being taken' };
+  if (times.length === 0) return { error: 'Give at least one time of day, like 08:00' };
+  if (!times.every((t) => /^([01]?\d|2[0-3]):[0-5]\d$/.test(t))) return { error: 'Write times as HH:MM, like 08:00' };
+
+  return run(`/h/${household}/care/${person}`, async () => {
+    await setReminder(household, {
+      person,
+      label,
+      times,
+      ...(dose ? { dose } : {}),
+      ...(days === 'weekdays' || days === 'weekends' ? { days } : {}),
+      ...(Number.isInteger(escalate) && escalate >= 5 ? { escalate_after_minutes: escalate } : {}),
+    });
+    return `Saved. ${label} at ${times.join(', ')} — she will be asked on her own device, and nobody else is told unless she doesn't answer.`;
+  });
+}
+
+export async function removeReminderAction(_state: ActionState, form: FormData): Promise<ActionState> {
+  const household = text(form, 'household');
+  const reminderId = text(form, 'reminder');
+  return run(`/h/${household}/care`, async () => {
+    const { removed } = await removeReminder(household, reminderId);
+    return removed ? 'Removed from the schedule. Doses already recorded are kept.' : 'That reminder was already gone.';
+  });
+}
+
+export async function confirmDoseAction(_state: ActionState, form: FormData): Promise<ActionState> {
+  const household = text(form, 'household');
+  const logId = text(form, 'dose');
+  const note = text(form, 'note');
+  return run(`/h/${household}/care`, async () => {
+    const result = await confirmDose(household, logId, note || undefined);
+    return result.message;
   });
 }

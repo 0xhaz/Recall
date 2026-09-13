@@ -10,3 +10,6 @@ coverage/
 
 # The uploaded v0 dashboard, kept as a design reference only: apps/console is the real thing.
 futuristic-dashboard/
+
+# TypeScript incremental build state — a local artifact, never a review artifact.
+*.tsbuildinfo

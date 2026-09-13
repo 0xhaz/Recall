@@ -117,6 +117,8 @@ export async function startApp(overrides: AppOverrides = {}): Promise<TestApp> {
         'track_affinity',
         'action',
         'care_policy',
+        'care_reminder_log',
+        'care_reminder',
         'event',
         'device',
         'rule',

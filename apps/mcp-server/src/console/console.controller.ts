@@ -27,6 +27,22 @@ const CarePolicyBody = z.object({
   remove: z.boolean().optional(),
 });
 
+const ReminderBody = z.object({
+  person: z.string().min(1).max(80),
+  kind: z.enum(['medication', 'meal', 'other']).optional(),
+  label: z.string().min(2).max(120),
+  dose: z.string().max(80).optional(),
+  times: z
+    .array(z.union([z.string().regex(/^\d{1,2}:\d{2}$/), z.number().int().min(0).max(1439)]))
+    .min(1)
+    .max(8),
+  days: z.enum(['daily', 'weekdays', 'weekends']).optional(),
+  device: z.string().max(80).optional(),
+  grace_minutes: z.number().int().min(0).max(120).optional(),
+  escalate_after_minutes: z.number().int().min(5).max(240).optional(),
+});
+const ConfirmBody = z.object({ note: z.string().max(300).optional() });
+
 @Controller('console/households/:householdId')
 export class ConsoleController {
   constructor(
@@ -167,6 +183,39 @@ export class ConsoleController {
   ) {
     const person = await this.auth.requirePerson(authorization);
     return this.console.setCarePolicy(household, person, parseBody(CarePolicyBody, body));
+  }
+
+  @Post('care/reminders')
+  @HttpCode(200)
+  async setReminder(
+    @Headers('authorization') authorization: string | undefined,
+    @Param('householdId') household: string,
+    @Body() body: unknown,
+  ) {
+    const person = await this.auth.requirePerson(authorization);
+    return this.console.setReminder(household, person, parseBody(ReminderBody, body));
+  }
+
+  @Delete('care/reminders/:reminderId')
+  async removeReminder(
+    @Headers('authorization') authorization: string | undefined,
+    @Param('householdId') household: string,
+    @Param('reminderId') reminderId: string,
+  ) {
+    return this.console.removeReminder(household, await this.auth.requirePerson(authorization), reminderId);
+  }
+
+  @Post('care/doses/:logId/confirm')
+  @HttpCode(200)
+  async confirmDose(
+    @Headers('authorization') authorization: string | undefined,
+    @Param('householdId') household: string,
+    @Param('logId') logId: string,
+    @Body() body: unknown,
+  ) {
+    const person = await this.auth.requirePerson(authorization);
+    const { note } = parseBody(ConfirmBody, body ?? {});
+    return this.console.confirmDose(household, person, logId, note);
   }
 
   @Get('settings')
