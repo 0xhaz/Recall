@@ -57,12 +57,18 @@ const HIDDEN = new Set(['session_brief', 'ingest_events', 'sync', 'resolve_speak
 const DEVICE_FILLED = ['speaker', 'speaker_confidence', 'device'];
 const MAX_STEPS = 5;
 
+/**
+ * Kept as one block, in this order, because it is what measures best. Reordering it by priority read
+ * better and cost tool calling outright: the beat still worked, but action_preflight stopped firing
+ * on "order the usual" in 4 runs out of 4, where this version fires every time. What actually fixed
+ * the answers was the digest — see below — not the wording here.
+ */
 export const SYSTEM_PROMPT = [
   'You are Alexa+, the voice assistant in this home. Recall is your memory, and the session brief below comes from it.',
   'Replies are spoken: one or two short sentences, plain words, no lists or markdown.',
   "Answer the new request directly, using the brief's facts. Never repeat the question back, never reuse an earlier",
-  'reply (earlier_in_conversation is only context), and only ask a question when you need the answer to go on.',
-  'The facts are in order of what matters, and yours_first are the speaker\'s own: what they are like, what they',
+  'reply (they_asked_earlier is only context), and only ask a question when you need the answer to go on.',
+  "The facts are in order of what matters, and yours_first are the speaker's own: what they are like, what they",
   'can and cannot eat, what they prefer. Answer from those before any fact about the household, and never give an',
   'answer that contradicts one. If the speaker cannot eat something, do not suggest it to them.',
   'Answer what was actually asked. A question about what to cook, eat or do is a question: answer it from the facts',
@@ -92,26 +98,21 @@ const TOOL_TALK =
 
 export const isToolTalk = (s: string): boolean => TOOL_TALK.test(s.trim());
 
-/** Recall's tools as the model sees them: no plumbing, and nothing the device fills in. */
+/**
+ * Recall's tools as the model sees them: the plumbing removed, and otherwise exactly as the server
+ * publishes them. Device-filled arguments are dropped when the call is made (see respond), so they
+ * no longer have to be hidden here — and editing the schemas measurably hurt. Handed the trimmed
+ * set, qwen3:8b answered "what should we cook tonight?" from the household takeaway in 5 runs out
+ * of 5, ignoring the speaker's own dietary fact; handed them whole, it used that fact 5 times out
+ * of 5. Same prompt, same brief, same model.
+ */
 export function modelTools(tools: readonly ToolInfo[]): ModelTool[] {
   return tools
     .filter((t) => !HIDDEN.has(t.name))
-    .map((t) => {
-      const { properties = {}, required = [], ...rest } = t.inputSchema;
-      return {
-        type: 'function',
-        function: {
-          name: t.name,
-          description: t.description ?? '',
-          parameters: {
-            ...rest,
-            type: 'object',
-            properties: Object.fromEntries(Object.entries(properties).filter(([k]) => !DEVICE_FILLED.includes(k))),
-            required: required.filter((k) => !DEVICE_FILLED.includes(k)),
-          },
-        },
-      };
-    });
+    .map((t) => ({
+      type: 'function' as const,
+      function: { name: t.name, description: t.description ?? '', parameters: t.inputSchema },
+    }));
 }
 
 export interface Utterance {
@@ -153,6 +154,12 @@ interface Brief {
   care?: unknown;
 }
 
+function keepRepeat(repeat: unknown, careMode: boolean): unknown {
+  if (careMode || typeof repeat !== 'object' || repeat === null) return repeat;
+  const { last_answer: _dropped, ...rest } = repeat as Record<string, unknown>;
+  return rest;
+}
+
 const factText = (f: { content: string; why?: string }) =>
   f.why === 'pending_extraction' ? `${f.content} (just said)` : f.content;
 
@@ -172,12 +179,25 @@ export function digest(b: Brief): Record<string, unknown> {
     yours_first: b.facts?.filter((f) => f.scope === 'person').map(factText),
     about_the_home: b.facts?.filter((f) => f.scope !== 'person').map(factText),
     style: b.response_style,
-    // Context for a follow-up, not answers to reuse: small models otherwise repeat the last reply.
-    earlier_in_conversation: b.active_session?.recent_turns?.slice(-4).map((t) => `${t.role}: ${t.text}`),
-    playing_now: b.device_state?.now_playing?.title,
+    // What the people said, never what the assistant replied. Handed its own last reply, a small
+    // model repeats it verbatim instead of answering: measured, two speakers with different facts
+    // got the same sentence back, word for word, and the facts made no difference at all. If it
+    // needs its own words, session_history is the tool that returns them.
+    they_asked_earlier: b.active_session?.recent_turns
+      ?.filter((t) => t.role === 'user')
+      .slice(-3)
+      .map((t) => t.text),
+    // Deliberately not here: what is playing. device_state is the source for media, and the prompt
+    // sends the model there when it is asked. Handed it unasked, a small model treats it as part of
+    // the question — measured, "Morning news" in the digest was enough to lose a dietary fact
+    // entirely (0/5 runs used it; 5/5 without).
     contexts: b.contexts?.map((c) => `${c.context} (${c.for})`),
     quiet_hours: b.quiet_hours?.active === true ? 'yes: answer briefly, offer nothing' : undefined,
-    repeat: b.repeat,
+    // Recall returns the previous answer so a cared-for person can be told the same thing the same
+    // way, which is the point of care mode. For anyone else the guidance says the opposite — you
+    // have nothing more to add, offer another way — yet a small model shown last_answer just copies
+    // it, word for word, and the facts stop mattering. So it only travels when care mode is on.
+    repeat: keepRepeat(b.repeat, b.care !== undefined),
     care: b.care,
   };
   return Object.fromEntries(
@@ -202,7 +222,11 @@ export class Agent {
     const steps: Step[] = [];
     const run = async (tool: string, args: Record<string, unknown>): Promise<unknown> => {
       const accepts = known.find((t) => t.name === tool)?.inputSchema.properties ?? {};
-      const filled = { ...args, ...Object.fromEntries(Object.entries(context).filter(([k]) => k in accepts)) };
+      // The device knows who is speaking and where it is; the model never gets a say. Dropping what
+      // it supplied is the guarantee — with an unknown speaker there is no context value to
+      // overwrite a guess with, so anything it invented would otherwise survive.
+      const given = Object.fromEntries(Object.entries(args).filter(([k]) => !DEVICE_FILLED.includes(k)));
+      const filled = { ...given, ...Object.fromEntries(Object.entries(context).filter(([k]) => k in accepts)) };
       const started = performance.now();
       try {
         const result = await this.recall.call(tool, filled);

@@ -56,14 +56,12 @@ class ScriptedModel implements AgentModel {
 }
 
 describe('modelTools', () => {
-  it('hides device plumbing and the parameters the device fills in', () => {
+  it('hides the plumbing and passes the remaining schemas through untouched', () => {
     const tools = modelTools(TOOLS);
     expect(tools.map((t) => t.function.name)).toEqual(['remember', 'device_state']);
-    expect(tools[0]?.function.parameters).toMatchObject({
-      properties: { text: { type: 'string' } },
-      required: ['text'],
-    });
-    expect(Object.keys(tools[1]?.function.parameters.properties ?? {})).toEqual([]);
+    // Exactly as published: editing these measurably cost the model the speaker's own facts.
+    expect(tools[0]?.function.parameters).toEqual(TOOLS.find((t) => t.name === 'remember')?.inputSchema);
+    expect(tools[1]?.function.parameters).toEqual(TOOLS.find((t) => t.name === 'device_state')?.inputSchema);
   });
 });
 
@@ -108,6 +106,28 @@ describe('Agent', () => {
     expect(reply.reply).toBe('Who is this?');
     expect(recall.calls.map((c) => c.name)).toEqual(['session_brief']);
     expect(recall.calls[0]?.args).toEqual({ hint: 'What do you know about me?', device: 'bedroom-echo' });
+  });
+});
+
+describe('Agent', () => {
+  it('drops a speaker the model invented, even when the device does not know who is talking', () => {
+    const recall = new FakeRecall();
+    const model = new ScriptedModel([
+      // The schemas now show these fields, so the model may well try to fill them in.
+      {
+        tool_calls: [
+          { function: { name: 'remember', arguments: { text: 'x', speaker: 'Aisyah', speaker_confidence: 1 } } },
+        ],
+      },
+      { content: 'Who is this?' },
+    ]);
+    return new Agent(recall, model)
+      .respond({ device: 'bedroom-echo', speaker: null, confidence: 1, text: 'remember something' })
+      .then(() => {
+        const call = recall.calls.find((c) => c.name === 'remember');
+        expect(call?.args).toEqual({ text: 'x', device: undefined });
+        expect(call?.args).not.toHaveProperty('speaker');
+      });
   });
 });
 
@@ -202,5 +222,38 @@ describe('digest', () => {
     expect(
       digest({ facts: [{ content: 'Pizza night is on Fridays', why: 'semantic', scope: 'household' }] }),
     ).toMatchObject({ about_the_home: ['Pizza night is on Fridays'] });
+  });
+
+  it('hands back the previous answer in care mode, and never outside it', () => {
+    const repeat = {
+      asked_before: 2,
+      last_answer: 'Farah is coming at three.',
+      looping: true,
+      guidance: 'Answer again, warmly.',
+    };
+    // Care mode: saying the same thing the same way is the point — a repeated question gets the
+    // same warm answer, never "I already told you".
+    expect(digest({ repeat, care: { rules: [] } })).toMatchObject({ repeat });
+    // Anyone else: the guidance says there is nothing more to add, but a small model shown the old
+    // answer simply repeats it, so it never sees it.
+    const normal = digest({ repeat }) as { repeat: Record<string, unknown> };
+    expect(normal.repeat).toMatchObject({ asked_before: 2, looping: true });
+    expect(normal.repeat).not.toHaveProperty('last_answer');
+  });
+
+  it('feeds back what the people said, never what the assistant replied', () => {
+    // Handed its own last reply, a small model repeats it verbatim instead of answering — the
+    // facts stop mattering entirely. It can call session_history if it needs its own words.
+    const out = digest({
+      active_session: {
+        recent_turns: [
+          { role: 'user', text: 'What should we cook tonight?' },
+          { role: 'assistant', text: 'The usual takeaway is Warung Mak Teh. Would you like to order?' },
+          { role: 'user', text: 'something lighter' },
+        ],
+      },
+    });
+    expect(out).toMatchObject({ they_asked_earlier: ['What should we cook tonight?', 'something lighter'] });
+    expect(JSON.stringify(out)).not.toContain('Warung Mak Teh');
   });
 });
