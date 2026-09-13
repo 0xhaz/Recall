@@ -6,6 +6,7 @@ import {
   Database,
   HeartPulse,
   type LucideIcon,
+  MessageSquare,
   Radio,
   Settings,
   Shield,
@@ -31,9 +32,11 @@ const SECTIONS: { href: string; label: string; icon: LucideIcon }[] = [
 export function Nav({ household, carePersonId }: { household: string; carePersonId?: string | null }) {
   const pathname = usePathname();
   const base = `/h/${household}`;
-  const items = carePersonId
-    ? [...SECTIONS, { href: `/care/${carePersonId}`, label: 'Care', icon: HeartPulse }]
-    : SECTIONS;
+  const items = [
+    ...SECTIONS,
+    ...(carePersonId ? [{ href: `/care/${carePersonId}`, label: 'Care', icon: HeartPulse }] : []),
+    { href: '/simulator', label: 'Simulator', icon: MessageSquare },
+  ];
 
   return (
     <nav className="space-y-1">

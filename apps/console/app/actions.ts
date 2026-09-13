@@ -14,6 +14,7 @@ import {
   undoAction,
 } from '@/lib/recall';
 import { endSession } from '@/lib/session';
+import { getSimDevices, type SimDevice, type SimReply, SimulatorOffline, saySomething } from '@/lib/simulator';
 
 // Everything the console changes goes through here: a server action, the person's own session,
 // and a revalidate so the page shows what Recall now holds rather than what the browser had.
@@ -33,6 +34,44 @@ async function run(path: string, work: () => Promise<string>): Promise<ActionSta
   } catch (err) {
     if (err instanceof ApiError) return { error: err.message };
     throw err;
+  }
+}
+
+export interface SayState {
+  error?: string;
+  offline?: boolean;
+  said?: string;
+  speaker?: string | null;
+  device?: string;
+  reply?: SimReply;
+  devices?: SimDevice[];
+}
+
+/**
+ * Speak to the simulated assistant. It answers through Recall over MCP, so anything it remembers or
+ * does shows up on the other console pages too — hence the revalidate.
+ */
+export async function sayAction(_state: SayState, form: FormData): Promise<SayState> {
+  const household = text(form, 'household');
+  const said = text(form, 'text');
+  const device = text(form, 'device');
+  const speaker = text(form, 'speaker') || null;
+  const confidence = Number(form.get('confidence') ?? 1);
+  if (!said) return { error: 'Say something first' };
+
+  try {
+    const reply = await saySomething({
+      device,
+      speaker,
+      confidence: Number.isFinite(confidence) ? confidence : 1,
+      text: said,
+    });
+    const devices = await getSimDevices().catch(() => null);
+    revalidatePath(`/h/${household}`, 'layout');
+    return { said, speaker, device, reply, ...(devices ? { devices: devices.devices } : {}) };
+  } catch (err) {
+    if (err instanceof SimulatorOffline) return { offline: true, error: err.message };
+    return { error: err instanceof Error ? err.message : String(err) };
   }
 }
 
