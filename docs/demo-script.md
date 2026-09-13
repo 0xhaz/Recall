@@ -396,10 +396,28 @@ Walk all fourteen and mark each. Anything that fails is worth more than anything
 - [ ] §13 caregiver without the grant can't see her own memory; export works
 - [ ] §14 `pnpm test` green; latency within budget
 
-### Known weak point
+### Known weak point — measured, not guessed
 
-`qwen3:8b` is the weak link and it will show. It gives thin answers, occasionally leaks tool-planning
-into speech, and has failed to complete `decide_action` (so no device carried the action out). **For
-anything recorded, rehearse each beat and keep the takes where the model behaved** — the server is
-deterministic and correct; the stand-in assistant is neither. Nothing in §1–§14 depends on the model
-being clever, only on it calling the right tool.
+`qwen3:8b` is the weak link, and the shape of it is now known. Two beats pull in opposite
+directions, and no prompt wording tested gets both from one model:
+
+| model | §1 the beat (uses the speaker's own fact) | §7 pre-flight fires |
+|---|---|---|
+| `qwen3:8b` (configured) | 0–1 in 4 | **4 in 4** |
+| `qwen3.6` (local, 24GB) | **3 in 3** | 0 in 3 |
+
+So **§1 and §7 are best recorded separately**, or with `SIM_MODEL=qwen3.6:latest` for the memory
+beats and the default for the action beat. Nothing in Recall changes either way — the brief is
+correct in both cases, and the care beats (§8, §9) do not depend on this.
+
+Three things that will waste your time if you don't know them:
+
+- **Ask each question once, on a clean session.** Asking twice triggers Recall's repeat detector,
+  which is correct behaviour (it exists for §9.3) but makes the assistant answer "shall I order that
+  *again*?" rather than from the facts. Between takes:
+  `docker exec recall-postgres-1 psql -U recall -d recall -c "DELETE FROM session_turn; DELETE FROM session;"`
+- **Sessions hand off between devices**, so switching device does not give you a fresh conversation.
+- **The model is not deterministic** even at temperature 0.2. Identical input gives different answers
+  run to run, so rehearse each beat and keep the takes where it behaved. The server is deterministic
+  and correct; the stand-in assistant is neither.
+
