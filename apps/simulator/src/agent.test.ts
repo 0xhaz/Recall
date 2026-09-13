@@ -181,8 +181,9 @@ describe('digest', () => {
         speaker_candidate: 'Aisyah',
         rules: [{ text: 'No music after 10pm on school nights' }],
         facts: [
-          { content: 'Aisyah is vegetarian', why: 'semantic' },
-          { content: 'I am off coffee', why: 'pending_extraction' },
+          { content: 'Aisyah is vegetarian', why: 'semantic', scope: 'person' },
+          { content: 'I am off coffee', why: 'pending_extraction', scope: 'person' },
+          { content: 'The usual takeaway is Warung Mak Teh', why: 'semantic', scope: 'household' },
         ],
         contexts: [],
         quiet_hours: { active: false },
@@ -191,7 +192,15 @@ describe('digest', () => {
       now: 'Monday 2026-10-05 19:02',
       speaker: 'not sure: maybe Aisyah; ask "Is this Aisyah?" first',
       rules: ['No music after 10pm on school nights'],
-      facts: ['Aisyah is vegetarian', 'I am off coffee (just said)'],
+      // Split by whose fact it is: the speaker's own never sit in a flat list beside the house's.
+      yours_first: ['Aisyah is vegetarian', 'I am off coffee (just said)'],
+      about_the_home: ['The usual takeaway is Warung Mak Teh'],
     });
+  });
+
+  it("keeps the speaker's own facts separate even when only the household has any", () => {
+    expect(
+      digest({ facts: [{ content: 'Pizza night is on Fridays', why: 'semantic', scope: 'household' }] }),
+    ).toMatchObject({ about_the_home: ['Pizza night is on Fridays'] });
   });
 });

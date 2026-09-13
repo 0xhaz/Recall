@@ -62,6 +62,9 @@ export const SYSTEM_PROMPT = [
   'Replies are spoken: one or two short sentences, plain words, no lists or markdown.',
   "Answer the new request directly, using the brief's facts. Never repeat the question back, never reuse an earlier",
   'reply (earlier_in_conversation is only context), and only ask a question when you need the answer to go on.',
+  'The facts are in order of what matters, and yours_first are the speaker\'s own: what they are like, what they',
+  'can and cannot eat, what they prefer. Answer from those before any fact about the household, and never give an',
+  'answer that contradicts one. If the speaker cannot eat something, do not suggest it to them.',
   'Answer what was actually asked. A question about what to cook, eat or do is a question: answer it from the facts',
   'about the people who are here, and do not turn it into an order or a booking.',
   'Stated rules override everything. Follow the style, and any repeat or care guidance, exactly.',
@@ -141,7 +144,7 @@ interface Brief {
   speaker_candidate?: string;
   response_style?: Record<string, unknown>;
   rules?: { text: string }[];
-  facts?: { content: string; why?: string }[];
+  facts?: { content: string; why?: string; scope?: string }[];
   active_session?: { recent_turns?: { role: string; text: string }[] };
   device_state?: { now_playing?: { title: string } | null };
   contexts?: { context: string; for: string }[];
@@ -149,6 +152,9 @@ interface Brief {
   repeat?: unknown;
   care?: unknown;
 }
+
+const factText = (f: { content: string; why?: string }) =>
+  f.why === 'pending_extraction' ? `${f.content} (just said)` : f.content;
 
 /** The brief, compact: a small model answers better from a short digest than from the full JSON. */
 export function digest(b: Brief): Record<string, unknown> {
@@ -160,7 +166,11 @@ export function digest(b: Brief): Record<string, unknown> {
         ? `not sure: maybe ${b.speaker_candidate}; ask "Is this ${b.speaker_candidate}?" first`
         : 'unknown: ask who is speaking before anything personal',
     rules: b.rules?.map((r) => r.text),
-    facts: b.facts?.map((f) => (f.why === 'pending_extraction' ? `${f.content} (just said)` : f.content)),
+    // Split by whose fact it is, not just ordered by it: a small model reading a flat list treats
+    // "Aisyah is vegetarian" and "the usual takeaway is Warung Mak Teh" as equally good answers to
+    // "what should we cook", and picks the one that sounds most like dinner.
+    yours_first: b.facts?.filter((f) => f.scope === 'person').map(factText),
+    about_the_home: b.facts?.filter((f) => f.scope !== 'person').map(factText),
     style: b.response_style,
     // Context for a follow-up, not answers to reuse: small models otherwise repeat the last reply.
     earlier_in_conversation: b.active_session?.recent_turns?.slice(-4).map((t) => `${t.role}: ${t.text}`),
