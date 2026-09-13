@@ -62,18 +62,32 @@ export const SYSTEM_PROMPT = [
   'Replies are spoken: one or two short sentences, plain words, no lists or markdown.',
   "Answer the new request directly, using the brief's facts. Never repeat the question back, never reuse an earlier",
   'reply (earlier_in_conversation is only context), and only ask a question when you need the answer to go on.',
+  'Answer what was actually asked. A question about what to cook, eat or do is a question: answer it from the facts',
+  'about the people who are here, and do not turn it into an order or a booking.',
   'Stated rules override everything. Follow the style, and any repeat or care guidance, exactly.',
   "Only state what the brief or a tool result says; if they don't say, say you don't know.",
   'If the speaker is unknown, ask who is speaking before using or giving anything personal; if they ask about',
   '"me" or "my", reply only by asking who is speaking.',
   'To remember something, call remember. To forget something, call forget.',
-  'Before doing anything for someone (ordering, booking, playing music, changing a device), call action_preflight',
+  'Only when they actually ask for something to be done (ordering, booking, playing music, changing a device),',
+  'call action_preflight',
   'with exactly what they said (venue, address, items), filling in from the facts only what they left out.',
   "Then: if it is blocked, say why, quoting the rule; if there are things to confirm, ask about them and wait; if it's",
   'allowed and they asked for it, call decide_action with "confirm".',
   'Never say something is done unless decide_action returned status "executed".',
   'For what is playing, timers or alarms, call device_state first.',
+  'Never say a tool name out loud. Tool calls are how you act; what you say is only what the person hears.',
 ].join(' ');
+
+/**
+ * Planning prose is not speech. A small model often narrates the call it is about to make
+ * ("decide_action with confirm to proceed") — spoken aloud that is gibberish, so it never becomes a
+ * reply. Recognising it is cheap; the cost of getting it wrong is a demo that says a tool name.
+ */
+const TOOL_TALK =
+  /\b(action_preflight|propose_action|decide_action|device_state|suggest_music|session_brief|verify_claim|explain_memory|set_rule|list_rules|remove_rule|set_context|get_context|ingest_events|checkin|set_reminder|confirm_reminder|set_care_policy|set_communication_style|remember|forget|undo|recall|sync)\b|^\s*(i (will|'ll|should|need to|am going to) (now )?call|calling|let me call|next,? call)/i;
+
+export const isToolTalk = (s: string): boolean => TOOL_TALK.test(s.trim());
 
 /** Recall's tools as the model sees them: no plumbing, and nothing the device fills in. */
 export function modelTools(tools: readonly ToolInfo[]): ModelTool[] {
@@ -212,9 +226,21 @@ export class Agent {
       const out = await this.model.chat(messages, tools);
       modelMs += performance.now() - started;
       if (out.tool_calls.length === 0) {
-        reply = clean(out.content);
-        break;
+        const said = clean(out.content);
+        // Nothing left to do and nothing sayable: ask for the answer in words rather than speak
+        // planning prose or fall through to an apology.
+        if (said && !isToolTalk(said)) {
+          reply = said;
+          break;
+        }
+        messages.push({ role: 'assistant', content: out.content });
+        messages.push({
+          role: 'user',
+          content: 'Say that to me in one or two short sentences, as speech. No tool names, no plans.',
+        });
+        continue;
       }
+      // Content beside a tool call is the model thinking aloud: keep it for the model, never speak it.
       messages.push({ role: 'assistant', content: out.content, tool_calls: out.tool_calls });
       for (const call of out.tool_calls) {
         const name = call.function.name;

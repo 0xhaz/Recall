@@ -3,6 +3,7 @@ import {
   Agent,
   type AgentModel,
   digest,
+  isToolTalk,
   type ModelMessage,
   type ModelTool,
   modelTools,
@@ -107,6 +108,62 @@ describe('Agent', () => {
     expect(reply.reply).toBe('Who is this?');
     expect(recall.calls.map((c) => c.name)).toEqual(['session_brief']);
     expect(recall.calls[0]?.args).toEqual({ hint: 'What do you know about me?', device: 'bedroom-echo' });
+  });
+});
+
+describe('isToolTalk', () => {
+  it('catches a model narrating its own tool call, and leaves ordinary speech alone', () => {
+    // The real failure: spoken aloud in the kitchen, this is gibberish.
+    expect(isToolTalk('decide_action with "confirm" to proceed with the order.')).toBe(true);
+    expect(isToolTalk("I'll call action_preflight first.")).toBe(true);
+    expect(isToolTalk('Let me call device_state to check.')).toBe(true);
+
+    expect(isToolTalk('There is rendang in the fridge, and you are vegetarian.')).toBe(false);
+    expect(isToolTalk('Noted.')).toBe(false);
+    expect(isToolTalk("I'll remind you on Wednesday.")).toBe(false);
+  });
+});
+
+describe('Agent', () => {
+  it('never speaks planning prose: it asks again for words, and says those instead', async () => {
+    const recall = new FakeRecall();
+    const model = new ScriptedModel([
+      // No tool calls, but the "reply" is the model thinking aloud — exactly what reached the demo.
+      { content: 'decide_action with "confirm" to proceed with the order.' },
+      { content: 'Warung Mak Teh is the usual. Shall I order?' },
+    ]);
+    const reply = await new Agent(recall, model).respond({
+      device: 'kitchen-echo',
+      speaker: 'Aisyah',
+      confidence: 0.95,
+      text: 'What should we cook tonight?',
+    });
+
+    expect(reply.reply).toBe('Warung Mak Teh is the usual. Shall I order?');
+    // It asked for speech rather than giving up or speaking the plan.
+    const last = model.seen.at(-1)?.messages.at(-1);
+    expect(last?.role).toBe('user');
+    expect(last?.content).toContain('as speech');
+  });
+
+  it('keeps content that arrives beside a tool call for the model, and never speaks it', async () => {
+    const recall = new FakeRecall();
+    const model = new ScriptedModel([
+      {
+        content: 'First I will call remember to store this.',
+        tool_calls: [{ function: { name: 'remember', arguments: { text: 'I am off coffee' } } }],
+      },
+      { content: 'Noted.' },
+    ]);
+    const reply = await new Agent(recall, model).respond({
+      device: 'kitchen-echo',
+      speaker: 'Aisyah',
+      confidence: 0.95,
+      text: 'Remember I am off coffee',
+    });
+
+    expect(reply.reply).toBe('Noted.');
+    expect(reply.reply).not.toContain('remember');
   });
 });
 

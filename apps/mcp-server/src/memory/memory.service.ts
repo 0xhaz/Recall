@@ -323,7 +323,18 @@ export class MemoryService {
       .filter((r) => scores.has(r.id))
       .sort((a, b) => (scores.get(b.id) ?? 0) - (scores.get(a.id) ?? 0));
     const fillers = keyword.filter((r) => !scores.has(r.id));
-    return [...scored, ...fillers].slice(0, opts.limit).map(toHit);
+
+    /**
+     * Whose fact it is decides the order; relevance only orders within each group. Asked "what
+     * should we cook", a household of six returns several house facts that all match the words,
+     * while the one fact that changes the answer — that the person asking is vegetarian — can miss
+     * the similarity floor outright (0.313 against 0.34) and never rank at all. Since a small model
+     * reads the list from the top, that is the difference between her answer and everyone's.
+     */
+    const ranked = [...scored, ...fillers];
+    const own = ranked.filter((r) => scopeRank(r, personId) === 0);
+    const rest = ranked.filter((r) => scopeRank(r, personId) !== 0);
+    return [...own, ...rest].slice(0, opts.limit).map(toHit);
   }
 
   async style(personId: string): Promise<CommunicationStyle> {
@@ -422,6 +433,11 @@ export class MemoryService {
     }
     return vector;
   }
+}
+
+/** The speaker's own facts first in the filler tail; keywordHits has already ordered by confidence. */
+export function scopeRank(r: Pick<HitRow, 'scope_type' | 'scope_id'>, personId: string | null): number {
+  return personId && r.scope_type === 'person' && r.scope_id === personId ? 0 : 1;
 }
 
 function toHit(r: HitRow): SearchHit {
