@@ -11,7 +11,11 @@ RUN pnpm --filter @recall/mcp-server deploy --prod /out
 
 FROM node:22-slim
 WORKDIR /app
-ENV NODE_ENV=production HOST=0.0.0.0
+# RDS presents an Amazon-issued certificate that Node does not trust out of the box. With this
+# bundle the connection string can say sslmode=verify-full and mean it, rather than falling back
+# to an encrypted channel nobody has authenticated.
+ADD https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem /app/rds-ca.pem
+ENV NODE_ENV=production HOST=0.0.0.0 NODE_EXTRA_CA_CERTS=/app/rds-ca.pem
 COPY --from=build /out/node_modules ./node_modules
 COPY --from=build /out/package.json ./package.json
 COPY --from=build /repo/apps/mcp-server/dist ./dist
