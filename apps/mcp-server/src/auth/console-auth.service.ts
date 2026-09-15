@@ -1,4 +1,4 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { audit } from '../audit.js';
 import { APP_CONFIG, type AppConfig } from '../config.js';
 import { Db } from '../db/db.js';
@@ -8,6 +8,8 @@ import { bearer, hashToken, newToken } from './tokens.js';
 /** Magic-link sign-in for the console (design.md §9). People are global, so sessions carry no household. */
 @Injectable()
 export class ConsoleAuthService {
+  private readonly logger = new Logger(ConsoleAuthService.name);
+
   constructor(
     @Inject(Db) private readonly db: Db,
     @Inject(EMAIL_SENDER) private readonly mail: EmailSender,
@@ -29,12 +31,19 @@ export class ConsoleAuthService {
       [person.id, hashToken(token)],
     );
     const url = `${this.config.consoleBaseUrl}/auth/verify?token=${encodeURIComponent(token)}`;
-    await this.mail.send({
-      to: email,
-      subject: 'Sign in to Recall',
-      text: `Hi ${person.display_name}, use this link within 15 minutes to sign in: ${url}`,
-      url,
-    });
+    try {
+      await this.mail.send({
+        to: email,
+        subject: 'Sign in to Recall',
+        text: `Hi ${person.display_name}, use this link within 15 minutes to sign in: ${url}`,
+        url,
+      });
+    } catch (err) {
+      // The caller answers the same way whether or not the address is known, so a delivery failure
+      // must not become a 500: that difference is exactly how you find out who has an account.
+      // It is logged instead, where the people running the server can see it.
+      this.logger.error(`could not send the sign-in link: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   /** Exchanges a single-use link for a 30-day session. Null when the link is unknown, used or expired. */

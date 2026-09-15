@@ -5,7 +5,7 @@ import { createEmbedder, createLlmProvider, type Embedder, type LlmProvider } fr
 import { ActionService } from './actions/action.service.js';
 import { ConsoleAuthController } from './auth/console-auth.controller.js';
 import { ConsoleAuthService } from './auth/console-auth.service.js';
-import { ConsoleEmailSender, EMAIL_SENDER, type EmailSender } from './auth/email.js';
+import { createEmailSender, EMAIL_SENDER, type EmailSender } from './auth/email.js';
 import { HouseholdAuth } from './auth/household-auth.js';
 import { HouseholdTokensController } from './auth/household-tokens.controller.js';
 import { HouseholdTokens } from './auth/household-tokens.service.js';
@@ -70,7 +70,7 @@ export class AppModule {
         { provide: APP_CONFIG, useValue: config },
         { provide: LLM_PROVIDER, useFactory: () => overrides.llm ?? createLlmProvider() },
         { provide: EMBEDDER, useFactory: () => overrides.embedder ?? createEmbedder() },
-        { provide: EMAIL_SENDER, useFactory: () => overrides.emailSender ?? new ConsoleEmailSender() },
+        { provide: EMAIL_SENDER, useFactory: async () => overrides.emailSender ?? (await createEmailSender()) },
         // One clock per process; the random suffix keeps stamps from two instances distinct.
         { provide: CLOCK, useFactory: () => new HybridClock(`server-${randomBytes(3).toString('hex')}`) },
         Db,
