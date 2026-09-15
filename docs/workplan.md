@@ -315,7 +315,7 @@ NestJS, MCP spec 2025-11-25+, Streamable HTTP; the repo must actually call MCP i
 - [ ] Lifecycle: candidate → offered → active → retired; first occurrence is an offer [A§2]
 - [x] Repurchase cycles: what the household buys again and how often, mined from executed purchases; a stated cycle overrides the mined one and is quoted. `purchase_history` answers "what did I buy last time?" and "what are we due for?" — no schema change, and buying still goes through pre-flight
 - [ ] Regression guard: "stopped doing it" vs "action started failing" → broken-routine flag in the console + friction log — B [A§2]
-- [ ] Absence detection for check-in routines: prompt the person first, then escalate; never auto-send [A§2]
+- [x] Absence detection for check-in routines: prompt the person first, then escalate; never auto-send [A§2] — `AbsenceWatcher`: waits past the usual time plus a grace window, asks the person on the device they normally use, and tells the carers only 30 min later if they still have not answered. Tested end to end (`routines.e2e`). This is the r/alexa caretaking request almost line for line (design.md §1.1)
 - [ ] Per-person baselines feed context thresholds [A§3]
 
 **Done when:** a replayed 3-week event stream produces "coffee 07:10 ± 12 min weekdays" and a morning chain, and holidays don't count as misses.
