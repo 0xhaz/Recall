@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { HomeNetwork } from '@/components/home-network';
+import { ProductHero } from '@/components/product-hero';
 import { Reveal } from '@/components/reveal';
 import { ApiError, getProfile, type Profile } from '@/lib/recall';
 
@@ -126,7 +126,7 @@ export default async function Home() {
       {/* ---------------------------------------------------------------- the house */}
       <section className="mx-auto max-w-6xl px-6 pb-8 pt-10 text-center sm:pt-16">
         <Reveal>
-          <p className="label-xs">Memory for Alexa+ and any other assistant · served over MCP</p>
+          <p className="label-xs break-words">Memory for Alexa+ and any other assistant · served over MCP</p>
           <h1 className="mx-auto mt-4 max-w-4xl text-4xl font-semibold leading-tight text-slate-100 sm:text-6xl">
             A home that remembers <span className="text-cyan-300">the people in it</span>.
           </h1>
@@ -147,11 +147,41 @@ export default async function Home() {
           </div>
         </Reveal>
 
-        <Reveal delay={150} className="mt-6">
-          <HomeNetwork />
+        <Reveal className="mt-12 lg:mt-8">
+          <ProductHero />
         </Reveal>
 
-        <Reveal delay={250}>
+        <div className="mt-10 grid gap-4 text-left sm:grid-cols-3">
+          {[
+            {
+              icon: Fingerprint,
+              title: 'Knows who is asking',
+              body: 'Per-person memory, and a voice match it refuses to guess past.',
+            },
+            {
+              icon: Check,
+              title: 'Confirmed, never assumed',
+              body: 'A dose is recorded because someone said so — silence is filed as unconfirmed.',
+            },
+            {
+              icon: Trash2,
+              title: 'Yours to erase',
+              body: 'Forget something and it goes from every device, and from the events behind it.',
+            },
+          ].map(({ icon: Icon, title, body }, i) => (
+            <Reveal key={title} step={(i % 3) as 0 | 1 | 2}>
+              <div className="panel h-full p-5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-500/25 bg-cyan-500/10">
+                  <Icon className="h-4 w-4 text-cyan-300" />
+                </div>
+                <h2 className="mt-3 text-[0.95rem] font-semibold text-slate-100">{title}</h2>
+                <p className="mt-1 text-sm leading-relaxed text-slate-400">{body}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+
+        <Reveal>
           <p className="mx-auto max-w-2xl text-sm text-slate-500">
             Devices sync by sequence number and merge by hybrid logical clock, so a device that was offline catches up
             in the right order. Raw events are kept seven days; what was learned outlives them.
@@ -172,7 +202,7 @@ export default async function Home() {
 
         <div className="mt-10 space-y-4">
           {SAID.map((line, i) => (
-            <Reveal key={line.replied} delay={i * 120}>
+            <Reveal key={line.replied} step={(i % 3) as 0 | 1 | 2}>
               <div className="panel overflow-hidden">
                 <div className="flex items-center gap-3 border-b border-slate-800 px-5 py-3">
                   <div className="flex h-8 items-end gap-[3px]" aria-hidden>
@@ -202,7 +232,7 @@ export default async function Home() {
           ))}
         </div>
 
-        <Reveal delay={120}>
+        <Reveal>
           <p className="mt-6 text-sm text-slate-500">
             Real replies from the deployed assistant, not written for this page. It has no memory of its own — only
             Recall, over MCP.
@@ -228,7 +258,7 @@ export default async function Home() {
           <div className="mt-10 grid gap-4 lg:grid-cols-5">
             <div className="space-y-3 lg:col-span-3">
               {DOSE.map(({ icon: Icon, at, what }, i) => (
-                <Reveal key={at + what} delay={i * 140}>
+                <Reveal key={at + what} step={(i % 3) as 0 | 1 | 2}>
                   <div className="panel flex gap-4 p-5">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-cyan-500/25 bg-cyan-500/10">
                       <Icon className="h-5 w-5 text-cyan-300" />
@@ -242,7 +272,7 @@ export default async function Home() {
               ))}
             </div>
 
-            <Reveal delay={200} className="lg:col-span-2">
+            <Reveal className="lg:col-span-2">
               <div className="panel h-full p-6">
                 <HeartPulse className="h-5 w-5 text-violet-300" />
                 <h3 className="mt-3 text-base font-semibold text-slate-100">What she wears, and what it is for</h3>
@@ -275,7 +305,7 @@ export default async function Home() {
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2">
           {CONTROL.map(({ icon: Icon, title, body }, i) => (
-            <Reveal key={title} delay={i * 110}>
+            <Reveal key={title} step={(i % 3) as 0 | 1 | 2}>
               <div className="panel h-full p-6">
                 <Icon className="h-5 w-5 text-cyan-400" />
                 <h3 className="mt-3 text-base font-semibold text-slate-100">{title}</h3>
@@ -285,7 +315,7 @@ export default async function Home() {
           ))}
         </div>
 
-        <Reveal delay={140}>
+        <Reveal>
           <div className="panel mt-4 flex flex-col gap-4 p-6 sm:flex-row sm:items-center">
             <Fingerprint className="h-5 w-5 shrink-0 text-cyan-400" />
             <p className="text-sm leading-relaxed text-slate-400">

@@ -1,47 +1,19 @@
-'use client';
-
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 
 /**
- * Shows its children once they scroll into view. An observer rather than a scroll listener, so
- * nothing runs on the main thread between sections — and anything already on screen at load is
- * shown immediately rather than fading in under the reader.
+ * A scroll-linked reveal, done entirely in CSS (see globals.css). Deliberately not a client
+ * component: the content is visible from the first paint and the animation is an enhancement,
+ * so a reader whose JavaScript is slow, blocked or broken still gets the page.
  */
 export function Reveal({
   children,
-  delay = 0,
+  step = 0,
   className = '',
 }: {
   children: ReactNode;
-  delay?: number;
+  /** Staggers a row: 1, 2 or 3 start progressively later than their neighbour. */
+  step?: 0 | 1 | 2 | 3;
   className?: string;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [shown, setShown] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    // No observer (or no motion wanted): show it and stop.
-    if (typeof IntersectionObserver === 'undefined') {
-      setShown(true);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry?.isIntersecting) return;
-        setShown(true);
-        observer.disconnect();
-      },
-      { rootMargin: '0px 0px -12% 0px' },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div ref={ref} data-shown={shown} className={`reveal ${className}`} style={{ transitionDelay: `${delay}ms` }}>
-      {children}
-    </div>
-  );
+  return <div className={`reveal ${step ? `reveal-step-${step}` : ''} ${className}`}>{children}</div>;
 }

@@ -68,24 +68,17 @@
 }
 
 /* ---------------------------------------------------------------- the landing page
-   Motion earns its place here by showing something true: signal moving from a device to Recall
-   and back, a dose waiting to be confirmed. Anyone who has asked their system not to animate
-   gets the same page, still.  */
+   Motion earns its place here by showing something true: signal moving from a device to Recall,
+   a dose waiting to be confirmed. It is all CSS. Nothing on this page needs JavaScript to be
+   readable — a reveal that starts invisible and waits for hydration is a blank page to anyone
+   whose script never arrives — and anyone who has asked for less motion gets it still. */
 
 @layer components {
-  /* Revealed by the observer in components/reveal.tsx as each section comes into view. */
+  /* Visible by default. The scroll-linked reveal below is an enhancement layered on top. */
   .reveal {
-    @apply translate-y-6 opacity-0;
-    transition:
-      opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-      transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    @apply opacity-100;
   }
 
-  .reveal[data-shown="true"] {
-    @apply translate-y-0 opacity-100;
-  }
-
-  /* A device reporting in: the line fills from the device towards the core. */
   .flow {
     stroke-dasharray: 5 7;
     animation: flow 2.4s linear infinite;
@@ -95,14 +88,43 @@
     animation: node-pulse 3s ease-in-out infinite;
   }
 
-  .core-ring {
-    transform-origin: center;
-    animation: core-ring 4s ease-out infinite;
-  }
-
-  /* Someone speaking: three bars, not a fake waveform pretending to be their voice. */
   .bar {
     animation: bar 1.1s ease-in-out infinite;
+  }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      animation: reveal-in linear both;
+      animation-timeline: view();
+      /* Finished well before the middle of the viewport, so nothing is still arriving as you read it. */
+      animation-range: entry 4% cover 26%;
+    }
+
+    /* Staggering a row: each card starts a little later than the one before it. */
+    .reveal-step-1 {
+      animation-range: entry 8% cover 30%;
+    }
+
+    .reveal-step-2 {
+      animation-range: entry 12% cover 34%;
+    }
+
+    .reveal-step-3 {
+      animation-range: entry 16% cover 38%;
+    }
+  }
+}
+
+@keyframes reveal-in {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 
@@ -122,18 +144,6 @@
   }
 }
 
-@keyframes core-ring {
-  0% {
-    transform: scale(0.85);
-    opacity: 0.7;
-  }
-  70%,
-  100% {
-    transform: scale(1.6);
-    opacity: 0;
-  }
-}
-
 @keyframes bar {
   0%,
   100% {
@@ -145,14 +155,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reveal {
-    @apply translate-y-0 opacity-100;
-    transition: none;
-  }
-
   .flow,
   .node-pulse,
-  .core-ring,
   .bar {
     animation: none;
   }
