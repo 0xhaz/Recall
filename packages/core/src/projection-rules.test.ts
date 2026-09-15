@@ -5,7 +5,7 @@ import type { RuleView } from './rules.js';
 const rule = (id: string, extra: Partial<RuleView> = {}): RuleView => ({
   id,
   text: id,
-  author_id: 'aisyah',
+  author_id: 'emma',
   author_role: 'owner',
   scope_type: 'household',
   scope_id: 'h',

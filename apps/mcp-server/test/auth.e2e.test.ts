@@ -50,7 +50,7 @@ beforeAll(async () => {
   b = await t.createHousehold([['Carol', 'owner']]);
   await t.db.query(
     `INSERT INTO fact (household_id, region, scope_type, scope_id, type, content, confidence)
-     VALUES ($1, 'my', 'person', $2, 'semantic', 'Alice is vegetarian', 0.95)`,
+     VALUES ($1, 'us', 'person', $2, 'semantic', 'Alice is vegetarian', 0.95)`,
     [a.id, personId(a, 'Alice')],
   );
 });

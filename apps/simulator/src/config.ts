@@ -13,7 +13,7 @@ export const config = {
   token: process.env.RECALL_DEV_TOKEN ?? '',
   ollamaUrl: process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434',
   model: process.env.SIM_MODEL ?? process.env.OLLAMA_MODEL ?? 'qwen3:8b',
-  timezone: process.env.SIM_TIMEZONE ?? 'Asia/Kuala_Lumpur',
+  timezone: process.env.SIM_TIMEZONE ?? 'America/New_York',
   /** Which model answers: ollama locally, bedrock once deployed (there is no Ollama on AWS). */
   provider: process.env.SIM_LLM_PROVIDER ?? process.env.LLM_PROVIDER ?? 'ollama',
   region: process.env.AWS_REGION ?? 'us-east-1',
@@ -28,10 +28,10 @@ export interface DeviceInfo {
 
 /** The demo household from `pnpm db:seed`: who can speak, and the devices on the table. */
 export const DEMO = {
-  people: ['Aisyah', 'Daniel', 'Sofia', 'Mak Som', 'Farah', 'Ravi'],
+  people: ['Emma', 'Daniel', 'Sofia', 'Ruth', 'Nina', 'Tom'],
   devices: [
     { id: 'kitchen-echo', name: 'Kitchen Echo Show', location: 'Kitchen' },
-    { id: 'bedroom-echo', name: "Mak Som's Echo", location: "Mak Som's room" },
+    { id: 'bedroom-echo', name: "Ruth's Echo", location: "Ruth's room" },
     { id: 'living-firetv', name: 'Living room Fire TV', location: 'Living room' },
   ] satisfies DeviceInfo[],
 };
@@ -48,7 +48,7 @@ export interface Producer {
 
 /** Simulated Ring, Fire TV, coffee machine, lights and phone: one button, one device report. */
 export const PRODUCERS: Producer[] = [
-  { id: 'coffee', label: 'Coffee machine on', device: 'kitchen-echo', kind: 'coffee_machine.start', person: 'Aisyah' },
+  { id: 'coffee', label: 'Coffee machine on', device: 'kitchen-echo', kind: 'coffee_machine.start', person: 'Emma' },
   { id: 'music-stop', label: 'Stop the music', device: 'kitchen-echo', kind: 'media.stop' },
   {
     id: 'lights-dim',
@@ -68,39 +68,39 @@ export const PRODUCERS: Producer[] = [
   },
   {
     id: 'charging',
-    label: "Aisyah's phone charging",
-    device: 'aisyah-phone',
+    label: "Emma's phone charging",
+    device: 'emma-phone',
     kind: 'phone.charging',
-    person: 'Aisyah',
+    person: 'Emma',
     payload: { charging: true },
   },
   { id: 'arrival', label: 'Ring: someone arrives', device: 'front-door', location: 'Front door', kind: 'ring.arrival' },
   { id: 'door', label: 'Front door opens', device: 'front-door', location: 'Front door', kind: 'door.open' },
-  { id: 'sleep', label: 'Mak Som goes to sleep', device: 'bedroom-echo', kind: 'sleep.start', person: 'Mak Som' },
-  { id: 'wake', label: 'Mak Som wakes up', device: 'bedroom-echo', kind: 'sleep.end', person: 'Mak Som' },
-  // Mak Som's Bee: worn, never spoken to. Only derived context outlives the 7-day window.
+  { id: 'sleep', label: 'Ruth goes to sleep', device: 'bedroom-echo', kind: 'sleep.start', person: 'Ruth' },
+  { id: 'wake', label: 'Ruth wakes up', device: 'bedroom-echo', kind: 'sleep.end', person: 'Ruth' },
+  // Ruth's Bee: worn, never spoken to. Only derived context outlives the 7-day window.
   {
     id: 'bee-resting',
-    label: 'Bee: Mak Som resting (72 bpm)',
-    device: 'som-bee',
+    label: 'Bee: Ruth resting (72 bpm)',
+    device: 'ruth-bee',
     kind: 'hr.sample',
-    person: 'Mak Som',
+    person: 'Ruth',
     payload: { bpm: 72 },
   },
   {
     id: 'bee-up',
-    label: 'Bee: Mak Som up and about',
-    device: 'som-bee',
+    label: 'Bee: Ruth up and about',
+    device: 'ruth-bee',
     kind: 'phone.motion',
-    person: 'Mak Som',
+    person: 'Ruth',
     payload: { steps_per_min: 70 },
   },
   {
     id: 'bee-still',
     label: 'Bee: no movement',
-    device: 'som-bee',
+    device: 'ruth-bee',
     kind: 'phone.motion',
-    person: 'Mak Som',
+    person: 'Ruth',
     payload: { steps_per_min: 0 },
   },
 ];

@@ -5,13 +5,13 @@ describe('temporalStamp', () => {
   const instant = new Date('2026-09-11T16:30:05Z');
 
   it('renders the device-local date and time, not UTC', () => {
-    const stamp = temporalStamp('Asia/Kuala_Lumpur', instant);
+    const stamp = temporalStamp('America/New_York', instant);
     expect(stamp).toEqual({
-      local_date: '2026-09-12',
-      local_time: '00:30:05',
-      weekday: 'Saturday',
-      timezone: 'Asia/Kuala_Lumpur',
-      utc_offset: '+08:00',
+      local_date: '2026-09-11',
+      local_time: '12:30:05',
+      weekday: 'Friday',
+      timezone: 'America/New_York',
+      utc_offset: '-04:00',
       iso_utc: '2026-09-11T16:30:05.000Z',
     });
   });

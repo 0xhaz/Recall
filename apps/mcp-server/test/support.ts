@@ -67,7 +67,7 @@ export async function startApp(overrides: AppOverrides = {}): Promise<TestApp> {
   async function createHousehold(members: [string, MembershipRole][]): Promise<TestHousehold> {
     const id = randomUUID();
     householdIds.push(id);
-    await db.query(`INSERT INTO household (id, name, region, timezone) VALUES ($1, $2, 'my', 'Asia/Kuala_Lumpur')`, [
+    await db.query(`INSERT INTO household (id, name, region, timezone) VALUES ($1, $2, 'us', 'America/New_York')`, [
       id,
       `Test ${id.slice(0, 8)}`,
     ]);
@@ -87,7 +87,7 @@ export async function startApp(overrides: AppOverrides = {}): Promise<TestApp> {
     }
     const token = newToken('rcl_hh');
     await db.query(
-      `INSERT INTO household_token (household_id, region, token_hash, label) VALUES ($1, 'my', $2, 'test')`,
+      `INSERT INTO household_token (household_id, region, token_hash, label) VALUES ($1, 'us', $2, 'test')`,
       [id, hashToken(token)],
     );
     return { id, token, people };

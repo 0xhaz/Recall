@@ -52,7 +52,7 @@ export function registerMemoryTools(
         'most relevant remembered facts (with source and confidence), the conversation in progress (also when it started ' +
         "on another device), the device's live state, and what's going on (active contexts, quiet hours). " +
         'Only state facts that appear here or in recall. If ask_who_is_speaking is true, ask before using anything personal; ' +
-        'if speaker_candidate is present, confirm it ("Is this Aisyah?") first. During quiet hours, answer briefly and ' +
+        'if speaker_candidate is present, confirm it ("Is this Emma?") first. During quiet hours, answer briefly and ' +
         'offer nothing unprompted. If `repeat` is present, follow its guidance. For a person being cared for (`care`), ' +
         'follow care.rules and any policy listed; only caregiver-entered facts are returned for them.',
       inputSchema: {

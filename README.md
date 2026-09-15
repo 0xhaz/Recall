@@ -24,9 +24,9 @@ pnpm test           # unit + end-to-end on a separate <db>_test database
 
 `GET /health` reports database and LLM reachability; `GET /metrics/latency` reports p50/p95 per tool against its budget.
 
-The demo seed has one household with Aisyah (owner), Daniel (adult), Sofia (child), Mak Som (cared for), Ravi (guest)
-and Farah (caregiver, who owns a separate household of her own), and three devices: `kitchen-echo`, `bedroom-echo`
-(Mak Som's) and `living-firetv`.
+The demo seed has one household with Emma (owner), Daniel (adult), Sofia (child), Ruth (cared for), Tom (guest)
+and Nina (caregiver, who owns a separate household of her own), and three devices: `kitchen-echo`, `bedroom-echo`
+(Ruth's) and `living-firetv`.
 
 ## Connect an assistant
 
@@ -55,9 +55,9 @@ claude mcp add --transport http recall http://localhost:3100/mcp --header "Autho
 
 Things to try, speaking as someone from the demo household:
 
-- *"I'm Aisyah — what should we cook tonight?"*, then the same as Daniel, then without saying who you are.
+- *"I'm Emma — what should we cook tonight?"*, then the same as Daniel, then without saying who you are.
 - *"I'm Daniel, remember I'm off coffee until Wednesday"*, then ask again a few seconds later.
-- *"Aisyah here. No music after 10pm on school nights."* Then, as Daniel: *"Always play music when I work out."*
+- *"Emma here. No music after 10pm on school nights."* Then, as Daniel: *"Always play music when I work out."*
 - *"What do you know about me?"* and *"Do you know anything about my uncle?"*
 - *"Forget that I'm off coffee."*
 
@@ -96,7 +96,7 @@ controls over it.
   check-ins, and the alerts that went out.
 
 Sign in with a magic link. In development the mailer prints the link in the Recall server log; the demo owner is
-`aisyah@demo.recall.local`.
+`emma@demo.recall.local`.
 
 ## Simulated Alexa+
 
@@ -122,7 +122,7 @@ Replays are JSON streams in [`apps/simulator/replays`](apps/simulator/replays). 
 
 Every tool that concerns a person takes `speaker` and an optional `speaker_confidence` (a voice-match score). Below
 0.7 the speaker is treated as unknown: only household memory is used, and `session_brief` returns `speaker_candidate`
-so the assistant can ask "Is this Aisyah?". Every read carries the device-local date and time.
+so the assistant can ask "Is this Emma?". Every read carries the device-local date and time.
 
 | Tool | What it does |
 |---|---|

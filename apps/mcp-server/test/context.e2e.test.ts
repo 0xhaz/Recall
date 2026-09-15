@@ -34,7 +34,7 @@ beforeAll(async () => {
   t = await startApp();
   hh = await t.createHousehold([
     ['Alice', 'owner'],
-    ['Som', 'adult'],
+    ['Ruth', 'adult'],
   ]);
   client = await t.mcp(hh.token);
   contexts = t.app.get(ContextService);
@@ -84,9 +84,9 @@ describe('context engine', () => {
     expect(brief.quiet_hours.active).toBe(false);
     expect(brief).not.toHaveProperty('not_yet_available');
 
-    // Som isn't working out: a personal context stays with its person.
-    const som = await callTool<ContextReading>(client, 'get_context', { speaker: 'Som' });
-    expect(som.contexts.some((c) => c.context === 'workout')).toBe(false);
+    // Ruth isn't working out: a personal context stays with its person.
+    const ruth = await callTool<ContextReading>(client, 'get_context', { speaker: 'Ruth' });
+    expect(ruth.contexts.some((c) => c.context === 'workout')).toBe(false);
   });
 
   it('suggests music for the workout, and learns from skips in that context only', async () => {
@@ -129,7 +129,7 @@ describe('context engine', () => {
   });
 
   it('makes quiet hours when someone goes to sleep', async () => {
-    await ingest('som-phone', [report(0, 'sleep.start', 'Som')]);
+    await ingest('ruth-phone', [report(0, 'sleep.start', 'Ruth')]);
     await contexts.evaluate(hh.id, later(200));
     const asleep = await contexts.evaluate(hh.id, later(321));
     expect(asleep.quiet_hours).toEqual({ active: true, because: ['someone is asleep'] });

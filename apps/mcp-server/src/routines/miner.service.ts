@@ -3,11 +3,11 @@ import {
   type DayPattern,
   dayMatches,
   formatMinute,
-  MALAYSIA_HOLIDAYS_2026,
   type MinedRoutine,
   mineRoutines,
   type Occurrence,
   temporalStamp,
+  US_HOLIDAYS_2026,
 } from '@recall/core';
 import { Db } from '../db/db.js';
 import { lockHousehold } from '../events/event-log.service.js';
@@ -52,7 +52,7 @@ export class RoutineMiner {
         WHERE household_id = $1 AND local_date >= $2::date - $3::int AND local_date < $2::date`,
       [householdId, today, WINDOW_DAYS],
     );
-    const mined = mineRoutines(occurrences, { today, windowDays: WINDOW_DAYS, holidays: MALAYSIA_HOLIDAYS_2026 });
+    const mined = mineRoutines(occurrences, { today, windowDays: WINDOW_DAYS, holidays: US_HOLIDAYS_2026 });
 
     return this.db.transaction(async (tx) => {
       await lockHousehold(tx, householdId);
@@ -124,7 +124,7 @@ export class RoutineMiner {
       [householdId, personId],
     );
     const local = localMinute(timezone, now);
-    const today = !MALAYSIA_HOLIDAYS_2026.has(local.date);
+    const today = !US_HOLIDAYS_2026.has(local.date);
     return rows.flatMap((r) => {
       const dueIn = r.center_minute - local.minute;
       const due = today && dayMatches(r.days as DayPattern, local.date) && dueIn >= -15 && dueIn <= DUE_SOON_MIN;

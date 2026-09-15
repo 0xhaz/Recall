@@ -160,14 +160,14 @@ describe('forget', () => {
   });
 
   it('forgets the history a fact replaced, too', async () => {
-    await tell('Bob', 'I live in Ipoh', [draft('Bob lives in Ipoh')]);
-    await tell('Bob', 'I moved to Penang', [draft('Bob lives in Penang')], { verdict: 'updates', match: 1 });
+    await tell('Bob', 'I live in Austin', [draft('Bob lives in Austin')]);
+    await tell('Bob', 'I moved to Boston', [draft('Bob lives in Boston')], { verdict: 'updates', match: 1 });
 
-    const [penang] = await matches('Bob', 'Penang');
+    const [penang] = await matches('Bob', 'Boston');
     const result = await forget({ speaker: 'Bob', fact_ids: [penang?.id] });
-    expect(result.forgotten.map((f) => f.content)).toEqual(['Bob lives in Penang']);
-    expect(await leaks('Ipoh')).toEqual([]);
-    expect(await leaks('Penang')).toEqual([]);
+    expect(result.forgotten.map((f) => f.content)).toEqual(['Bob lives in Boston']);
+    expect(await leaks('Austin')).toEqual([]);
+    expect(await leaks('Boston')).toEqual([]);
   });
 
   it('keeps an older statement from bringing a forgotten fact back, but not a newer one', async () => {

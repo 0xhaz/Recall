@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PresenceWatcher } from '../src/routines/presence.service.js';
 import { callTool, personId, startApp, type TestApp, type TestHousehold } from './support.js';
 
-const TZ = 'Asia/Kuala_Lumpur';
+const TZ = 'America/New_York';
 
 interface Brief {
   facts: { content: string }[];
@@ -45,7 +45,7 @@ const turn = (session: string, role: 'user' | 'assistant', text: string, seconds
 async function fact(content: string, scope: 'person' | 'household', owner: string, origin: string) {
   await t.db.query(
     `INSERT INTO fact (id, household_id, region, scope_type, scope_id, type, content, source, confidence, sensitivity_tag)
-     VALUES ($1, $2, 'my', $3, $4, 'semantic', $5, $6, 0.9, 'none')`,
+     VALUES ($1, $2, 'us', $3, $4, 'semantic', $5, $6, 0.9, 'none')`,
     [randomUUID(), hh.id, scope, owner, content, JSON.stringify({ origin })],
   );
 }
@@ -53,9 +53,9 @@ async function fact(content: string, scope: 'person' | 'household', owner: strin
 beforeAll(async () => {
   t = await startApp();
   hh = await t.createHousehold([
-    ['Aisyah', 'owner'],
-    ['Som', 'cared_for'],
-    ['Farah', 'caregiver'],
+    ['Emma', 'owner'],
+    ['Ruth', 'cared_for'],
+    ['Nina', 'caregiver'],
     ['Daniel', 'adult'],
   ]);
   client = await t.mcp(hh.token);
@@ -65,13 +65,13 @@ afterAll(() => t?.close());
 
 describe('care mode', () => {
   it('tells a person in care only what a caregiver entered', async () => {
-    const som = personId(hh, 'Som');
-    await fact('Farah visits on Saturdays', 'person', som, 'caregiver');
-    await fact('Som said her son is visiting today', 'person', som, 'extraction');
+    const ruth = personId(hh, 'Ruth');
+    await fact('Nina visits on Saturdays', 'person', ruth, 'caregiver');
+    await fact('Ruth said her son is visiting today', 'person', ruth, 'extraction');
     await fact('Family dinner is at 19:30', 'household', hh.id, 'seed');
 
-    expect((await brief('Som', 'who is visiting')).facts.map((f) => f.content)).toEqual(['Farah visits on Saturdays']);
-    expect((await brief('Aisyah', 'dinner')).facts.map((f) => f.content)).toContain('Family dinner is at 19:30');
+    expect((await brief('Ruth', 'who is visiting')).facts.map((f) => f.content)).toEqual(['Nina visits on Saturdays']);
+    expect((await brief('Emma', 'dinner')).facts.map((f) => f.content)).toContain('Family dinner is at 19:30');
   });
 
   it('answers a repeated question the same way all day in care mode, and flags only a loop otherwise', async () => {
@@ -80,14 +80,14 @@ describe('care mode', () => {
     await callTool(client, 'ingest_events', {
       device: { id: 'bedroom-echo' },
       events: [
-        turn(morning, 'user', 'Is Farah coming today?', 300, 'Som'),
-        turn(morning, 'assistant', 'Yes, Farah is coming at 3pm.', 295, 'Som'),
-        turn(later, 'user', 'What time is it?', 60, 'Som'),
-        turn(later, 'assistant', "It's ten past ten.", 58, 'Som'),
+        turn(morning, 'user', 'Is Nina coming today?', 300, 'Ruth'),
+        turn(morning, 'assistant', 'Yes, Nina is coming at 3pm.', 295, 'Ruth'),
+        turn(later, 'user', 'What time is it?', 60, 'Ruth'),
+        turn(later, 'assistant', "It's ten past ten.", 58, 'Ruth'),
       ],
     });
-    const again = await brief('Som', 'Is Farah coming today?', 'bedroom-echo');
-    expect(again.repeat).toMatchObject({ asked_before: 1, last_answer: 'Yes, Farah is coming at 3pm.' });
+    const again = await brief('Ruth', 'Is Nina coming today?', 'bedroom-echo');
+    expect(again.repeat).toMatchObject({ asked_before: 1, last_answer: 'Yes, Nina is coming at 3pm.' });
     expect(again.care?.rules.join(' ')).toContain('Never say it was already asked');
 
     const phone = randomUUID();
@@ -107,30 +107,30 @@ describe('care mode', () => {
   });
 
   it('corrects for safety by default, redirects where the caregiver says, and only the caregiver says', async () => {
-    const stove = await brief('Som', 'Is the stove on?');
+    const stove = await brief('Ruth', 'Is the stove on?');
     expect(stove.care?.policies).toEqual([expect.objectContaining({ topic: 'stove and cooking', policy: 'correct' })]);
-    expect(stove.care?.shared_with).toEqual(['Farah can see your check-ins and your reminders.']);
+    expect(stove.care?.shared_with).toEqual(['Nina can see your check-ins and your reminders.']);
 
-    const policy = { person: 'Som', topic: 'Ahmad', keywords: ['Ahmad', 'husband'], policy: 'redirect' };
+    const policy = { person: 'Ruth', topic: 'Ahmad', keywords: ['Ahmad', 'husband'], policy: 'redirect' };
     const refused = await callTool<{ saved: boolean; refused?: string }>(client, 'set_care_policy', {
       speaker: 'Daniel',
       ...policy,
     });
     expect(refused).toMatchObject({ saved: false, refused: 'not_allowed' });
     const saved = await callTool<{ saved: boolean }>(client, 'set_care_policy', {
-      speaker: 'Farah',
+      speaker: 'Nina',
       ...policy,
       guidance: 'Talk about his garden. Only say he has passed if she asks directly.',
     });
     expect(saved.saved).toBe(true);
 
-    const ahmad = await brief('Som', 'Where is Ahmad?');
+    const ahmad = await brief('Ruth', 'Where is Ahmad?');
     expect(ahmad.care?.policies).toEqual([
       expect.objectContaining({ topic: 'Ahmad', policy: 'redirect', set_by: 'caregiver' }),
     ]);
     const notCaredFor = await callTool<{ refused?: string }>(client, 'set_care_policy', {
-      speaker: 'Farah',
-      person: 'Aisyah',
+      speaker: 'Nina',
+      person: 'Emma',
       topic: 'Anything',
       policy: 'correct',
     });
@@ -140,10 +140,10 @@ describe('care mode', () => {
   it('tells the carers about a door opening at night once, and not about movement that is usual then', async () => {
     const today = temporalStamp(TZ).local_date;
     let night = today;
-    let at = new Date(`${night}T02:10:00+08:00`);
+    let at = new Date(`${night}T02:10:00-04:00`);
     if (at.getTime() > Date.now()) {
       night = addDays(today, -1);
-      at = new Date(`${night}T02:10:00+08:00`);
+      at = new Date(`${night}T02:10:00-04:00`);
     }
     await callTool(client, 'ingest_events', {
       device: { id: 'front-door', location: 'Front door' },
@@ -161,7 +161,7 @@ describe('care mode', () => {
       [hh.id],
     );
     expect(rows).toEqual([
-      { audience: 'carers', text: 'The door opened (Front door) at 02:10, which is unusual at night. Som may be up.' },
+      { audience: 'carers', text: 'The door opened (Front door) at 02:10, which is unusual at night. Ruth may be up.' },
     ]);
 
     // Movement around 23:00 on most nights is a habit, not a worry.
@@ -169,11 +169,11 @@ describe('care mode', () => {
     for (const back of [2, 4, 6]) {
       await t.db.query(
         `INSERT INTO activity (household_id, region, kind, local_date, local_minute, at)
-         VALUES ($1, 'my', 'motion.detected', $2, $3, now())`,
+         VALUES ($1, 'us', 'motion.detected', $2, $3, now())`,
         [hh.id, addDays(evening, -back), 23 * 60],
       );
     }
-    const late = new Date(`${evening}T23:05:00+08:00`);
+    const late = new Date(`${evening}T23:05:00-04:00`);
     await callTool(client, 'ingest_events', {
       device: { id: 'hall-sensor', location: 'Hall' },
       events: [report('motion.detected', late.getTime(), null)],

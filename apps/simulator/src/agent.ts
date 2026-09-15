@@ -174,7 +174,7 @@ export function digest(b: Brief): Record<string, unknown> {
         : 'unknown: ask who is speaking before anything personal',
     rules: b.rules?.map((r) => r.text),
     // Split by whose fact it is, not just ordered by it: a small model reading a flat list treats
-    // "Aisyah is vegetarian" and "the usual takeaway is Warung Mak Teh" as equally good answers to
+    // "Emma is vegetarian" and "the usual takeaway is Napoli Pizza" as equally good answers to
     // "what should we cook", and picks the one that sounds most like dinner.
     yours_first: b.facts?.filter((f) => f.scope === 'person').map(factText),
     about_the_home: b.facts?.filter((f) => f.scope !== 'person').map(factText),

@@ -2,13 +2,13 @@
 // them, a failing routine is flagged, and a missed check-in asks the person before the carers hear.
 import { randomUUID } from 'node:crypto';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { addDays, formatHlc, formatMinute, MALAYSIA_HOLIDAYS_2026, type SyncEvent, temporalStamp } from '@recall/core';
+import { addDays, formatHlc, formatMinute, type SyncEvent, temporalStamp, US_HOLIDAYS_2026 } from '@recall/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AbsenceWatcher } from '../src/routines/absence.service.js';
 import { RoutineMiner } from '../src/routines/miner.service.js';
 import { callTool, personId, startApp, type TestApp, type TestHousehold } from './support.js';
 
-const TZ = 'Asia/Kuala_Lumpur';
+const TZ = 'America/New_York';
 const JITTER = [-6, 4, 0, 8, -3, 5, -8, 2, 6, -4, 1, -2, 7, -5, 3, 0, -7, 4, -1, 5, -3];
 const today = temporalStamp(TZ).local_date;
 
@@ -18,7 +18,7 @@ let client: Client;
 let counter = 0;
 let reported = 0;
 
-const localAt = (date: string, minute: number) => new Date(`${date}T${formatMinute(minute)}:00+08:00`);
+const localAt = (date: string, minute: number) => new Date(`${date}T${formatMinute(minute)}:00-04:00`);
 const isWeekend = (d: string) => [0, 6].includes(new Date(`${d}T00:00:00Z`).getUTCDay());
 
 function report(date: string, minute: number, kind: string, person: string, device: string, payload = {}) {
@@ -35,15 +35,15 @@ beforeAll(async () => {
   t = await startApp();
   hh = await t.createHousehold([
     ['Alice', 'owner'],
-    ['Som', 'cared_for'],
-    ['Farah', 'caregiver'],
+    ['Ruth', 'cared_for'],
+    ['Nina', 'caregiver'],
   ]);
   client = await t.mcp(hh.token);
 
   // Three weeks of mornings: Alice's coffee then the news on weekdays (the last two coffees failed),
-  // and two weeks of Som saying good morning around 07:30.
+  // and two weeks of Ruth saying good morning around 07:30.
   const past = Array.from({ length: 21 }, (_, i) => addDays(today, i - 21));
-  const weekdays = past.filter((d) => !isWeekend(d) && !MALAYSIA_HOLIDAYS_2026.has(d));
+  const weekdays = past.filter((d) => !isWeekend(d) && !US_HOLIDAYS_2026.has(d));
   const failed = new Set(weekdays.slice(-2));
   const kitchen = weekdays.flatMap((d, i) => [
     report(
@@ -58,7 +58,7 @@ beforeAll(async () => {
   ]);
   const bedroom = past
     .slice(-14)
-    .map((d, i) => report(d, 450 + (JITTER[i] ?? 0), 'checkin.morning', 'Som', 'bedroom-echo'));
+    .map((d, i) => report(d, 450 + (JITTER[i] ?? 0), 'checkin.morning', 'Ruth', 'bedroom-echo'));
   await callTool(client, 'ingest_events', { device: { id: 'kitchen-echo' }, events: kitchen });
   await callTool(client, 'ingest_events', { device: { id: 'bedroom-echo' }, events: bedroom });
   reported = kitchen.length + bedroom.length;
@@ -99,7 +99,7 @@ describe('routine miner', () => {
     });
     expect(Math.abs((coffee?.center_minute ?? 0) - 430)).toBeLessThanOrEqual(5);
     expect(rows.find((r) => r.kind === 'checkin.morning')).toMatchObject({
-      person_id: personId(hh, 'Som'),
+      person_id: personId(hh, 'Ruth'),
       days: 'daily',
     });
 
@@ -109,11 +109,11 @@ describe('routine miner', () => {
   });
 });
 
-describe.skipIf(MALAYSIA_HOLIDAYS_2026.has(today))('check-ins', () => {
+describe.skipIf(US_HOLIDAYS_2026.has(today))('check-ins', () => {
   it('asks the person first, then tells the carers, and closes both when the person checks in', async () => {
     const watcher = t.app.get(AbsenceWatcher);
     expect(await watcher.check(localAt(today, 470))).toEqual({ prompted: 0, escalated: 0 }); // 07:50: not late yet
-    expect(await watcher.check(localAt(today, 495))).toEqual({ prompted: 1, escalated: 0 }); // 08:15: ask Som
+    expect(await watcher.check(localAt(today, 495))).toEqual({ prompted: 1, escalated: 0 }); // 08:15: ask Ruth
     expect(await watcher.check(localAt(today, 505))).toEqual({ prompted: 0, escalated: 0 }); // asked 10 minutes ago
     expect(await watcher.check(localAt(today, 530))).toEqual({ prompted: 0, escalated: 1 }); // 08:50: tell the carers
     expect(await watcher.check(localAt(today, 560))).toEqual({ prompted: 0, escalated: 0 }); // never twice
@@ -127,16 +127,16 @@ describe.skipIf(MALAYSIA_HOLIDAYS_2026.has(today))('check-ins', () => {
     expect(notices[0]).toEqual({
       kind: 'checkin_prompt',
       audience: 'person',
-      text: 'Good morning, Som. How are you today?',
+      text: 'Good morning, Ruth. How are you today?',
       device_id: 'bedroom-echo',
     });
     expect(notices[1]).toMatchObject({ kind: 'missed_checkin', audience: 'carers' });
     expect(notices[1]?.text).toMatch(
-      /^Som hasn't checked in this morning\. Usually around 07:\d\d; asked at 08:15, no reply yet\.$/,
+      /^Ruth hasn't checked in this morning\. Usually around 07:\d\d; asked at 08:15, no reply yet\.$/,
     );
 
     const done = await callTool<{ logged: boolean; told: string; carers_updated: boolean }>(client, 'checkin', {
-      speaker: 'Som',
+      speaker: 'Ruth',
       kind: 'morning',
       device: 'bedroom-echo',
     });
@@ -147,7 +147,7 @@ describe.skipIf(MALAYSIA_HOLIDAYS_2026.has(today))('check-ins', () => {
       [hh.id],
     );
     expect(open.map((n) => n.kind)).toEqual(['checkin', 'checkin_followup']);
-    expect((await callTool<{ told: string }>(client, 'checkin', { speaker: 'Som', kind: 'morning' })).told).toBe(
+    expect((await callTool<{ told: string }>(client, 'checkin', { speaker: 'Ruth', kind: 'morning' })).told).toBe(
       'already_told_today',
     );
     expect(await watcher.check(localAt(today, 600))).toEqual({ prompted: 0, escalated: 0 });

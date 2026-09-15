@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { type DayPattern, dayMatches, formatMinute, MALAYSIA_HOLIDAYS_2026 } from '@recall/core';
+import { type DayPattern, dayMatches, formatMinute, US_HOLIDAYS_2026 } from '@recall/core';
 import { Db } from '../db/db.js';
 import { lockHousehold } from '../events/event-log.service.js';
 import { localMinute } from './activity.js';
@@ -54,7 +54,7 @@ export class AbsenceWatcher {
     const report: AbsenceReport = { prompted: 0, escalated: 0 };
     for (const r of rows) {
       const local = localMinute(r.timezone, now);
-      if (MALAYSIA_HOLIDAYS_2026.has(local.date) || !dayMatches(r.days, local.date)) continue;
+      if (US_HOLIDAYS_2026.has(local.date) || !dayMatches(r.days, local.date)) continue;
       const due = r.center_minute + Math.max(MIN_GRACE_MIN, 2 * r.spread_minutes);
       if (local.minute < due) continue;
 

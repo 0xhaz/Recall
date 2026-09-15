@@ -28,7 +28,7 @@ import { ApiError, getProfile, type Profile } from '@/lib/recall';
 
 const SAID = [
   {
-    who: 'Aisyah',
+    who: 'Emma',
     role: 'vegetarian',
     tone: 'text-cyan-300',
     asked: 'What should we cook tonight?',

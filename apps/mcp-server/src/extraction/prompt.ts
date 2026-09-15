@@ -43,15 +43,15 @@ const EXTRACTION_SYSTEM = [
 const EXAMPLE = {
   speaker: 'Daniel',
   statement:
-    "We always order from Warung Mak Teh on Fridays. I've started running in the mornings, and I'm off coffee this week. Can you set a timer?",
-  timezone: 'Asia/Kuala_Lumpur',
-  now: new Date('2026-09-14T02:00:00Z'), // Monday morning in Kuala Lumpur
+    "We always order from Napoli Pizza on Fridays. I've started running in the mornings, and I'm off coffee this week. Can you set a timer?",
+  timezone: 'America/New_York',
+  now: new Date('2026-09-14T14:00:00Z'), // Monday morning in Brooklyn
 };
 
 const EXAMPLE_REPLY = {
   facts: [
     {
-      content: 'The household usually orders from Warung Mak Teh on Fridays',
+      content: 'The household usually orders from Napoli Pizza on Fridays',
       type: 'procedural',
       scope: 'household',
       firm: true,

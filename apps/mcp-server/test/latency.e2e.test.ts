@@ -27,7 +27,7 @@ beforeAll(async () => {
     const [scope, owner] = i % 3 === 0 ? ['household', hh.id] : ['person', alice];
     await t.db.query(
       `INSERT INTO fact (household_id, region, scope_type, scope_id, type, content, confidence)
-       VALUES ($1, 'my', $2, $3, 'semantic', $4, 0.8)`,
+       VALUES ($1, 'us', $2, $3, 'semantic', $4, 0.8)`,
       [hh.id, scope, owner, `Fact ${i} about dinner, music and the garden`],
     );
   }

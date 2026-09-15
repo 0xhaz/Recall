@@ -32,18 +32,18 @@ describe('detectRepeat', () => {
   });
 
   it('in care mode, any repeat gets the last answer to give again, warmly', () => {
-    const turns = [say('user', 'Is Farah coming today?'), say('assistant', 'Yes, Farah is coming at 3pm.')];
-    const repeat = detectRepeat('Is Farah coming today', turns, 'cared_for');
-    expect(repeat).toMatchObject({ asked_before: 1, last_answer: 'Yes, Farah is coming at 3pm.' });
+    const turns = [say('user', 'Is Nina coming today?'), say('assistant', 'Yes, Nina is coming at 3pm.')];
+    const repeat = detectRepeat('Is Nina coming today', turns, 'cared_for');
+    expect(repeat).toMatchObject({ asked_before: 1, last_answer: 'Yes, Nina is coming at 3pm.' });
     expect(repeat?.guidance).toContain('Never say it was asked before');
   });
 
   it("doesn't count the request itself when it is already in the log", () => {
-    expect(detectRepeat('Is Farah coming today?', [say('user', 'Is Farah coming today?')], 'cared_for')).toBeNull();
+    expect(detectRepeat('Is Nina coming today?', [say('user', 'Is Nina coming today?')], 'cared_for')).toBeNull();
   });
 
   it('matches the same question in other words, not a different one', () => {
-    expect(sameQuestion('Is Farah coming?', 'is farah coming today')).toBe(true);
+    expect(sameQuestion('Is Nina coming?', 'is nina coming today')).toBe(true);
     expect(sameQuestion('What time is it?', 'What day is it?')).toBe(false);
   });
 });
@@ -64,8 +64,8 @@ describe('care policies', () => {
   });
 
   it('says plainly what each caregiver can see', () => {
-    expect(sharedWith([{ name: 'Farah', grants: ['edit_care_plan', 'view_daily', 'enter_facts'] }])).toEqual([
-      'Farah can see your check-ins and your reminders.',
+    expect(sharedWith([{ name: 'Nina', grants: ['edit_care_plan', 'view_daily', 'enter_facts'] }])).toEqual([
+      'Nina can see your check-ins and your reminders.',
     ]);
   });
 });
@@ -80,8 +80,8 @@ describe('presence', () => {
   });
 
   it('tells the carers what happened, where and when', () => {
-    expect(presenceAlertText('door.open', 'Front door', '02:14', ['Mak Som'])).toBe(
-      'The door opened (Front door) at 02:14, which is unusual at night. Mak Som may be up.',
+    expect(presenceAlertText('door.open', 'Front door', '02:14', ['Ruth'])).toBe(
+      'The door opened (Front door) at 02:14, which is unusual at night. Ruth may be up.',
     );
   });
 });

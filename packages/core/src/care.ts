@@ -49,7 +49,7 @@ const FILLER = new Set([
   'at',
   'for',
   'me',
-  'my',
+  'us',
   'i',
   'you',
   'your',
@@ -214,7 +214,7 @@ const SHARED_BY_GRANT: [Grant, string][] = [
 const listed = (xs: readonly string[]) =>
   xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`;
 
-/** Said plainly to the person, never covert (design.md §5): "Farah can see your check-ins and your reminders." */
+/** Said plainly to the person, never covert (design.md §5): "Nina can see your check-ins and your reminders." */
 export function sharedWith(caregivers: readonly { name: string; grants: readonly Grant[] }[]): string[] {
   return caregivers.map((c) => {
     const what = SHARED_BY_GRANT.filter(([grant]) => c.grants.includes(grant)).map(([, label]) => label);

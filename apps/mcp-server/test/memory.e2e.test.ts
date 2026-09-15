@@ -22,8 +22,8 @@ beforeAll(async () => {
   ]);
   await t.db.query(
     `INSERT INTO fact (household_id, region, scope_type, scope_id, type, content, confidence) VALUES
-       ($1, 'my', 'person', $2, 'semantic', 'Alice is vegetarian', 0.95),
-       ($1, 'my', 'household', $1, 'semantic', 'Pizza night is on Fridays', 0.8)`,
+       ($1, 'us', 'person', $2, 'semantic', 'Alice is vegetarian', 0.95),
+       ($1, 'us', 'household', $1, 'semantic', 'Pizza night is on Fridays', 0.8)`,
     [hh.id, personId(hh, 'Alice')],
   );
   client = await t.mcp(hh.token);
@@ -72,7 +72,7 @@ describe('session_brief', () => {
       'session_brief',
       { speaker: 'alice', hint: 'what should we cook tonight?' },
     );
-    expect(brief.temporal.timezone).toBe('Asia/Kuala_Lumpur');
+    expect(brief.temporal.timezone).toBe('America/New_York');
     expect(brief.ask_who_is_speaking).toBe(false);
     expect(brief.facts.map((f) => f.content).sort()).toEqual(['Alice is vegetarian', 'Pizza night is on Fridays']);
   });

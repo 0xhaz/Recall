@@ -7,12 +7,12 @@ const fact = (content: string, extra: Partial<ExplainFact> = {}): ExplainFact =>
   scope: 'person',
   confidence: 0.9,
   source: { origin: 'extraction', speaker_id: 'alice' },
-  valid_from: '2026-09-11T03:00:00Z',
+  valid_from: '2026-09-11T15:00:00Z',
   expires_at: null,
   ...extra,
 });
 
-const ctx = { speakerId: 'alice', timezone: 'Asia/Kuala_Lumpur', pending: 0 };
+const ctx = { speakerId: 'alice', timezone: 'America/New_York', pending: 0 };
 
 describe('buildExplanation', () => {
   it('says plainly when nothing is stored about the subject', () => {
@@ -24,11 +24,11 @@ describe('buildExplanation', () => {
   it('labels where each fact came from and how sure it is', () => {
     const result = buildExplanation(
       [
-        fact('Aisyah is vegetarian'),
-        fact('Aisyah liked a jazz playlist', { confidence: 0.5 }),
-        fact('Mak Som takes her tea with condensed milk', {
+        fact('Emma is vegetarian'),
+        fact('Emma liked a jazz playlist', { confidence: 0.5 }),
+        fact('Ruth takes her tea with condensed milk', {
           source: { origin: 'caregiver' },
-          expires_at: '2026-09-16T15:59:59Z',
+          expires_at: '2026-09-17T03:59:59Z',
         }),
         fact('Family dinner is at 19:30', { scope: 'household', source: { origin: 'seed' } }),
       ],
@@ -40,7 +40,7 @@ describe('buildExplanation', () => {
       ['entered by a caregiver', 'you said so', '16 Sept'],
     ]);
     expect(result.household[0]?.source).toBe('added when the household was set up');
-    expect(result.spoken).toContain('About you: Aisyah is vegetarian (you told me, 11 Sept)');
+    expect(result.spoken).toContain('About you: Emma is vegetarian (you told me, 11 Sept)');
     expect(result.spoken).toContain('For the whole household: Family dinner is at 19:30');
     expect(result.spoken.endsWith(NEVER_STORED)).toBe(true);
   });

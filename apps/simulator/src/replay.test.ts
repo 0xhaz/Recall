@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { RecallApi } from './recall.js';
 import { expandHistory, expandLive, type HistoryReplay, type LiveReplay, runReplay } from './replay.js';
 
-const TZ = 'Asia/Kuala_Lumpur';
-const NOW = new Date('2026-10-05T04:00:00Z'); // Monday 12:00 in Kuala Lumpur
+const TZ = 'America/New_York';
+const NOW = new Date('2026-10-05T04:00:00Z'); // Monday 12:00 in Brooklyn
 
 const coffee: HistoryReplay = {
   name: 'coffee',
@@ -15,13 +15,13 @@ const coffee: HistoryReplay = {
     {
       device: 'kitchen-echo',
       kind: 'coffee_machine.start',
-      person: 'Aisyah',
+      person: 'Emma',
       time: '07:10',
       jitter_min: 8,
       weekdays_only: true,
       failed_last: 2,
     },
-    { device: 'bedroom-echo', kind: 'checkin.morning', person: 'Mak Som', time: '07:30', last_days: 14 },
+    { device: 'bedroom-echo', kind: 'checkin.morning', person: 'Ruth', time: '07:30', last_days: 14 },
   ],
 };
 
@@ -57,11 +57,11 @@ describe('expandLive', () => {
       description: 'test',
       mode: 'live',
       events: [{ at_s: 7, device: 'phone', kind: 'phone.charging', payload: { charging: true } }],
-      series: [{ device: 'watch', kind: 'hr.sample', person: 'Aisyah', field: 'bpm', every_s: 5, values: [80, 120] }],
+      series: [{ device: 'watch', kind: 'hr.sample', person: 'Emma', field: 'bpm', every_s: 5, values: [80, 120] }],
     };
     expect(expandLive(run)).toEqual([
-      { device: 'watch', kind: 'hr.sample', person: 'Aisyah', payload: { bpm: 80 }, at_s: 0 },
-      { device: 'watch', kind: 'hr.sample', person: 'Aisyah', payload: { bpm: 120 }, at_s: 5 },
+      { device: 'watch', kind: 'hr.sample', person: 'Emma', payload: { bpm: 80 }, at_s: 0 },
+      { device: 'watch', kind: 'hr.sample', person: 'Emma', payload: { bpm: 120 }, at_s: 5 },
       { at_s: 7, device: 'phone', kind: 'phone.charging', payload: { charging: true } },
     ]);
   });

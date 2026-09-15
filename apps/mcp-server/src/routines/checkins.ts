@@ -1,5 +1,5 @@
 // Wording for check-ins. Kept short and plain, and never on the person's behalf: the family hears
-// "Mak Som says good morning" only when Mak Som said it.
+// "Ruth says good morning" only when Ruth said it.
 
 export function checkinName(kind: string): string {
   return kind.replace(/^checkin\./, '');

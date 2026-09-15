@@ -38,7 +38,7 @@ export interface Speaker {
 export interface Identity {
   /** Trusted speaker, or null: then only household facts are used. */
   speaker: Speaker | null;
-  /** A matching name below the confidence threshold, so the assistant can ask "is this Aisyah?". */
+  /** A matching name below the confidence threshold, so the assistant can ask "is this Emma?". */
   candidate: string | null;
 }
 
@@ -139,7 +139,7 @@ function blockedMessage(categories: BlockedCategory[], partlyStored: boolean): s
  * from the demo household). Titan has no query instruction, so everything sits lower. Statements
  * separate cleanly: related 0.23-0.77 against unrelated at most 0.10. Questions overlap at the
  * margin: related 0.07-0.69 against unrelated up to 0.12. At 0.12 every true match is kept but one
- * — "what should we cook tonight?" against "Aisyah is vegetarian", at 0.073 — and no false one is
+ * — "what should we cook tonight?" against "Emma is vegetarian", at 0.073 — and no false one is
  * admitted. That pair scored 0.313 on qwen, below its floor too, so nothing is lost that was held.
  */
 const FLOORS = {

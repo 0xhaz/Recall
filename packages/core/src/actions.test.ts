@@ -41,8 +41,8 @@ const base = (over: Partial<PreflightInput> = {}): PreflightInput => ({
 const order = (minutesAgo: number, extra: Partial<PastOrder> = {}): PastOrder => ({
   action_id: `o${minutesAgo}`,
   intent: 'order.food',
-  venue: 'Warung Mak Teh',
-  address: '12 Jalan Setiawangsa',
+  venue: 'Napoli Pizza',
+  address: '12 Bergen Street',
   amount: 30,
   items: [],
   at: new Date(NOW.getTime() - minutesAgo * 60_000).toISOString(),
@@ -116,24 +116,22 @@ describe('evaluatePreflight', () => {
   });
 
   it('checks the delivery address against the one on record', () => {
-    const knownAddresses = [{ fact_id: 'f1', content: 'Home delivery address is 12 Jalan Setiawangsa, KL' }];
+    const knownAddresses = [{ fact_id: 'f1', content: 'Home delivery address is 12 Bergen Street, KL' }];
     const orders = [order(3 * 24 * 60)];
     const home = evaluatePreflight(
-      base({ ...food({ venue: 'Warung Mak Teh', address: '12 Jalan Setiawangsa' }), knownAddresses, orders }),
+      base({ ...food({ venue: 'Napoli Pizza', address: '12 Bergen Street' }), knownAddresses, orders }),
     );
     expect(home.decision).toBe('allow');
     const office = evaluatePreflight(
-      base({ ...food({ venue: 'Warung Mak Teh', address: 'Menara KL, Level 30' }), knownAddresses, orders }),
+      base({ ...food({ venue: 'Napoli Pizza', address: 'Menara KL, Level 30' }), knownAddresses, orders }),
     );
     expect(office.confirm).toEqual([expect.objectContaining({ check: 'address', evidence: { fact_id: 'f1' } })]);
   });
 
   it('knows a venue from memory before its first order through Recall', () => {
-    expect(evaluatePreflight(base(food({ venue: 'Warung Mak Teh' }))).confirm.map((c) => c.check)).toEqual(['venue']);
-    const usual = { fact_id: 'f4', content: "The family's usual weeknight takeaway is Warung Mak Teh" };
-    expect(evaluatePreflight(base({ ...food({ venue: 'Warung Mak Teh' }), venueFacts: [usual] })).decision).toBe(
-      'allow',
-    );
+    expect(evaluatePreflight(base(food({ venue: 'Napoli Pizza' }))).confirm.map((c) => c.check)).toEqual(['venue']);
+    const usual = { fact_id: 'f4', content: "The family's usual weeknight takeaway is Napoli Pizza" };
+    expect(evaluatePreflight(base({ ...food({ venue: 'Napoli Pizza' }), venueFacts: [usual] })).decision).toBe('allow');
   });
 
   it('catches details that disagree with the request itself', () => {
@@ -141,19 +139,19 @@ describe('evaluatePreflight', () => {
       base({
         action: {
           intent: 'order.food',
-          summary: 'Order dinner from the usual place to Menara KL, level 30',
+          summary: 'Order dinner from the usual place to the Midtown office, level 30',
           topics: [],
-          details: { venue: 'Warung Mak Teh', address: '12 Jalan Setiawangsa, Kuala Lumpur' },
+          details: { venue: 'Napoli Pizza', address: '412 Bergen Street, Brooklyn' },
         },
-        venueFacts: [{ fact_id: 'f4', content: 'The usual takeaway is Warung Mak Teh' }],
-        knownAddresses: [{ fact_id: 'f8', content: 'Home delivery address is 12 Jalan Setiawangsa, Kuala Lumpur' }],
+        venueFacts: [{ fact_id: 'f4', content: 'The usual takeaway is Napoli Pizza' }],
+        knownAddresses: [{ fact_id: 'f8', content: 'Home delivery address is 412 Bergen Street, Brooklyn' }],
       }),
     );
     expect(swapped.confirm).toEqual([
       {
         check: 'address',
         message:
-          'The request says “Menara KL, level 30”, but this would go to 12 Jalan Setiawangsa, Kuala Lumpur. Which one?',
+          'The request says “the Midtown office, level 30”, but this would go to 412 Bergen Street, Brooklyn. Which one?',
       },
     ]);
     const toHome = evaluatePreflight(
@@ -162,9 +160,9 @@ describe('evaluatePreflight', () => {
           intent: 'order.food',
           summary: 'Order dinner to home',
           topics: [],
-          details: { address: '12 Jalan Setiawangsa' },
+          details: { address: '412 Bergen Street' },
         },
-        knownAddresses: [{ fact_id: 'f8', content: 'Home delivery address is 12 Jalan Setiawangsa, Kuala Lumpur' }],
+        knownAddresses: [{ fact_id: 'f8', content: 'Home delivery address is 412 Bergen Street, Brooklyn' }],
       }),
     );
     expect(toHome.decision).toBe('allow');
@@ -172,7 +170,7 @@ describe('evaluatePreflight', () => {
 
   it('asks about a repeat order, an unusual amount, and a ride that clashes with a routine', () => {
     const orders = [order(20), order(3000, { amount: 25 }), order(6000, { amount: 32 })];
-    const again = evaluatePreflight(base({ ...food({ venue: 'Warung Mak Teh', amount: 90 }), orders }));
+    const again = evaluatePreflight(base({ ...food({ venue: 'Napoli Pizza', amount: 90 }), orders }));
     expect(again.confirm.map((c) => c.check)).toEqual(['duplicate', 'amount']);
 
     const ride = evaluatePreflight(
@@ -208,7 +206,7 @@ describe('evaluatePreflight', () => {
     const notice = (summary: string) =>
       base({ action: { intent: 'notification', summary, topics: ['delivery'], details: {} }, orders: [order(60)] });
     expect(evaluatePreflight(notice('Your couch delivery arrives at 2am')).withheld?.reason).toBe('no_matching_order');
-    expect(evaluatePreflight(notice('Your Warung Mak Teh order is on its way')).decision).toBe('allow');
+    expect(evaluatePreflight(notice('Your Napoli Pizza order is on its way')).decision).toBe('allow');
     expect(evaluatePreflight(base({ speaker: { role: 'guest' } })).withheld?.reason).toBe('guest');
     expect(evaluatePreflight(base({ speaker: null })).confirm.map((c) => c.check)).toEqual(['speaker']);
   });

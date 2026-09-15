@@ -13,43 +13,43 @@ console.log(`calibrating ${embedder.model} @ ${embedder.dimensions} dimensions`)
 
 // A question and the fact that should answer it.
 const QUERY_RELATED: readonly Pair[] = [
-  ['What should we cook tonight?', 'Aisyah is vegetarian'],
+  ['What should we cook tonight?', 'Emma is vegetarian'],
   ['What should I eat for dinner?', 'Daniel likes very spicy food'],
   ['Is there anything I should not eat?', 'Sofia is allergic to peanuts'],
-  ['Where do we usually order from?', "The family's usual weeknight takeaway is Warung Mak Teh"],
+  ['Where do we usually order from?', "The family's usual weeknight takeaway is Napoli Pizza"],
   ['What time is dinner?', 'Family dinner is usually around 19:30 on weekdays'],
-  ['Where should the food be delivered?', "The family's home delivery address is 12 Jalan Setiawangsa, Kuala Lumpur"],
-  ['How does she take her tea?', 'Mak Som takes her tea with condensed milk'],
-  ['When does Farah work?', 'Farah works night shifts on Tuesdays'],
+  ['Where should the food be delivered?', "The family's home delivery address is 412 Bergen Street, Brooklyn"],
+  ['How does she take her tea?', 'Ruth takes her tea with condensed milk'],
+  ['When does Nina work?', 'Nina works night shifts on Tuesdays'],
   ['Can I have a coffee?', 'Daniel is off coffee until Wednesday'],
-  ['When do I go running?', 'Aisyah goes running on Saturday mornings'],
+  ['When do I go running?', 'Emma goes running on Saturday mornings'],
 ];
 
 const QUERY_UNRELATED: readonly Pair[] = [
-  ['What time is dinner?', 'Aisyah goes running on Saturday mornings'],
-  ['Where do we usually order from?', 'Farah works night shifts on Tuesdays'],
-  ['Can I have a coffee?', "The family's home delivery address is 12 Jalan Setiawangsa, Kuala Lumpur"],
-  ['When do I go running?', 'Mak Som takes her tea with condensed milk'],
+  ['What time is dinner?', 'Emma goes running on Saturday mornings'],
+  ['Where do we usually order from?', 'Nina works night shifts on Tuesdays'],
+  ['Can I have a coffee?', "The family's home delivery address is 412 Bergen Street, Brooklyn"],
+  ['When do I go running?', 'Ruth takes her tea with condensed milk'],
   ['How does she take her tea?', 'Sofia is allergic to peanuts'],
   ['Is there anything I should not eat?', 'Family dinner is usually around 19:30 on weekdays'],
-  ['When does Farah work?', 'Daniel likes very spicy food'],
-  ['What should we cook tonight?', 'Farah works night shifts on Tuesdays'],
+  ['When does Nina work?', 'Daniel likes very spicy food'],
+  ['What should we cook tonight?', 'Nina works night shifts on Tuesdays'],
 ];
 
 // Statement mode: a restatement of a fact, versus a different fact entirely.
 const STATEMENT_RELATED: readonly Pair[] = [
-  ['I do not eat meat', 'Aisyah is vegetarian'],
+  ['I do not eat meat', 'Emma is vegetarian'],
   ['I love really hot food', 'Daniel likes very spicy food'],
   ['She cannot have peanuts', 'Sofia is allergic to peanuts'],
-  ['We usually get takeaway from Warung Mak Teh', "The family's usual weeknight takeaway is Warung Mak Teh"],
+  ['We usually get takeaway from Napoli Pizza', "The family's usual weeknight takeaway is Napoli Pizza"],
   ['I am not drinking coffee this week', 'Daniel is off coffee until Wednesday'],
   ['Dinner is normally half seven on weeknights', 'Family dinner is usually around 19:30 on weekdays'],
 ];
 const STATEMENT_UNRELATED: readonly Pair[] = [
-  ['I do not eat meat', 'Farah works night shifts on Tuesdays'],
-  ['I love really hot food', "The family's home delivery address is 12 Jalan Setiawangsa, Kuala Lumpur"],
-  ['She cannot have peanuts', 'Aisyah goes running on Saturday mornings'],
-  ['I am not drinking coffee this week', 'Mak Som takes her tea with condensed milk'],
+  ['I do not eat meat', 'Nina works night shifts on Tuesdays'],
+  ['I love really hot food', "The family's home delivery address is 412 Bergen Street, Brooklyn"],
+  ['She cannot have peanuts', 'Emma goes running on Saturday mornings'],
+  ['I am not drinking coffee this week', 'Ruth takes her tea with condensed milk'],
   ['Dinner is normally half seven on weeknights', 'Sofia is allergic to peanuts'],
 ];
 

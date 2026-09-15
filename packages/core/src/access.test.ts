@@ -18,12 +18,12 @@ const member = (person_id: string, role: Member['role'], extra: Partial<Member> 
   ...extra,
 });
 
-const owner = member('aisyah', 'owner');
+const owner = member('emma', 'owner');
 const adult = member('daniel', 'adult');
 const child = member('sofia', 'child');
-const guest = member('ravi', 'guest');
+const guest = member('tom', 'guest');
 const elder = member('som', 'cared_for');
-const caregiver = member('farah', 'caregiver', { grants: DEFAULT_CAREGIVER_GRANTS });
+const caregiver = member('nina', 'caregiver', { grants: DEFAULT_CAREGIVER_GRANTS });
 
 describe('reading person memory', () => {
   it('everyone reads their own', () => {

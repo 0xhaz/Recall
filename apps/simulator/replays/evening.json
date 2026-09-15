@@ -1,6 +1,6 @@
 {
   "name": "evening",
-  "description": "Winding down: living-room lights dimmed, Aisyah's phone on charge, the house goes quiet. Late in the evening this becomes quiet hours.",
+  "description": "Winding down: living-room lights dimmed, Emma's phone on charge, the house goes quiet. Late in the evening this becomes quiet hours.",
   "mode": "live",
   "events": [
     {
@@ -12,9 +12,9 @@
     },
     {
       "at_s": 2,
-      "device": "aisyah-phone",
+      "device": "emma-phone",
       "kind": "phone.charging",
-      "person": "Aisyah",
+      "person": "Emma",
       "payload": { "charging": true }
     }
   ],

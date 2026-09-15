@@ -1,12 +1,12 @@
 {
   "name": "bee-night",
-  "description": "Mak Som's Bee through a quiet night: resting heart rate and stillness, then she gets up and moves about. Run it late to see the night-time presence alert as well.",
+  "description": "Ruth's Bee through a quiet night: resting heart rate and stillness, then she gets up and moves about. Run it late to see the night-time presence alert as well.",
   "mode": "live",
   "series": [
     {
-      "device": "som-bee",
+      "device": "ruth-bee",
       "kind": "hr.sample",
-      "person": "Mak Som",
+      "person": "Ruth",
       "field": "bpm",
       "every_s": 10,
       "values": [
@@ -15,9 +15,9 @@
       ]
     },
     {
-      "device": "som-bee",
+      "device": "ruth-bee",
       "kind": "phone.motion",
-      "person": "Mak Som",
+      "person": "Ruth",
       "field": "steps_per_min",
       "every_s": 30,
       "values": [0, 0, 0, 4, 22, 48, 61, 55, 34, 12]

@@ -38,25 +38,25 @@ This has bitten three times; it is never a code problem.
 
 | Person | Role | Signs in as |
 |---|---|---|
-| Aisyah | owner | `aisyah@demo.recall.local` |
+| Emma | owner | `emma@demo.recall.local` |
 | Daniel | adult | `daniel@demo.recall.local` |
 | Sofia | child | — |
-| Mak Som | cared for | — |
-| Farah | caregiver (own household too) | `farah@demo.recall.local` |
-| Ravi | guest | — |
+| Ruth | cared for | — |
+| Nina | caregiver (own household too) | `nina@demo.recall.local` |
+| Tom | guest | — |
 
-Devices: `kitchen-echo`, `bedroom-echo` (Mak Som's), `living-firetv`, `som-bee` (worn),
-`aisyah-watch` (worn).
+Devices: `kitchen-echo`, `bedroom-echo` (Ruth's), `living-firetv`, `ruth-bee` (worn),
+`emma-watch` (worn).
 
-Seeded facts: Aisyah vegetarian · Daniel likes very spicy food · Sofia allergic to peanuts · household
-takeaway is Warung Mak Teh · family dinner ~19:30 weekdays · delivery address (tagged PII) · Mak Som
-takes tea with condensed milk (entered by Farah).
+Seeded facts: Emma vegetarian · Daniel likes very spicy food · Sofia allergic to peanuts · household
+takeaway is Napoli Pizza · family dinner ~19:30 weekdays · delivery address (tagged PII) · Ruth
+takes tea with condensed milk (entered by Nina).
 
 ### Signing in to the console
 
 ```sh
 curl -s -X POST localhost:3100/auth/magic-link -H 'content-type: application/json' \
-  -d '{"email":"aisyah@demo.recall.local"}'
+  -d '{"email":"emma@demo.recall.local"}'
 ```
 
 The link is printed in the **Recall server log** (terminal 1) as `[email] to=… http://localhost:3000/auth/verify?token=…`.
@@ -73,7 +73,7 @@ The core claim. Do this in the **simulator** (`:3200`) with two devices side by 
 
 | Step | Say | ✅ Expect |
 |---|---|---|
-| 1.1 | Speaker **Aisyah** → *"What should we cook tonight?"* | Suggests something vegetarian. The Recall call panel shows `session_brief` and the fact it used. |
+| 1.1 | Speaker **Emma** → *"What should we cook tonight?"* | Suggests something vegetarian. The Recall call panel shows `session_brief` and the fact it used. |
 | 1.2 | Speaker **Daniel**, same question | Different answer — spicy. Same house, same question, different person. |
 | 1.3 | Speaker **none** (or slide voice-match below 0.7) | Household facts only. It offers to confirm who's speaking rather than guessing. |
 
@@ -107,7 +107,7 @@ device isn't forgetting.
 
 | Step | Say | ✅ Expect |
 |---|---|---|
-| 3.1 | *"Aisyah here. No music after 10pm on school nights."* | Stored word for word, with a structured form beside it. |
+| 3.1 | *"Emma here. No music after 10pm on school nights."* | Stored word for word, with a structured form beside it. |
 | 3.2 | As Daniel: *"Always play music when I work out."* | Stored. Conflicts are **reported, never silently resolved**. |
 | 3.3 | Console → **Rules** | Both rules in their author's own words, plus the log of what each blocked. |
 | 3.4 | Ask for music after 10pm | Refused, quoting the rule. |
@@ -138,7 +138,7 @@ pnpm replay mornings          # three weeks of history, lands in seconds
 
 | Step | Where | ✅ Expect |
 |---|---|---|
-| 5.1 | Console → **Routines** | Mined routines waiting for a yes or no. Aisyah's ~07:10 coffee, then the news on weekdays. |
+| 5.1 | Console → **Routines** | Mined routines waiting for a yes or no. Emma's ~07:10 coffee, then the news on weekdays. |
 | 5.2 | Accept one | It can be offered from then on. |
 | 5.3 | Note the "stopped working" section | A routine that used to fire and no longer does is surfaced, not silently dropped. |
 
@@ -159,7 +159,7 @@ pnpm replay heart-rate        # 4 minutes real time — start it, then talk over
 | Step | Where | ✅ Expect |
 |---|---|---|
 | 6.1 | Console → **Context**, watch it climb | Workout score rising, **with its reasons listed** ("heart rate 34% above resting"). |
-| 6.2 | Note the threshold | Relative to **Aisyah's own** resting rate, learned from her history — not a fixed 120bpm. |
+| 6.2 | Note the threshold | Relative to **Emma's own** resting rate, learned from her history — not a fixed 120bpm. |
 | 6.3 | Ask for music mid-run | Picks for the live context, ranked by what she plays *and skips* in that context. |
 | 6.4 | *"Stop workout mode"* | Manual override wins for a while, and calibrates her trigger for next time. |
 
@@ -177,7 +177,7 @@ The music catalogue is **mocked** — say so. It's labelled as such in the UI.
 
 | Step | Say | ✅ Expect |
 |---|---|---|
-| 7.1 | *"Order the usual from Warung Mak Teh"* | Pre-flight runs first: checks rules, quiet hours, the address on record, venues used before, amount. |
+| 7.1 | *"Order the usual from Napoli Pizza"* | Pre-flight runs first: checks rules, quiet hours, the address on record, venues used before, amount. |
 | 7.2 | Try one with a substituted address | It catches that the details don't match what was asked for, and confirms rather than proceeding. |
 | 7.3 | Confirm a low-risk action | Carried out, with an undo window open. |
 | 7.4 | *"Undo that"* | Taken back. Device changes reverse with the inverse command. |
@@ -193,14 +193,14 @@ Anything that costs money is only ever **drafted** for confirmation. Never spend
 
 ## 8. Care mode — the medication schedule ⏱ 2min ★★★
 
-Sign in as **Farah** (caregiver) to show this properly; Aisyah as owner also works.
+Sign in as **Nina** (caregiver) to show this properly; Emma as owner also works.
 
 | Step | Where | ✅ Expect |
 |---|---|---|
-| 8.1 | Console → **Care** → Mak Som | Her own page: how Recall speaks with her, her schedule, her day, the alerts. |
+| 8.1 | Console → **Care** → Ruth | Her own page: how Recall speaks with her, her schedule, her day, the alerts. |
 | 8.2 | Add a reminder: *Blood pressure tablet · one tablet · 08:00, 20:00* | Saved. The confirmation says she'll be asked on **her own device**, and nobody else is told unless she doesn't answer. |
 | 8.3 | Set one for a few minutes ago, wait for the job cycle | She's prompted on `bedroom-echo`. |
-| 8.4 | In the simulator as **Mak Som**: *"I've taken my tablet"* | Confirmed. Recorded as `how: voice`. |
+| 8.4 | In the simulator as **Ruth**: *"I've taken my tablet"* | Confirmed. Recorded as `how: voice`. |
 | 8.5 | Or press **Mark taken** in the console | Also confirmed — but recorded as `how: console`, with who said so. |
 | 8.6 | Leave one unanswered past the escalation window | Status becomes **not confirmed**, and *only then* the carers are told. |
 
@@ -220,8 +220,8 @@ No audio is stored anywhere. A spoken confirmation is kept as screened text.
 |---|---|---|
 | 9.1 | Care page → the correct/redirect policies | Safety topics **corrected**; painful ones **redirected** in the caregiver's own words. |
 | 9.2 | Add a topic — *Ahmad → redirect → "Talk about his garden. Only say he has passed if she asks directly."* | Saved and used as written. |
-| 9.3 | As Mak Som, ask the same question twice | The same warm answer both times. **Never "I already told you."** |
-| 9.4 | As Mak Som: *"Who can see this?"* | Says plainly what's shared, and with whom. |
+| 9.3 | As Ruth, ask the same question twice | The same warm answer both times. **Never "I already told you."** |
+| 9.4 | As Ruth: *"Who can see this?"* | Says plainly what's shared, and with whom. |
 
 ★★★ **9.3 is quietly the most human moment in the demo.** For someone with dementia, being told "I
 already told you" is a small cruelty repeated all day. The repeat detector exists for that.
@@ -259,7 +259,7 @@ pnpm replay checkins          # two weeks of ~07:30 and ~21:30
 
 | Step | Say | ✅ Expect |
 |---|---|---|
-| 11.1 | As Mak Som: *"Good morning"* | Recorded; the carers are told. |
+| 11.1 | As Ruth: *"Good morning"* | Recorded; the carers are told. |
 | 11.2 | Miss a usual check-in | She's prompted first, **then** the carers. The person is always asked before anyone is alerted. |
 
 ★ Correct and necessary, but it's the same shape as §8 and a 3-minute cut can only carry one. Prefer
@@ -285,7 +285,7 @@ the medication beat.
 | Step | Where | ✅ Expect |
 |---|---|---|
 | 13.1 | Console → **People** | Who can see what. A guest sees household memory, not people's own. |
-| 13.2 | Sign in as **Farah**, open Memory | A caregiver without `view_full_memory` sees household facts, **not** Mak Som's own. Grants open doors, not the whole house. |
+| 13.2 | Sign in as **Nina**, open Memory | A caregiver without `view_full_memory` sees household facts, **not** Ruth's own. Grants open doors, not the whole house. |
 | 13.3 | Console → **Settings** | Retention (7–365 days). Tombstones outlive it by 30 days, so forgetting still sticks. |
 | 13.4 | Export | Full JSON of everything held. |
 
@@ -401,7 +401,7 @@ Walk all fourteen and mark each. Anything that fails is worth more than anything
 Deployed on Bedrock, Nova Lite does both of the beats that pull against each other locally. This is
 the single biggest reason to demo against the deployed stack rather than your laptop.
 
-| model | §1 the beat (Aisyah / Daniel) | §7 pre-flight fires | falsely claims done | latency |
+| model | §1 the beat (Emma / Daniel) | §7 pre-flight fires | falsely claims done | latency |
 |---|---|---|---|---|
 | **amazon.nova-lite-v1:0** (deployed) | **3/4 · 3/4** | **4/4** | 0/4 | ~2.7s |
 | `qwen3:8b` (local) | 0/4 · 2/4 | 2/4 | 0/4 | ~1.6s |

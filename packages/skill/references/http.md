@@ -20,7 +20,7 @@ curl -s -X POST "$RECALL_URL" \
   -H 'accept: application/json, text/event-stream' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",
        "params":{"name":"session_brief",
-                 "arguments":{"speaker":"Aisyah","speaker_confidence":0.95,
+                 "arguments":{"speaker":"Emma","speaker_confidence":0.95,
                               "device":"kitchen-echo","hint":"what should we cook tonight?"}}}'
 ```
 

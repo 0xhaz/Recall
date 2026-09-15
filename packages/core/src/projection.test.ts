@@ -61,7 +61,7 @@ describe('MemoryProjection', () => {
 
   it('hides expired facts', () => {
     const p = new MemoryProjection();
-    p.apply(created('1', fact('t', 'Alice is in Penang', { expires_at: '2026-09-16T16:00:00Z' })));
+    p.apply(created('1', fact('t', 'Alice is in Boston', { expires_at: '2026-09-16T16:00:00Z' })));
     expect(p.currentFacts(new Date('2026-09-15T00:00:00Z'))).toHaveLength(1);
     expect(p.currentFacts(new Date('2026-09-17T00:00:00Z'))).toHaveLength(0);
   });

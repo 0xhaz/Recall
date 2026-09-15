@@ -20,12 +20,12 @@ const llm = new OllamaProvider(
 describe.skipIf(!live)('prompts against the local model', () => {
   it('extracts scoped facts with calendar-correct expiry', async () => {
     const statement =
-      "Remember I'm vegetarian now, and I'm in Penang for work until Wednesday so don't plan dinner for me. Our family prays together at 7pm.";
+      "Remember I'm vegetarian now, and I'm in Boston for work until Wednesday so don't plan dinner for me. Our family prays together at 7pm.";
     const reply = await llm.chat({
       messages: extractionMessages({
-        speaker: 'Aisyah',
+        speaker: 'Emma',
         statement,
-        timezone: 'Asia/Kuala_Lumpur',
+        timezone: 'America/New_York',
         now: new Date('2026-09-11T02:00:00Z'),
       }),
       jsonSchema: EXTRACTION_SCHEMA,
@@ -51,14 +51,14 @@ describe.skipIf(!live)('prompts against the local model', () => {
         JSON.parse((await llm.chat({ messages: judgeMessages(candidate, existing), jsonSchema: JUDGE_SCHEMA })).text),
       );
 
-    expect(await judge('Aisyah is vegan', ['Aisyah is vegetarian'])).toEqual({ verdict: 'updates', match: 1 });
-    expect(await judge('Aisyah is a vegetarian', ['Aisyah is vegetarian'])).toEqual({ verdict: 'same', match: 1 });
+    expect(await judge('Emma is vegan', ['Emma is vegetarian'])).toEqual({ verdict: 'updates', match: 1 });
+    expect(await judge('Emma is a vegetarian', ['Emma is vegetarian'])).toEqual({ verdict: 'same', match: 1 });
     expect(
       await judge('The household prays together at 7:30pm', [
-        'Aisyah is vegetarian',
+        'Emma is vegetarian',
         'The household prays together at 7pm',
       ]),
     ).toEqual({ verdict: 'updates', match: 2 });
-    expect((await judge('Aisyah likes jazz', ['Aisyah is vegetarian'])).verdict).toBe('new');
+    expect((await judge('Emma likes jazz', ['Emma is vegetarian'])).verdict).toBe('new');
   }, 60_000);
 });

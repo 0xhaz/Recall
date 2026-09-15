@@ -12,7 +12,7 @@ const llm = new OllamaProvider(
 
 async function parse(speaker: string, text: string) {
   const reply = await llm.chat({
-    messages: ruleMessages({ speaker, text, timezone: 'Asia/Kuala_Lumpur', now: new Date('2026-09-11T02:00:00Z') }),
+    messages: ruleMessages({ speaker, text, timezone: 'America/New_York', now: new Date('2026-09-11T02:00:00Z') }),
     jsonSchema: RULE_SCHEMA,
   });
   return structureRule(ParsedRule.parse(JSON.parse(reply.text)));
@@ -20,7 +20,7 @@ async function parse(speaker: string, text: string) {
 
 describe.skipIf(!live)('rule parser against the local model', () => {
   it('reads a household quiet-hours rule', async () => {
-    expect(await parse('Aisyah', 'No music after 10pm on school nights')).toMatchObject({
+    expect(await parse('Emma', 'No music after 10pm on school nights')).toMatchObject({
       effect: 'block',
       subject: { intents: ['media.play'] },
       condition: { time_from: '22:00', time_to: '06:00', school_nights: true },
@@ -35,7 +35,7 @@ describe.skipIf(!live)('rule parser against the local model', () => {
   }, 60_000);
 
   it('reads a topic rule for someone else', async () => {
-    const rule = await parse('Aisyah', "Don't suggest anything with prawns for Sofia");
+    const rule = await parse('Emma', "Don't suggest anything with prawns for Sofia");
     expect(rule).toMatchObject({ applies_to: 'Sofia' });
     expect('subject' in rule && rule.subject.topics.join(' ')).toContain('prawn');
   }, 60_000);

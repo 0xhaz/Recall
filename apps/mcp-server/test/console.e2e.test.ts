@@ -49,7 +49,7 @@ async function signIn(name: string): Promise<void> {
 async function fact(content: string, scope: 'person' | 'household', owner: string, origin = 'extraction') {
   const { rows } = await t.db.query<{ id: string }>(
     `INSERT INTO fact (household_id, region, scope_type, scope_id, type, content, source, confidence, sensitivity_tag)
-     VALUES ($1, 'my', $2, $3, 'semantic', $4, $5, 0.9, 'none') RETURNING id`,
+     VALUES ($1, 'us', $2, $3, 'semantic', $4, $5, 0.9, 'none') RETURNING id`,
     [hh.id, scope, owner, content, JSON.stringify({ origin })],
   );
   const id = rows[0]?.id;
@@ -60,13 +60,13 @@ async function fact(content: string, scope: 'person' | 'household', owner: strin
 beforeAll(async () => {
   t = await startApp();
   hh = await t.createHousehold([
-    ['Aisyah', 'owner'],
+    ['Emma', 'owner'],
     ['Sofia', 'child'],
-    ['Som', 'cared_for'],
-    ['Farah', 'caregiver'],
-    ['Ravi', 'guest'],
+    ['Ruth', 'cared_for'],
+    ['Nina', 'caregiver'],
+    ['Tom', 'guest'],
   ]);
-  for (const name of ['Aisyah', 'Sofia', 'Som', 'Farah', 'Ravi']) await signIn(name);
+  for (const name of ['Emma', 'Sofia', 'Ruth', 'Nina', 'Tom']) await signIn(name);
 });
 
 afterAll(() => t?.close());
@@ -74,35 +74,35 @@ afterAll(() => t?.close());
 describe('memory browser', () => {
   it("shows household memory and the person's own, never someone else's", async () => {
     await fact('Family dinner is usually around 19:30', 'household', hh.id);
-    await fact('Aisyah is vegetarian', 'person', personId(hh, 'Aisyah'));
+    await fact('Emma is vegetarian', 'person', personId(hh, 'Emma'));
     await fact('Sofia is allergic to peanuts', 'person', personId(hh, 'Sofia'));
-    await fact('Mak Som takes her tea with condensed milk', 'person', personId(hh, 'Som'), 'caregiver');
+    await fact('Ruth takes her tea with condensed milk', 'person', personId(hh, 'Ruth'), 'caregiver');
 
-    const mine = await api<{ facts: FactView[] }>('Aisyah', '/facts');
+    const mine = await api<{ facts: FactView[] }>('Emma', '/facts');
     expect(mine.body.facts.map((f) => f.content).sort()).toEqual([
-      'Aisyah is vegetarian',
+      'Emma is vegetarian',
       'Family dinner is usually around 19:30',
       'Sofia is allergic to peanuts',
     ]);
     // A parent may erase what is held about their child, but not put different words in their mouth.
     const child = mine.body.facts.find((f) => f.scope_name === 'Sofia');
     expect(child).toMatchObject({ editable: false, deletable: true });
-    const own = mine.body.facts.find((f) => f.content === 'Aisyah is vegetarian');
+    const own = mine.body.facts.find((f) => f.content === 'Emma is vegetarian');
     expect(own).toMatchObject({ editable: true, deletable: true });
 
-    const hers = await api<{ facts: FactView[] }>('Som', '/facts');
+    const hers = await api<{ facts: FactView[] }>('Ruth', '/facts');
     expect(hers.body.facts.map((f) => f.content).sort()).toEqual([
       'Family dinner is usually around 19:30',
-      'Mak Som takes her tea with condensed milk',
+      'Ruth takes her tea with condensed milk',
     ]);
     // A caregiver without view_full_memory sees the household's memory, not the person's own.
-    const carer = await api<{ facts: FactView[] }>('Farah', '/facts');
+    const carer = await api<{ facts: FactView[] }>('Nina', '/facts');
     expect(carer.body.facts.map((f) => f.content)).toEqual(['Family dinner is usually around 19:30']);
   });
 
   it('fixes a wrong fact by superseding it, and tells every device', async () => {
     const wrong = await fact('Daniel likes very mild food', 'household', hh.id);
-    const fixed = await api<{ corrected: string; content: string }>('Aisyah', `/facts/${wrong}`, {
+    const fixed = await api<{ corrected: string; content: string }>('Emma', `/facts/${wrong}`, {
       method: 'PATCH',
       body: { content: 'Daniel likes very spicy food' },
     });
@@ -125,16 +125,16 @@ describe('memory browser', () => {
     const { rows: jobs } = await t.db.query("SELECT 1 FROM job WHERE household_id = $1 AND kind = 'embed'", [hh.id]);
     expect(jobs.length).toBeGreaterThan(0);
 
-    const current = await api<{ facts: FactView[] }>('Aisyah', '/facts?query=spicy');
+    const current = await api<{ facts: FactView[] }>('Emma', '/facts?query=spicy');
     expect(current.body.facts[0]?.content).toBe('Daniel likes very spicy food');
   });
 
   it('marks a fact wrong by forgetting it, and refuses a guest', async () => {
     const gone = await fact('The spare key is under the mat', 'household', hh.id);
-    const guest = await api('Ravi', `/facts/${gone}`, { method: 'DELETE' });
+    const guest = await api('Tom', `/facts/${gone}`, { method: 'DELETE' });
     expect(guest.status).toBe(403);
 
-    const forgotten = await api<{ forgotten: string[] }>('Aisyah', `/facts/${gone}`, { method: 'DELETE' });
+    const forgotten = await api<{ forgotten: string[] }>('Emma', `/facts/${gone}`, { method: 'DELETE' });
     expect(forgotten.body.forgotten).toEqual([gone]);
     const { rows } = await t.db.query<{ content: string; forgotten_at: Date | null }>(
       'SELECT content, forgotten_at FROM fact WHERE id = $1',
@@ -167,14 +167,14 @@ describe('rules, routines and actions', () => {
   it('lists what a rule blocked', async () => {
     await t.db.query(
       `INSERT INTO action (household_id, region, person_id, intent, summary, status, preflight)
-       VALUES ($1, 'my', $2, 'media.play', 'Play Running Mix', 'blocked', $3)`,
+       VALUES ($1, 'us', $2, 'media.play', 'Play Running Mix', 'blocked', $3)`,
       [
         hh.id,
-        personId(hh, 'Aisyah'),
+        personId(hh, 'Emma'),
         JSON.stringify({ decision: 'block', blocked_by: { rule_id: 'r1', text: 'No music after 10pm' } }),
       ],
     );
-    const res = await api<{ blocked: { summary: string; rule: { text: string } | null }[] }>('Aisyah', '/rules');
+    const res = await api<{ blocked: { summary: string; rule: { text: string } | null }[] }>('Emma', '/rules');
     expect(res.body.blocked[0]).toMatchObject({
       summary: 'Play Running Mix',
       rule: { text: 'No music after 10pm' },
@@ -185,15 +185,15 @@ describe('rules, routines and actions', () => {
     const { rows } = await t.db.query<{ id: string }>(
       `INSERT INTO routine (household_id, region, person_id, kind, days, center_minute, spread_minutes, support,
                             confidence, last_seen, status)
-       VALUES ($1, 'my', $2, 'coffee_machine.start', 'weekdays', 430, 8, 12, 0.8, now()::date, 'candidate')
+       VALUES ($1, 'us', $2, 'coffee_machine.start', 'weekdays', 430, 8, 12, 0.8, now()::date, 'candidate')
        RETURNING id`,
-      [hh.id, personId(hh, 'Aisyah')],
+      [hh.id, personId(hh, 'Emma')],
     );
     const routineId = rows[0]?.id ?? '';
-    const listed = await api<{ routines: { id: string; status: string; kind: string }[] }>('Aisyah', '/routines');
+    const listed = await api<{ routines: { id: string; status: string; kind: string }[] }>('Emma', '/routines');
     expect(listed.body.routines.find((r) => r.id === routineId)).toMatchObject({ status: 'candidate' });
 
-    const accepted = await api<{ status: string }>('Aisyah', `/routines/${routineId}`, {
+    const accepted = await api<{ status: string }>('Emma', `/routines/${routineId}`, {
       method: 'POST',
       body: { decision: 'accept' },
     });
@@ -204,16 +204,16 @@ describe('rules, routines and actions', () => {
     const { rows } = await t.db.query<{ id: string }>(
       `INSERT INTO action (household_id, region, person_id, intent, summary, status, command, preflight,
                            decided_at, undo_until)
-       VALUES ($1, 'my', $2, 'smart_home', 'Start the coffee machine', 'executed',
+       VALUES ($1, 'us', $2, 'smart_home', 'Start the coffee machine', 'executed',
                $3, '{"decision":"allow"}', now(), now() + interval '5 minutes')
        RETURNING id`,
-      [hh.id, personId(hh, 'Aisyah'), JSON.stringify({ kind: 'coffee_machine.start', payload: {} })],
+      [hh.id, personId(hh, 'Emma'), JSON.stringify({ kind: 'coffee_machine.start', payload: {} })],
     );
     const actionId = rows[0]?.id ?? '';
-    const history = await api<{ actions: { id: string; undoable: boolean }[] }>('Aisyah', '/actions');
+    const history = await api<{ actions: { id: string; undoable: boolean }[] }>('Emma', '/actions');
     expect(history.body.actions.find((a) => a.id === actionId)).toMatchObject({ undoable: true });
 
-    const undone = await api<{ status?: string; command?: { kind: string } }>('Aisyah', `/actions/${actionId}/undo`, {
+    const undone = await api<{ status?: string; command?: { kind: string } }>('Emma', `/actions/${actionId}/undo`, {
       method: 'POST',
     });
     expect(undone.body).toMatchObject({ status: 'undone', command: { kind: 'coffee_machine.stop' } });
@@ -222,33 +222,33 @@ describe('rules, routines and actions', () => {
 
 describe('household, settings and care', () => {
   it('shows context, devices, people and notices', async () => {
-    const context = await api<{ contexts: unknown[]; quiet_hours: { active: boolean } }>('Aisyah', '/context');
+    const context = await api<{ contexts: unknown[]; quiet_hours: { active: boolean } }>('Emma', '/context');
     expect(context.body.quiet_hours).toHaveProperty('active');
 
-    const people = await api<{ people: { name: string; role: string }[] }>('Aisyah', '/people');
+    const people = await api<{ people: { name: string; role: string }[] }>('Emma', '/people');
     expect(people.body.people.map((p) => p.role).sort()).toEqual(['cared_for', 'caregiver', 'child', 'guest', 'owner']);
 
-    const devices = await api<{ devices: unknown[] }>('Aisyah', '/devices');
+    const devices = await api<{ devices: unknown[] }>('Emma', '/devices');
     expect(Array.isArray(devices.body.devices)).toBe(true);
-    const notices = await api<{ notices: unknown[] }>('Aisyah', '/notices');
+    const notices = await api<{ notices: unknown[] }>('Emma', '/notices');
     expect(Array.isArray(notices.body.notices)).toBe(true);
   });
 
   it('lets the owner set retention, and nobody else', async () => {
-    const owner = await api<{ retention_days: number }>('Aisyah', '/settings', {
+    const owner = await api<{ retention_days: number }>('Emma', '/settings', {
       method: 'PATCH',
       body: { retention_days: 30 },
     });
     expect(owner.body.retention_days).toBe(30);
-    const carer = await api('Farah', '/settings', { method: 'PATCH', body: { retention_days: 365 } });
+    const carer = await api('Nina', '/settings', { method: 'PATCH', body: { retention_days: 365 } });
     expect(carer.status).toBe(403);
-    const tooShort = await api('Aisyah', '/settings', { method: 'PATCH', body: { retention_days: 1 } });
+    const tooShort = await api('Emma', '/settings', { method: 'PATCH', body: { retention_days: 1 } });
     expect(tooShort.status).toBe(400);
   });
 
   it('exports everything the person may see', async () => {
     const res = await api<{ household: { retention_days: number }; facts: FactView[]; routines: unknown[] }>(
-      'Aisyah',
+      'Emma',
       '/export',
     );
     expect(res.body.household.retention_days).toBe(30);
@@ -257,18 +257,18 @@ describe('household, settings and care', () => {
   });
 
   it('gives the caregiver the care plan, with the built-in policies and one of their own', async () => {
-    const som = personId(hh, 'Som');
+    const ruth = personId(hh, 'Ruth');
     const plan = await api<{ can_edit: boolean; policies: { topic: string; set_by: string }[] }>(
-      'Farah',
-      `/care/${som}`,
+      'Nina',
+      `/care/${ruth}`,
     );
     expect(plan.body.can_edit).toBe(true);
     expect(plan.body.policies.map((p) => p.topic)).toContain('medication');
 
-    const saved = await api<{ saved: boolean }>('Farah', '/care/policies', {
+    const saved = await api<{ saved: boolean }>('Nina', '/care/policies', {
       method: 'POST',
       body: {
-        person: 'Som',
+        person: 'Ruth',
         topic: 'Ahmad',
         keywords: ['Ahmad'],
         policy: 'redirect',
@@ -276,18 +276,18 @@ describe('household, settings and care', () => {
       },
     });
     expect(saved.body.saved).toBe(true);
-    const after = await api<{ policies: { topic: string; set_by: string }[] }>('Farah', `/care/${som}`);
+    const after = await api<{ policies: { topic: string; set_by: string }[] }>('Nina', `/care/${ruth}`);
     expect(after.body.policies.find((p) => p.topic === 'Ahmad')).toMatchObject({ set_by: 'caregiver' });
   });
 });
 
 describe('medication reminders', () => {
   it('takes a schedule from the caregiver and records a dose confirmed in the console', async () => {
-    const som = personId(hh, 'Som');
-    const saved = await api<{ saved: boolean; id: string }>('Farah', '/care/reminders', {
+    const ruth = personId(hh, 'Ruth');
+    const saved = await api<{ saved: boolean; id: string }>('Nina', '/care/reminders', {
       method: 'POST',
       body: {
-        person: 'Som',
+        person: 'Ruth',
         label: 'Blood pressure tablet',
         dose: 'one tablet',
         times: ['08:00', '20:00'],
@@ -299,7 +299,7 @@ describe('medication reminders', () => {
     const plan = await api<{
       reminders: { label: string; times: string[] }[];
       doses: { due: string }[];
-    }>('Farah', `/care/${som}`);
+    }>('Nina', `/care/${ruth}`);
     expect(plan.body.reminders[0]).toMatchObject({ label: 'Blood pressure tablet', times: ['08:00', '20:00'] });
     expect(plan.body.doses.map((d) => d.due)).toEqual(['08:00', '20:00']);
 
@@ -307,13 +307,13 @@ describe('medication reminders', () => {
     const { rows } = await t.db.query<{ id: string }>(
       `INSERT INTO care_reminder_log (household_id, region, reminder_id, person_id, local_date, local_minute,
                                       due_at, status, prompted_at)
-       VALUES ($1, 'my', $2, $3, (now() AT TIME ZONE (SELECT timezone FROM household WHERE id = $1))::date, 480,
+       VALUES ($1, 'us', $2, $3, (now() AT TIME ZONE (SELECT timezone FROM household WHERE id = $1))::date, 480,
                now() - interval '1 hour', 'pending', now() - interval '1 hour')
        RETURNING id`,
-      [hh.id, saved.body.id, som],
+      [hh.id, saved.body.id, ruth],
     );
     const logId = rows[0]?.id;
-    const done = await api<{ confirmed: boolean }>('Farah', `/care/doses/${logId}/confirm`, {
+    const done = await api<{ confirmed: boolean }>('Nina', `/care/doses/${logId}/confirm`, {
       method: 'POST',
       body: { note: 'took it with breakfast' },
     });
@@ -321,8 +321,8 @@ describe('medication reminders', () => {
 
     // Confirmed, and kept as what it is: recorded by a carer, not the person's own word.
     const morning = await api<{ doses: { due: string; status: string; how: string | null; note: string | null }[] }>(
-      'Farah',
-      `/care/${som}`,
+      'Nina',
+      `/care/${ruth}`,
     );
     expect(morning.body.doses.find((d) => d.due === '08:00')).toMatchObject({
       status: 'confirmed',
@@ -332,9 +332,9 @@ describe('medication reminders', () => {
   });
 
   it('refuses a guest who tries to set one', async () => {
-    const res = await api('Ravi', '/care/reminders', {
+    const res = await api('Tom', '/care/reminders', {
       method: 'POST',
-      body: { person: 'Som', label: 'Something', times: ['09:00'] },
+      body: { person: 'Ruth', label: 'Something', times: ['09:00'] },
     });
     expect(res.status).toBe(403);
   });

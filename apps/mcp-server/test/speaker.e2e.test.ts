@@ -21,12 +21,12 @@ beforeAll(async () => {
   t = await startApp();
   hh = await t.createHousehold([
     ['Alice', 'owner'],
-    ['Som', 'cared_for'],
+    ['Ruth', 'cared_for'],
   ]);
   client = await t.mcp(hh.token);
   await t.db.query(
-    `INSERT INTO device (household_id, device_id, region, primary_person_id) VALUES ($1, 'bedroom-echo', 'my', $2)`,
-    [hh.id, personId(hh, 'Som')],
+    `INSERT INTO device (household_id, device_id, region, primary_person_id) VALUES ($1, 'bedroom-echo', 'us', $2)`,
+    [hh.id, personId(hh, 'Ruth')],
   );
 });
 
@@ -52,7 +52,7 @@ describe('resolve_speaker', () => {
   it("treats a device's usual person as a guess to confirm, never as the speaker", async () => {
     expect(await resolve({ device: 'bedroom-echo' })).toMatchObject({
       speaker: null,
-      speaker_candidate: 'Som',
+      speaker_candidate: 'Ruth',
       confidence: 0.5,
       source: 'device',
     });

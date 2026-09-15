@@ -44,16 +44,16 @@ beforeAll(async () => {
   const alice = personId(hh, 'Alice');
   const { rows } = await t.db.query<{ id: string }>(
     `INSERT INTO fact (household_id, region, scope_type, scope_id, type, content, confidence, source) VALUES
-       ($1, 'my', 'person', $2, 'semantic', 'Alice lives in Penang', 0.9, '{"origin":"extraction"}')
+       ($1, 'us', 'person', $2, 'semantic', 'Alice lives in Boston', 0.9, '{"origin":"extraction"}')
      RETURNING id`,
     [hh.id, alice],
   );
   await t.db.query(
     `INSERT INTO fact (household_id, region, scope_type, scope_id, type, content, confidence, source, valid_to, superseded_by) VALUES
-       ($1, 'my', 'person', $2, 'semantic', 'Alice takes her tea with condensed milk', 0.95, '{"origin":"caregiver"}', NULL, NULL),
-       ($1, 'my', 'household', $1, 'procedural', 'Family dinner is at 7.30pm', 0.8, '{"origin":"seed"}', NULL, NULL),
-       ($1, 'my', 'person', $2, 'semantic', 'Alice lives in Ipoh', 0.9, '{"origin":"extraction"}', now() - interval '1 day', $3),
-       ($1, 'my', 'person', $4, 'semantic', 'Bob eats meat daily', 0.9, '{"origin":"extraction"}', NULL, NULL)`,
+       ($1, 'us', 'person', $2, 'semantic', 'Alice takes her tea with condensed milk', 0.95, '{"origin":"caregiver"}', NULL, NULL),
+       ($1, 'us', 'household', $1, 'procedural', 'Family dinner is at 7.30pm', 0.8, '{"origin":"seed"}', NULL, NULL),
+       ($1, 'us', 'person', $2, 'semantic', 'Alice lives in Austin', 0.9, '{"origin":"extraction"}', now() - interval '1 day', $3),
+       ($1, 'us', 'person', $4, 'semantic', 'Bob eats meat daily', 0.9, '{"origin":"extraction"}', NULL, NULL)`,
     [hh.id, alice, rows[0]?.id, personId(hh, 'Bob')],
   );
 
@@ -73,7 +73,7 @@ describe('explain_memory', () => {
         ['Alice takes her tea with condensed milk', 'entered by a caregiver'],
       ]),
     );
-    expect(e.yours.map((i) => i.content)).not.toContain('Alice lives in Ipoh');
+    expect(e.yours.map((i) => i.content)).not.toContain('Alice lives in Austin');
     expect(e.household.map((i) => i.content)).toEqual(['Family dinner is at 7.30pm']);
     expect(e.spoken).toContain('About you:');
     expect(e.spoken).toContain('I never keep card or account numbers');
@@ -108,11 +108,14 @@ describe('verify_claim', () => {
   });
 
   it('shows what changed, and what is true now', async () => {
-    const v = await callTool<Verification>(client, 'verify_claim', { speaker: 'Alice', claim: 'Alice lives in Ipoh' });
+    const v = await callTool<Verification>(client, 'verify_claim', {
+      speaker: 'Alice',
+      claim: 'Alice lives in Austin',
+    });
     expect(v.status).toBe('evidence');
-    expect(v.evidence.map((e) => e.content)).toContain('Alice lives in Penang');
+    expect(v.evidence.map((e) => e.content)).toContain('Alice lives in Boston');
     expect(v.changed).toEqual([
-      expect.objectContaining({ content: 'Alice lives in Ipoh', now: 'Alice lives in Penang' }),
+      expect.objectContaining({ content: 'Alice lives in Austin', now: 'Alice lives in Boston' }),
     ]);
   });
 });

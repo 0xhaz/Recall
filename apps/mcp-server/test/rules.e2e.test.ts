@@ -76,11 +76,11 @@ async function syncRules(): Promise<string[]> {
 beforeAll(async () => {
   t = await startApp({ llm });
   hh = await t.createHousehold([
-    ['Aisyah', 'owner'],
+    ['Emma', 'owner'],
     ['Daniel', 'adult'],
     ['Kid', 'child'],
-    ['Som', 'cared_for'],
-    ['Farah', 'caregiver'],
+    ['Ruth', 'cared_for'],
+    ['Nina', 'caregiver'],
     ['Gus', 'guest'],
   ]);
   client = await t.mcp(hh.token);
@@ -95,14 +95,14 @@ afterAll(() => t?.close());
 describe('set_rule', () => {
   it('saves a household rule word for word, applies it to everyone, and syncs it', async () => {
     parses.push(parsed({ time_from: '22:00', time_to: '06:00', school_nights: true }));
-    const result = await setRule({ speaker: 'Aisyah', text: 'No music after 10pm on school nights' });
+    const result = await setRule({ speaker: 'Emma', text: 'No music after 10pm on school nights' });
     expect(result).toMatchObject({
       saved: true,
       conflicts: [],
       rule: {
         text: 'No music after 10pm on school nights',
         applies_to: 'household',
-        author: 'Aisyah',
+        author: 'Emma',
         summary: 'Block playing music or media 22:00–06:00 on school nights — household',
       },
     });
@@ -126,14 +126,14 @@ describe('set_rule', () => {
       parsed({ effect: 'require_confirm', intents: ['order.food', 'purchase'], applies_to: 'me', ends: 'this month' }),
     );
     const result = await setRule({ speaker: 'Daniel', text: 'Ask me before ordering anything this month' });
-    const lastDay = resolveEnd('this month', temporalStamp('Asia/Kuala_Lumpur').local_date) ?? '';
-    expect(Date.parse(result.rule?.expires_at ?? '')).toBe(Date.parse(`${addDays(lastDay, 1)}T00:00:00+08:00`));
+    const lastDay = resolveEnd('this month', temporalStamp('America/New_York').local_date) ?? '';
+    expect(Date.parse(result.rule?.expires_at ?? '')).toBe(Date.parse(`${addDays(lastDay, 1)}T00:00:00-04:00`));
   });
 
   it('takes a structured rule from the console without asking the model', async () => {
     const calls = llm.calls.length;
     const result = await setRule({
-      speaker: 'Aisyah',
+      speaker: 'Emma',
       text: 'No calls after 9pm',
       structured: parsed({ intents: ['call'], time_from: '21:00', time_to: '07:00' }),
     });
@@ -142,25 +142,23 @@ describe('set_rule', () => {
   });
 
   it('only lets the right people set rules, and for the right people', async () => {
-    parses.push(parsed({ applies_to: 'Aisyah' }));
-    expect((await setRule({ speaker: 'Daniel', text: 'No music for Aisyah' })).refused).toBe('not_allowed');
+    parses.push(parsed({ applies_to: 'Emma' }));
+    expect((await setRule({ speaker: 'Daniel', text: 'No music for Emma' })).refused).toBe('not_allowed');
     parses.push(parsed());
     expect((await setRule({ speaker: 'Kid', text: 'No music at all' })).refused).toBe('not_allowed');
     parses.push(parsed({ applies_to: 'Kid', time_from: '20:00', time_to: '06:00' }));
-    expect((await setRule({ speaker: 'Aisyah', text: 'No videos after 8pm for Kid' })).rule?.applies_to).toBe(
-      'for Kid',
-    );
+    expect((await setRule({ speaker: 'Emma', text: 'No videos after 8pm for Kid' })).rule?.applies_to).toBe('for Kid');
     expect((await setRule({ speaker: 'Gus', text: 'No rules for me' })).refused).toBe('not_allowed');
     expect((await setRule({ text: 'No music' })).refused).toBe('unknown_speaker');
     parses.push(parsed({ applies_to: 'Zed' }));
-    expect((await setRule({ speaker: 'Aisyah', text: 'No music for Zed' })).refused).toBe('unknown_target');
+    expect((await setRule({ speaker: 'Emma', text: 'No music for Zed' })).refused).toBe('unknown_target');
     parses.push(parsed({ intents: ['vibes'] }));
-    expect((await setRule({ speaker: 'Aisyah', text: 'Keep the vibes right' })).refused).toBe('unclear');
+    expect((await setRule({ speaker: 'Emma', text: 'Keep the vibes right' })).refused).toBe('unclear');
   });
 
   it('saves safety rules only from a caregiver, for the person they care for', async () => {
-    parses.push(parsed({ intents: ['smart_home'], topics: ['stove'], applies_to: 'Som' }));
-    const stove = await setRule({ speaker: 'Farah', text: 'Never turn on the stove for Som', severity: 'safety' });
+    parses.push(parsed({ intents: ['smart_home'], topics: ['stove'], applies_to: 'Ruth' }));
+    const stove = await setRule({ speaker: 'Nina', text: 'Never turn on the stove for Ruth', severity: 'safety' });
     expect(stove.rule?.severity).toBe('safety');
 
     parses.push(parsed({ intents: ['smart_home'], topics: ['door'], applies_to: 'me' }));
@@ -172,22 +170,22 @@ describe('set_rule', () => {
 
 describe('remove_rule', () => {
   it('lets only the author (or a caregiver) remove a rule, and devices drop it', async () => {
-    const quiet = (await listRules('Aisyah')).find((r) => r.text.startsWith('No music after 10pm'));
+    const quiet = (await listRules('Emma')).find((r) => r.text.startsWith('No music after 10pm'));
     expect(
       (await callTool<{ refused: string }>(client, 'remove_rule', { speaker: 'Daniel', rule_id: quiet?.id })).refused,
     ).toBe('not_allowed');
     const removed = await callTool<{ removed: boolean }>(client, 'remove_rule', {
-      speaker: 'Aisyah',
+      speaker: 'Emma',
       rule_id: quiet?.id,
     });
     expect(removed.removed).toBe(true);
-    expect((await listRules('Aisyah')).map((r) => r.text)).not.toContain('No music after 10pm on school nights');
+    expect((await listRules('Emma')).map((r) => r.text)).not.toContain('No music after 10pm on school nights');
     expect(await syncRules()).not.toContain('No music after 10pm on school nights');
 
     parses.push(parsed({ intents: ['notification'], applies_to: 'me' }));
-    const own = await setRule({ speaker: 'Som', text: 'No news in the morning' });
+    const own = await setRule({ speaker: 'Ruth', text: 'No news in the morning' });
     const byCaregiver = await callTool<{ removed: boolean }>(client, 'remove_rule', {
-      speaker: 'Farah',
+      speaker: 'Nina',
       rule_id: own.rule?.id,
     });
     expect(byCaregiver.removed).toBe(true);

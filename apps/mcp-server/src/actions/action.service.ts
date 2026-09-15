@@ -16,7 +16,6 @@ import {
   intentForKind,
   inverseCommand,
   localClock,
-  MALAYSIA_HOLIDAYS_2026,
   type OfferStats,
   type OfferTier,
   offerTier,
@@ -26,6 +25,7 @@ import {
   signedMinutes,
   temporalStamp,
   UNDO_WINDOW_S,
+  US_HOLIDAYS_2026,
 } from '@recall/core';
 import type { ContextReading } from '../context/context.service.js';
 import { ContextService } from '../context/context.service.js';
@@ -550,7 +550,7 @@ export class ActionService {
     now: Date,
   ): Promise<Candidate[]> {
     const local = localMinute(household.timezone, now);
-    const holiday = MALAYSIA_HOLIDAYS_2026.has(local.date);
+    const holiday = US_HOLIDAYS_2026.has(local.date);
     const [{ rows: routines }, { rows: done }] = await Promise.all([
       this.db.query<RoutineRow>(
         `SELECT id, person_id, kind, days, center_minute, sequence, accepted, dismissed FROM routine
@@ -702,7 +702,7 @@ export class ActionService {
     }));
   }
 
-  /** Facts about a venue ("the usual takeaway is Warung Mak Teh"): the place is known before any order. */
+  /** Facts about a venue ("the usual takeaway is Napoli Pizza"): the place is known before any order. */
   private async venueFacts(
     householdId: string,
     speaker: Speaker | null,

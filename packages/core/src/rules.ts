@@ -26,7 +26,7 @@ export const INTENTS = [
 export type Intent = (typeof INTENTS)[number];
 
 export const WEEKDAYS: readonly Weekday[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-/** Evenings before a school day (Malaysia: school runs Monday to Friday). */
+/** Evenings before a school day: school runs Monday to Friday. */
 const SCHOOL_NIGHTS = new Set<Weekday>(['sun', 'mon', 'tue', 'wed', 'thu']);
 
 export interface RuleSubject {

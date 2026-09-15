@@ -46,10 +46,10 @@ describe('structureRule', () => {
 describe('ruleMessages', () => {
   it('shows worked examples, then the rule with today and the speaker', () => {
     const messages = ruleMessages({
-      speaker: 'Aisyah',
+      speaker: 'Emma',
       text: 'No TV during dinner',
-      timezone: 'Asia/Kuala_Lumpur',
-      now: new Date('2026-09-11T02:00:00Z'),
+      timezone: 'America/New_York',
+      now: new Date('2026-09-11T14:00:00Z'),
     });
     expect(messages.map((m) => m.role)).toEqual([
       'system',
@@ -61,6 +61,6 @@ describe('ruleMessages', () => {
       'assistant',
       'user',
     ]);
-    expect(messages.at(-1)?.content).toBe('Today: Friday 2026-09-11\nSpeaker: Aisyah\nRule: No TV during dinner');
+    expect(messages.at(-1)?.content).toBe('Today: Friday 2026-09-11\nSpeaker: Emma\nRule: No TV during dinner');
   });
 });

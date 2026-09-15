@@ -8,7 +8,7 @@ import type { ParsedRule } from '../src/rules/parse.js';
 import { ScriptedLlm } from './fakes.js';
 import { callTool, personId, startApp, type TestApp, type TestHousehold } from './support.js';
 
-const TZ = 'Asia/Kuala_Lumpur';
+const TZ = 'America/New_York';
 
 interface Preflight {
   action_id: string;
@@ -74,7 +74,7 @@ async function routine(kind: string, minute: number): Promise<string> {
   const { rows } = await t.db.query<{ id: string }>(
     `INSERT INTO routine (household_id, region, person_id, kind, days, center_minute, spread_minutes, support,
                           confidence, last_seen)
-     VALUES ($1, 'my', $2, $3, 'daily', $4, 8, 12, 0.8, now()::date) RETURNING id`,
+     VALUES ($1, 'us', $2, $3, 'daily', $4, 8, 12, 0.8, now()::date) RETURNING id`,
     [hh.id, alice, kind, minute],
   );
   const id = rows[0]?.id;
@@ -86,7 +86,7 @@ beforeAll(async () => {
   t = await startApp({ llm });
   hh = await t.createHousehold([
     ['Alice', 'owner'],
-    ['Ravi', 'guest'],
+    ['Tom', 'guest'],
   ]);
   alice = personId(hh, 'Alice');
   client = await t.mcp(hh.token);
@@ -99,13 +99,13 @@ describe('action_preflight', () => {
     speaker: 'Alice',
     action: {
       intent: 'order.food',
-      summary: `Order dinner from Warung Mak Teh to ${address}`,
-      details: { venue: 'Warung Mak Teh', address, amount: 30 },
+      summary: `Order dinner from Napoli Pizza to ${address}`,
+      details: { venue: 'Napoli Pizza', address, amount: 30 },
     },
   });
 
   it('checks an order against order history: a new place and address, then a repeat to a different address', async () => {
-    const first = await preflight(order('12 Jalan Setiawangsa'));
+    const first = await preflight(order('12 Bergen Street'));
     expect(first.decision).toBe('confirm');
     expect(first.confirm.map((c) => c.check)).toEqual(['venue', 'address']);
     const done = await decide('Alice', first.action_id, 'confirm');
@@ -115,12 +115,12 @@ describe('action_preflight', () => {
 
     const second = await preflight(order('Menara KL, Level 30'));
     expect(second.confirm.map((c) => c.check)).toEqual(['address', 'duplicate']);
-    expect(second.confirm[0]?.message).toContain('Past orders went to 12 Jalan Setiawangsa');
+    expect(second.confirm[0]?.message).toContain('Past orders went to 12 Bergen Street');
   });
 
   it('keeps guests from ordering, and asks who it is for when nobody said', async () => {
     const guest = await preflight({
-      speaker: 'Ravi',
+      speaker: 'Tom',
       action: { intent: 'order.food', summary: 'Order pizza', details: { venue: 'Pizza Place' } },
     });
     expect(guest).toMatchObject({ decision: 'block', withheld: { reason: 'guest' } });
@@ -134,7 +134,7 @@ describe('action_preflight', () => {
     const notice = (summary: string) =>
       preflight({ speaker: 'Alice', action: { intent: 'notification', summary, topics: ['delivery'] } });
     expect((await notice('Your couch delivery arrives at 2am')).withheld?.reason).toBe('no_matching_order');
-    expect((await notice('Your Warung Mak Teh order is arriving')).decision).toBe('allow');
+    expect((await notice('Your Napoli Pizza order is arriving')).decision).toBe('allow');
   });
 });
 
@@ -199,7 +199,7 @@ describe('propose_action', () => {
     await t.db.query(`UPDATE routine SET sequence = ARRAY['kettle.start'] WHERE id = $1`, [coffee]);
     await t.db.query(
       `INSERT INTO activity (household_id, region, person_id, kind, local_date, local_minute, at)
-       VALUES ($1, 'my', $2, 'coffee_machine.start', $3, $4, now() - interval '5 minutes')`,
+       VALUES ($1, 'us', $2, 'coffee_machine.start', $3, $4, now() - interval '5 minutes')`,
       [hh.id, alice, temporalStamp(TZ).local_date, nowMinute()],
     );
     parses.push(blockMusic);

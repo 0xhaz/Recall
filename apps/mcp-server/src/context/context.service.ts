@@ -8,12 +8,12 @@ import {
   dayMatches,
   deriveSignals,
   IDLE_CONTEXT,
-  MALAYSIA_FESTIVALS_2026,
   PERSONAL_CONTEXTS,
   type Scored,
   scoreHousehold,
   scoreWorkout,
   stepContext,
+  US_FESTIVALS_2026,
 } from '@recall/core';
 import { Db, type Queryable } from '../db/db.js';
 import { EventLog, lockHousehold } from '../events/event-log.service.js';
@@ -111,11 +111,8 @@ export class ContextService {
       local,
       sleeping: sleep.some((s) => s.kind === 'sleep.start'),
       festival: {
-        today: MALAYSIA_FESTIVALS_2026.get(local.date) ?? null,
-        near:
-          MALAYSIA_FESTIVALS_2026.get(addDays(local.date, 1)) ??
-          MALAYSIA_FESTIVALS_2026.get(addDays(local.date, -1)) ??
-          null,
+        today: US_FESTIVALS_2026.get(local.date) ?? null,
+        near: US_FESTIVALS_2026.get(addDays(local.date, 1)) ?? US_FESTIVALS_2026.get(addDays(local.date, -1)) ?? null,
       },
     });
 

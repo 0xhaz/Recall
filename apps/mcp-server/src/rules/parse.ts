@@ -94,7 +94,7 @@ const RULE_SYSTEM = [
 
 const EXAMPLES: [string, ParsedRule][] = [
   [
-    'Speaker: Aisyah\nRule: No music after 10pm on school nights',
+    'Speaker: Emma\nRule: No music after 10pm on school nights',
     {
       effect: 'block',
       intents: ['media.play'],
@@ -122,7 +122,7 @@ const EXAMPLES: [string, ParsedRule][] = [
     },
   ],
   [
-    'Speaker: Aisyah\nRule: Never suggest recipes with peanuts for Sofia',
+    'Speaker: Emma\nRule: Never suggest recipes with peanuts for Sofia',
     {
       effect: 'block',
       intents: ['recipe', 'suggestion'],

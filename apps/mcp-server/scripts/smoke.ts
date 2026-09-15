@@ -28,7 +28,7 @@ async function call(name: string, args: Record<string, unknown>): Promise<void> 
 }
 
 const hint = 'what should we cook tonight?';
-await call('session_brief', { speaker: 'Aisyah', hint });
+await call('session_brief', { speaker: 'Emma', hint });
 await call('session_brief', { speaker: 'Daniel', hint });
 await call('session_brief', { hint });
 await call('recall', { speaker: 'Sofia', query: 'allergies peanuts' });

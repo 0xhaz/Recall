@@ -8,7 +8,7 @@ describe('scopeRank', () => {
   const house = { scope_type: 'household', scope_id: 'h1' } as const;
 
   it("puts the speaker's own facts ahead of household ones", () => {
-    // Why this exists: "Aisyah is vegetarian" scored 0.313 against a 0.34 floor, so it never
+    // Why this exists: "Emma is vegetarian" scored 0.313 against a 0.34 floor, so it never
     // ranked at all — and a PII delivery address scoring 0.183 was shown above it.
     expect(scopeRank(mine, me)).toBeLessThan(scopeRank(house, me));
     expect([house, mine].sort((a, b) => scopeRank(a, me) - scopeRank(b, me))).toEqual([mine, house]);

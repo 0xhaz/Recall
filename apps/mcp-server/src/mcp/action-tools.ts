@@ -20,7 +20,7 @@ const actionArg = z.object({
     .string()
     .min(3)
     .max(300)
-    .describe('What would be done, in plain words: "Order nasi lemak from Warung Mak Teh to 12 Jalan Setiawangsa".'),
+    .describe('What would be done, in plain words: "Order nasi lemak from Napoli Pizza to 12 Bergen Street".'),
   topics: z.array(z.string().max(40)).max(10).optional(),
   device: deviceArg,
   details: z

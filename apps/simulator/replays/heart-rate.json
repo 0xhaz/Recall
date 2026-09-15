@@ -1,12 +1,12 @@
 {
   "name": "heart-rate",
-  "description": "A recorded 4-minute run from Aisyah's watch and phone: warm-up, two minutes at pace, cool-down.",
+  "description": "A recorded 4-minute run from Emma's watch and phone: warm-up, two minutes at pace, cool-down.",
   "mode": "live",
   "series": [
     {
-      "device": "aisyah-watch",
+      "device": "emma-watch",
       "kind": "hr.sample",
-      "person": "Aisyah",
+      "person": "Emma",
       "field": "bpm",
       "every_s": 5,
       "values": [
@@ -16,9 +16,9 @@
       ]
     },
     {
-      "device": "aisyah-phone",
+      "device": "emma-phone",
       "kind": "phone.motion",
-      "person": "Aisyah",
+      "person": "Emma",
       "field": "steps_per_min",
       "every_s": 10,
       "values": [

@@ -14,7 +14,7 @@ const H = 'household-1';
 const rule = (id: string, extra: Partial<RuleView> = {}): RuleView => ({
   id,
   text: id,
-  author_id: 'aisyah',
+  author_id: 'emma',
   author_role: 'owner',
   scope_type: 'household',
   scope_id: H,
@@ -62,7 +62,7 @@ describe('when a rule applies', () => {
   });
 
   it('respects scope, device and expiry', () => {
-    expect(ruleApplies(rule('mine', { scope_type: 'person', scope_id: 'aisyah' }), action('mon', '12:00'))).toBe(false);
+    expect(ruleApplies(rule('mine', { scope_type: 'person', scope_id: 'emma' }), action('mon', '12:00'))).toBe(false);
     expect(
       ruleApplies(rule('kitchen', { scope_type: 'device', scope_id: 'kitchen-echo' }), action('mon', '12:00')),
     ).toBe(false);
@@ -94,7 +94,7 @@ describe('evaluateRules', () => {
 
   it("lets the person's own allow override another caregiver's non-safety rule", () => {
     const caregiver = rule('caregiver: no music', {
-      author_id: 'farah',
+      author_id: 'nina',
       author_role: 'caregiver',
       scope_type: 'person',
       scope_id: 'som',
@@ -113,7 +113,7 @@ describe('evaluateRules', () => {
 
   it("puts a caregiver's safety rule above the person's own wishes", () => {
     const stove = rule('never turn on the stove', {
-      author_id: 'farah',
+      author_id: 'nina',
       author_role: 'caregiver',
       severity: 'safety',
       scope_type: 'person',
@@ -168,14 +168,14 @@ describe('evaluateRules', () => {
       effect: 'suppress_offer',
       subject: { intents: ['order.food'], topics: [] },
     });
-    const prefer = rule('prefer Warung Mak Teh', {
+    const prefer = rule('prefer Napoli Pizza', {
       effect: 'prefer',
       subject: { intents: ['order.food'], topics: [] },
     });
     const result = evaluateRules([confirm, quiet, prefer], action('mon', '19:00', { intent: 'order.food' }));
     expect(result).toMatchObject({ decision: 'require_confirm', suppress_offer: true });
     expect(result.confirm.map((r) => r.text)).toEqual(['ask before ordering']);
-    expect(result.prefer.map((r) => r.text)).toEqual(['prefer Warung Mak Teh']);
+    expect(result.prefer.map((r) => r.text)).toEqual(['prefer Napoli Pizza']);
   });
 });
 

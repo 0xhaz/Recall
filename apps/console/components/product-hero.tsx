@@ -24,7 +24,7 @@ const DEVICES: Device[] = [
   },
   {
     icon: Speaker,
-    name: "Mak Som's Echo",
+    name: "Ruth's Echo",
     detail: 'her own device',
     at: 'left-0 top-[46%]',
     wire: { from: [170, 288], to: [240, 312] },
@@ -45,7 +45,7 @@ const DEVICES: Device[] = [
   },
   {
     icon: HeartPulse,
-    name: "Mak Som's Bee",
+    name: "Ruth's Bee",
     detail: 'heart rate · movement',
     at: 'right-0 top-[46%]',
     wire: { from: [830, 288], to: [760, 312] },
@@ -53,7 +53,7 @@ const DEVICES: Device[] = [
   },
   {
     icon: Watch,
-    name: "Aisyah's watch",
+    name: "Emma's watch",
     detail: 'heart rate',
     at: 'right-0 top-[78%]',
     wire: { from: [830, 488], to: [760, 414] },
@@ -116,12 +116,12 @@ export function ProductHero() {
 
           <div className="grid min-w-0 gap-3 p-4 sm:grid-cols-2">
             <div className="min-w-0 rounded-lg border border-slate-800 bg-slate-950/50 p-3.5 sm:col-span-2">
-              <p className="label-xs">What it holds about Aisyah</p>
+              <p className="label-xs">What it holds about Emma</p>
               <ul className="mt-2.5 space-y-2">
                 {[
-                  ['Aisyah is vegetarian', 'hers · 0.95'],
+                  ['Emma is vegetarian', 'hers · 0.95'],
                   ['Family dinner is usually around 19:30', 'household · 0.70'],
-                  ['The usual takeaway is Warung Mak Teh', 'household · 0.80'],
+                  ['The usual takeaway is Napoli Pizza', 'household · 0.80'],
                 ].map(([fact, meta]) => (
                   <li key={fact} className="flex items-center justify-between gap-3 text-[0.82rem]">
                     <span className="min-w-0 truncate text-slate-200">{fact}</span>
@@ -132,7 +132,7 @@ export function ProductHero() {
             </div>
 
             <div className="min-w-0 rounded-lg border border-slate-800 bg-slate-950/50 p-3.5">
-              <p className="label-xs">Today · Mak Som</p>
+              <p className="label-xs">Today · Ruth</p>
               <div className="mt-2.5 flex items-center gap-2">
                 <span className="flex h-5 w-5 items-center justify-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-[0.7rem] text-emerald-300">
                   ✓
@@ -151,7 +151,7 @@ export function ProductHero() {
               <p className="label-xs">Context · live</p>
               <div className="mt-2.5 flex items-baseline gap-1.5">
                 <span className="text-2xl text-slate-100">0.81</span>
-                <span className="text-[0.82rem] text-slate-400">workout · Aisyah</span>
+                <span className="text-[0.82rem] text-slate-400">workout · Emma</span>
               </div>
               <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
                 <div className="h-full w-[81%] rounded-full bg-gradient-to-r from-cyan-500 to-blue-500" />

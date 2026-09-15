@@ -38,7 +38,7 @@ class FakeRecall implements RecallApi {
   async call<T>(name: string, args: Record<string, unknown>): Promise<T> {
     this.calls.push({ name, args });
     const replies: Record<string, unknown> = {
-      session_brief: { speaker: { id: 'p1', name: 'Aisyah', role: 'owner' }, ask_who_is_speaking: false },
+      session_brief: { speaker: { id: 'p1', name: 'Emma', role: 'owner' }, ask_who_is_speaking: false },
       remember: { stored: true },
     };
     return (replies[name] ?? {}) as T;
@@ -75,18 +75,18 @@ describe('Agent', () => {
     ]);
     const reply = await new Agent(recall, model).respond({
       device: 'kitchen-echo',
-      speaker: 'Aisyah',
+      speaker: 'Emma',
       confidence: 0.95,
       text: 'Remember I am off coffee',
     });
 
-    expect(reply).toMatchObject({ reply: 'Noted.', speaker: { name: 'Aisyah', role: 'owner' }, ask_who: false });
+    expect(reply).toMatchObject({ reply: 'Noted.', speaker: { name: 'Emma', role: 'owner' }, ask_who: false });
     expect(recall.calls).toEqual([
       {
         name: 'session_brief',
-        args: { hint: 'Remember I am off coffee', speaker: 'Aisyah', speaker_confidence: 0.95, device: 'kitchen-echo' },
+        args: { hint: 'Remember I am off coffee', speaker: 'Emma', speaker_confidence: 0.95, device: 'kitchen-echo' },
       },
-      { name: 'remember', args: { text: 'I am off coffee', speaker: 'Aisyah', speaker_confidence: 0.95 } },
+      { name: 'remember', args: { text: 'I am off coffee', speaker: 'Emma', speaker_confidence: 0.95 } },
     ]);
     expect(model.seen[0]?.messages.map((m) => m.role)).toEqual(['system', 'user', 'assistant', 'tool']);
     expect(reply.steps.map((s) => s.tool)).toEqual(['session_brief', 'remember']);
@@ -117,7 +117,7 @@ describe('Agent', () => {
       // The schemas now show these fields, so the model may well try to fill them in.
       {
         tool_calls: [
-          { function: { name: 'remember', arguments: { text: 'x', speaker: 'Aisyah', speaker_confidence: 1 } } },
+          { function: { name: 'remember', arguments: { text: 'x', speaker: 'Emma', speaker_confidence: 1 } } },
         ],
       },
       { content: 'Who is this?' },
@@ -151,16 +151,16 @@ describe('Agent', () => {
     const model = new ScriptedModel([
       // No tool calls, but the "reply" is the model thinking aloud — exactly what reached the demo.
       { content: 'decide_action with "confirm" to proceed with the order.' },
-      { content: 'Warung Mak Teh is the usual. Shall I order?' },
+      { content: 'Napoli Pizza is the usual. Shall I order?' },
     ]);
     const reply = await new Agent(recall, model).respond({
       device: 'kitchen-echo',
-      speaker: 'Aisyah',
+      speaker: 'Emma',
       confidence: 0.95,
       text: 'What should we cook tonight?',
     });
 
-    expect(reply.reply).toBe('Warung Mak Teh is the usual. Shall I order?');
+    expect(reply.reply).toBe('Napoli Pizza is the usual. Shall I order?');
     // It asked for speech rather than giving up or speaking the plan.
     const last = model.seen.at(-1)?.messages.at(-1);
     expect(last?.role).toBe('user');
@@ -178,7 +178,7 @@ describe('Agent', () => {
     ]);
     const reply = await new Agent(recall, model).respond({
       device: 'kitchen-echo',
-      speaker: 'Aisyah',
+      speaker: 'Emma',
       confidence: 0.95,
       text: 'Remember I am off coffee',
     });
@@ -196,26 +196,26 @@ describe('digest', () => {
           local_date: '2026-10-05',
           local_time: '19:02:11',
           weekday: 'Monday',
-          timezone: 'Asia/Kuala_Lumpur',
+          timezone: 'America/New_York',
         },
         speaker: null,
-        speaker_candidate: 'Aisyah',
+        speaker_candidate: 'Emma',
         rules: [{ text: 'No music after 10pm on school nights' }],
         facts: [
-          { content: 'Aisyah is vegetarian', why: 'semantic', scope: 'person' },
+          { content: 'Emma is vegetarian', why: 'semantic', scope: 'person' },
           { content: 'I am off coffee', why: 'pending_extraction', scope: 'person' },
-          { content: 'The usual takeaway is Warung Mak Teh', why: 'semantic', scope: 'household' },
+          { content: 'The usual takeaway is Napoli Pizza', why: 'semantic', scope: 'household' },
         ],
         contexts: [],
         quiet_hours: { active: false },
       }),
     ).toEqual({
       now: 'Monday 2026-10-05 19:02',
-      speaker: 'not sure: maybe Aisyah; ask "Is this Aisyah?" first',
+      speaker: 'not sure: maybe Emma; ask "Is this Emma?" first',
       rules: ['No music after 10pm on school nights'],
       // Split by whose fact it is: the speaker's own never sit in a flat list beside the house's.
-      yours_first: ['Aisyah is vegetarian', 'I am off coffee (just said)'],
-      about_the_home: ['The usual takeaway is Warung Mak Teh'],
+      yours_first: ['Emma is vegetarian', 'I am off coffee (just said)'],
+      about_the_home: ['The usual takeaway is Napoli Pizza'],
     });
   });
 
@@ -228,7 +228,7 @@ describe('digest', () => {
   it('hands back the previous answer in care mode, and never outside it', () => {
     const repeat = {
       asked_before: 2,
-      last_answer: 'Farah is coming at three.',
+      last_answer: 'Nina is coming at three.',
       looping: true,
       guidance: 'Answer again, warmly.',
     };
@@ -249,13 +249,13 @@ describe('digest', () => {
       active_session: {
         recent_turns: [
           { role: 'user', text: 'What should we cook tonight?' },
-          { role: 'assistant', text: 'The usual takeaway is Warung Mak Teh. Would you like to order?' },
+          { role: 'assistant', text: 'The usual takeaway is Napoli Pizza. Would you like to order?' },
           { role: 'user', text: 'something lighter' },
         ],
       },
     });
     expect(out).toMatchObject({ they_asked_earlier: ['What should we cook tonight?', 'something lighter'] });
-    expect(JSON.stringify(out)).not.toContain('Warung Mak Teh');
+    expect(JSON.stringify(out)).not.toContain('Napoli Pizza');
   });
 });
 

@@ -57,9 +57,9 @@ describe('normalise', () => {
   it("turns the speaker's end words into dates, and never keeps a temporary fact forever", () => {
     const expiries = normalise(
       [
-        draft('Alice is in Penang', { ends: 'until Wednesday' }),
+        draft('Alice is in Boston', { ends: 'until Wednesday' }),
         draft('Alice is off sugar', { ends: 'for a while' }),
-        draft('Alice was in Ipoh', { ends: '2026-09-01' }),
+        draft('Alice was in Austin', { ends: '2026-09-01' }),
         draft('Alice is vegetarian', { ends: 'null' }),
       ],
       ctx,
