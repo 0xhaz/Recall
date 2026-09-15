@@ -22,6 +22,7 @@
     "@nestjs/platform-express": "12.0.1",
     "@recall/core": "workspace:*",
     "@recall/llm": "workspace:*",
+    "@smithy/node-http-handler": "^4.12.1",
     "pg": "^8.23.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",

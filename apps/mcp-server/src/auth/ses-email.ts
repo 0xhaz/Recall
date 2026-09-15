@@ -1,5 +1,6 @@
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
 import { Logger } from '@nestjs/common';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 import type { EmailMessage, EmailSender } from './email.js';
 
 /**
@@ -18,7 +19,14 @@ export class SesEmailSender implements EmailSender {
     private readonly from: string,
     region: string,
   ) {
-    this.client = new SESv2Client({ region });
+    this.client = new SESv2Client({
+      region,
+      maxAttempts: 2,
+      // Sending is not on the critical path of the reply: the caller answers the same way whether
+      // the mail went or not. Without a bound, an unreachable SES leaves the request hanging until
+      // the load balancer gives up, which is a minute of nothing for the person signing in.
+      requestHandler: new NodeHttpHandler({ connectionTimeout: 3_000, requestTimeout: 6_000 }),
+    });
   }
 
   async send(message: EmailMessage): Promise<void> {

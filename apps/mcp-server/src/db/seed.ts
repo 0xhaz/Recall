@@ -16,7 +16,9 @@ const households = [
 ];
 
 const people = [
-  { id: DEMO_PEOPLE.aisyah, name: 'Aisyah', email: 'aisyah@demo.recall.local' },
+  // The owner's address is configurable so a deployment can point her at a mailbox that exists:
+  // the demo domain is not real, and a sign-in link sent there goes nowhere.
+  { id: DEMO_PEOPLE.aisyah, name: 'Aisyah', email: process.env.DEMO_OWNER_EMAIL ?? 'aisyah@demo.recall.local' },
   { id: DEMO_PEOPLE.daniel, name: 'Daniel', email: 'daniel@demo.recall.local' },
   { id: DEMO_PEOPLE.sofia, name: 'Sofia', email: null },
   { id: DEMO_PEOPLE.som, name: 'Mak Som', email: null },

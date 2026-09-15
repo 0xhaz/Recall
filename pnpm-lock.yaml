@@ -129,6 +129,9 @@ importers:
       '@recall/llm':
         specifier: workspace:*
         version: link:../../packages/llm
+      '@smithy/node-http-handler':
+        specifier: ^4.12.1
+        version: 4.12.1
       pg:
         specifier: ^8.23.0
         version: 8.23.0
