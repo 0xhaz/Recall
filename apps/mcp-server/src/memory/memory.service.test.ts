@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { scopeRank, toTsQuery } from './memory.service.js';
+import { floorFor, scopeRank, toTsQuery } from './memory.service.js';
 
 describe('scopeRank', () => {
   const me = 'p1';
@@ -46,5 +46,20 @@ describe('toTsQuery', () => {
 
   it('returns an empty string for an empty query', () => {
     expect(toTsQuery('  ? ')).toBe('');
+  });
+});
+
+describe('floorFor', () => {
+  it('uses the floor calibrated for the model that made the vectors', () => {
+    // Titan sits on a much lower scale than qwen: same number, different meaning.
+    expect(floorFor('qwen3-embedding:0.6b', 'query')).toBe(0.34);
+    expect(floorFor('amazon.titan-embed-text-v2:0', 'query')).toBe(0.12);
+    expect(floorFor('amazon.titan-embed-text-v2:0', 'statement')).toBe(0.18);
+  });
+
+  it('falls back to the stricter local numbers for a model nobody has measured', () => {
+    // Under-returning is recoverable; inventing matches is not.
+    expect(floorFor('some-new-model', 'query')).toBe(0.34);
+    expect(floorFor('some-new-model', 'statement')).toBe(0.72);
   });
 });

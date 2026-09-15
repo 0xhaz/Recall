@@ -125,14 +125,34 @@ function blockedMessage(categories: BlockedCategory[], partlyStored: boolean): s
 }
 
 /**
- * Minimum cosine similarity for a vector hit, by what is being compared (qwen3-embedding:0.6b,
- * calibrated 2026-09-11). A statement against a fact (verify_claim, forget by topic) is compared
- * like two facts: related ≥ 0.77, unrelated ≤ 0.68. A question against a fact (recall, explain)
- * sits on a lower scale; with the query instruction, relevant pairs scored 0.35–0.71 and
+ * Minimum cosine similarity for a vector hit, by what is being compared and by which model produced
+ * the vectors. The floor belongs to the embedding model, not to Recall: the two in use do not put
+ * their numbers on the same scale, and using one model's floor with another's vectors either throws
+ * away every real match or admits every unrelated one.
+ *
+ * qwen3-embedding:0.6b (calibrated 2026-09-11). A statement against a fact (verify_claim, forget by
+ * topic) is compared like two facts: related >= 0.77, unrelated <= 0.68. A question against a fact
+ * (recall, explain) sits lower; with the query instruction, relevant pairs scored 0.35-0.71 and
  * unrelated ones at most 0.32.
+ *
+ * amazon.titan-embed-text-v2:0 (calibrated 2026-09-15, 10 query pairs and 6 statement pairs drawn
+ * from the demo household). Titan has no query instruction, so everything sits lower. Statements
+ * separate cleanly: related 0.23-0.77 against unrelated at most 0.10. Questions overlap at the
+ * margin: related 0.07-0.69 against unrelated up to 0.12. At 0.12 every true match is kept but one
+ * — "what should we cook tonight?" against "Aisyah is vegetarian", at 0.073 — and no false one is
+ * admitted. That pair scored 0.313 on qwen, below its floor too, so nothing is lost that was held.
  */
-export const SIMILARITY_FLOOR = { statement: 0.72, query: 0.34 } as const;
+const FLOORS = {
+  'qwen3-embedding:0.6b': { statement: 0.72, query: 0.34 },
+  'amazon.titan-embed-text-v2:0': { statement: 0.18, query: 0.12 },
+} as const;
+
+/** An unmeasured model gets the local numbers: they are the stricter pair, so it under-returns rather than invents. */
+export const SIMILARITY_FLOOR = FLOORS['qwen3-embedding:0.6b'];
 export type SearchMode = keyof typeof SIMILARITY_FLOOR;
+
+export const floorFor = (model: string, mode: SearchMode): number =>
+  (FLOORS as Record<string, Record<SearchMode, number>>)[model]?.[mode] ?? SIMILARITY_FLOOR[mode];
 const CANDIDATES = 20;
 const QUERY_CACHE_SIZE = 500;
 const MAX_FUTURE_DRIFT_MS = 5 * 60_000;
@@ -414,7 +434,7 @@ export class MemoryService {
         LIMIT ${CANDIDATES}`,
       [householdId, personId, JSON.stringify(vector)],
     );
-    return rows.filter((r) => (r.similarity ?? 0) >= SIMILARITY_FLOOR[mode]);
+    return rows.filter((r) => (r.similarity ?? 0) >= floorFor(this.embedder.model, mode));
   }
 
   private async embedQuery(text: string, purpose: EmbedPurpose): Promise<number[] | undefined> {

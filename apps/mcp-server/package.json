@@ -11,7 +11,8 @@
     "test": "vitest run",
     "migrate": "tsx --conditions=development src/db/migrate.ts",
     "seed": "tsx --conditions=development src/db/seed.ts",
-    "smoke": "tsx --conditions=development scripts/smoke.ts"
+    "smoke": "tsx --conditions=development scripts/smoke.ts",
+    "calibrate": "tsx --conditions=development scripts/calibrate-floors.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.0",
