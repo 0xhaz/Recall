@@ -179,6 +179,57 @@ Principle: **the event log is the source of truth, not any device.** Devices app
 - Sensitive-tagged raw events (health signals, classifier-flagged) have a **7-day** raw retention regardless; only derived context survives.
 - Persons with zero memberships: purge after 30 days.
 
+### 4.2 Local and remote MCP (designed 2026-09-15, not built)
+
+Recall is server-authoritative today: every tool call goes to the MCP server, and a device is a
+cache that never answers anything. But the pieces for a device that *can* answer are already here
+and tested — the append-only log, HLC ordering, per-device cursors, snapshots, tombstones that no
+stale replay can undo, and `MemoryProjection` in `@recall/core`, which devices converge on whatever
+page size they use. What is missing is only exposing that projection as an MCP surface.
+
+**The split is not even, and should not be.** Dividing tools by count would be arbitrary. The line
+that follows from the design already in place:
+
+> The device answers from what it already holds. The server owns anything that changes shared
+> truth or needs a model.
+
+| Local MCP (on the device, over its projection) | Remote MCP (the server) |
+|---|---|
+| `session_brief`, `recall` (keyword), `list_rules`, `device_state`, `session_history`, `get_context` | `remember`, `forget`, `set_rule`, `action_preflight`, `propose_action`, `decide_action`, `undo`, `verify_claim`, `explain_memory`, `suggest_music`, `ingest_events`, `sync`, care policies and reminders |
+
+That is the same set §7.1 already keeps the LLM out of: the tools that can be answered locally are
+exactly the ones that are pure reads over a projection. Writes, anything needing a model, and
+anything that has to be true for the whole household stay on the server.
+
+**Three things constrain it, and are the reason this is written down rather than built.**
+
+*Semantic recall cannot go local.* Vector search needs an embedder. On a device that means either
+shipping a small embedding model or falling back to keyword-only — a real quality drop on exactly
+the questions where retrieval matters most, since the weakest matches are the ones that separate
+"what should we cook" from a household fact.
+
+*Care timers cannot go local.* A medication prompt that escalates to carers must not depend on one
+device being awake. Reminders, absence detection and escalation stay server-side: that is a safety
+property, not an optimisation.
+
+*Sync is household-scoped, and local reads would make that a security boundary.* `sync` filters on
+`household_id` and `NOT sensitive` — not on device or person. Every device therefore already holds
+every person's facts, including a child's allergy and a caregiver's notes about the person they look
+after. Today that is tolerable because the device never answers: the server applies
+`canReadPersonMemory` at read time, and the projection is only a cache. Move reads onto the device
+and the device becomes the enforcement point for memory it should arguably never have received.
+
+For household hardware that sits in a shared room, the trust boundary is unchanged and reusing
+`@recall/core`'s access rules on the device is enough. For anything personal — a phone, a worn
+tracker — it is not: those devices should receive only what their own people may see, which means
+scoping at sync time and per-scope snapshots, and that reaches into the part of the system currently
+carrying the convergence guarantees.
+
+**Status:** designed, not built. The near-term version worth having is the narrow one — the
+simulated devices answering reads from their own projection with the server as fallback, which
+changes no schema and demonstrates something no amount of copy can: disconnect the network and the
+house still knows who is speaking.
+
 ## 5. State-of-record and honesty mechanisms
 
 - **State-of-record principle** — the assistant never answers a question about state from model belief. `device_state` is the only source for now-playing, timers/alarms, notification subscriptions and enabled features; every "turn X off" is re-read from state after the change.
@@ -346,3 +397,4 @@ Product feedback (Amazon's side): small-model routing for simple intents, local 
 | 2026-09-11 | Routine health: "broken" when the last two attempts near the usual time failed (devices report a failure as the same kind with `status: "failed"`), "fading" when it happens less than half as often lately. Routines unseen for 21 days retire; seen again, they return as candidates. Mining runs as a daily job. Forget-me deletes a person's routines and activity. |
 | 2026-09-11 | Check-ins: `checkin` is only ever the person's own words; it logs the check-in and tells the household. The absence watcher (every minute) asks the person first once they're later than usual + max(30 min, 2 × spread), and tells carers (caregivers and household adults) only if there's still no reply 30 minutes later. Checking in closes both and tells the carers if they'd been alerted. Notices are delivered once (dedupe key) and reach devices as `notice.created`. |
 | 2026-09-11 | The embedding model is loaded at startup (where background work runs), so the first question after a restart doesn't pay the 1.7–3.7 s cold load. |
+| 2026-09-15 | Local/remote MCP split designed, not built (§4.2). The device answers from what it already holds; the server owns anything that changes shared truth or needs a model — which puts exactly the tools §7.1 keeps the LLM out of on the device, and everything else on the server. Deferred rather than adopted because semantic recall needs an embedder the device may not have, care escalation must not depend on a device being awake, and — the finding that decided it — `sync` is scoped to the household, not to the device or person. Every device already holds every person's facts; that is tolerable while the server answers and applies `canReadPersonMemory` at read time, and stops being tolerable the moment a personal device answers for itself. Local reads for shared household hardware need no schema change; per-person devices need sync-time scoping and per-scope snapshots first. |

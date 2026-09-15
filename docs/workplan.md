@@ -221,6 +221,7 @@ Checkboxes are the tasks. "Done when" is the acceptance test.
 - [ ] Projections rebuilt by workers, never hand-merged: facts, rules, routines, context scores, session/state, sync cursors [A§7] — facts, rules, device state, sessions and cursors ✓ (written with their event, in one transaction); routines and context scores in W4
 - [x] Conflict semantics: LWW register (by HLC) for single-valued prefs; add/remove set for set-valued facts [A§4] — LWW per key for device state; tombstones always win for facts and rules
 - [ ] Tombstone events for `forget`, `undo`, `remove_rule` [A§4] — forget ✓, remove_rule ✓; undo in W4
+- [ ] Scope `sync` to the device and its people, not just the household [A§4.2] — today every device receives every person's facts. Harmless while the server answers and filters at read time; a prerequisite for any device answering for itself, and for a personal device (phone, worn tracker) holding memory at all
 - [x] `sync(device, cursor)` → `{mode: replay | snapshot}`; per-device cursors; light SSE endpoint [A§4, A§4.1] — the cursor is the server sequence (decision log); no SSE push yet, devices poll
 - [x] Sessions: `session.open/turn/close` with TTL in minutes; a device joining mid-session continues it [A§4]
 - [x] Nightly snapshot worker records `snapshot_hlc` [A§4.1] — records the last sequence number it covers
