@@ -13,3 +13,6 @@ futuristic-dashboard/
 
 # TypeScript incremental build state — a local artifact, never a review artifact.
 *.tsbuildinfo
+
+# Amazon RDS CA bundle, fetched on demand by scripts/seed-prod.sh
+.cache/
