@@ -42,15 +42,15 @@ export class SesEmailSender implements EmailSender {
   }
 }
 
-const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /** Plain and short. A sign-in mail that looks like marketing gets treated like marketing. */
 function html(message: EmailMessage): string {
   return `<!doctype html><html><body style="margin:0;padding:24px;background:#0b1220;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#e2e8f0">
   <div style="max-width:480px;margin:0 auto">
     <p style="font-size:18px;font-weight:600;color:#22d3ee;letter-spacing:.08em;margin:0 0 20px">RECALL</p>
-    <p style="margin:0 0 18px;line-height:1.6">${escape(message.text.split(':')[0] ?? 'Sign in to Recall')}:</p>
-    <p style="margin:0 0 22px"><a href="${escape(message.url)}" style="display:inline-block;background:#0891b2;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px">Sign in to Recall</a></p>
+    <p style="margin:0 0 18px;line-height:1.6">${esc(message.text.split(':')[0] ?? 'Sign in to Recall')}:</p>
+    <p style="margin:0 0 22px"><a href="${esc(message.url)}" style="display:inline-block;background:#0891b2;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px">Sign in to Recall</a></p>
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.6">The link works once and expires in 15 minutes. If you did not ask to sign in, ignore this — nothing has changed.</p>
   </div></body></html>`;
 }
