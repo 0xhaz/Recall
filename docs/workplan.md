@@ -285,6 +285,7 @@ NestJS, MCP spec 2025-11-25+, Streamable HTTP; the repo must actually call MCP i
 | `checkin` | W4 | MS if B | Logs event, messages the household |
 
 - [x] Temporal stamp middleware (device local date/time/timezone) on `session_brief`, `recall`, `get_context`, `propose_action`; timers/alarms include the actual start timestamp [A§5] — on every read tool; timers report `started_at` and time left
+- [ ] OAuth 2.0 + PKCE and a Protected Resource Metadata document, so the Alexa+ MCP Toolkit can connect [A§10, 2026-09-15] — everything else it requires is already met; confirm toolkit access before building
 - [ ] Tool descriptions tuned against Claude Desktop so the model reliably calls `session_brief` first [T§3]
 - [ ] Streaming: send the deterministic parts first (state, rules, hot facts), enrichment after [A§7.1]
 - [x] Bearer-token guard per household

@@ -66,7 +66,9 @@ Strengths to preserve: natural multi-turn conversation, child speech comprehensi
 5. **Privacy & control** — readable "what do you know about me", per-fact edit/delete, sensitivity filter, TTLs, tombstoned forgetting that propagates everywhere.
 6. **Console** — Next.js web app to inspect and edit memory, and to simulate the Alexa+ experience for the demo.
 
-Explicitly out of scope for the hackathon: real Voice ID integration, real Echo device access (we assume no Alexa+ Preview MCP connection is available to outside devs), production-grade multi-tenant billing, full smart-home command routing.
+Explicitly out of scope for the hackathon: real Voice ID integration, real Echo device access, production-grade multi-tenant billing, full smart-home command routing.
+
+> **Revisited 2026-09-15.** The assumption that no Alexa+ MCP connection exists for outside developers is out of date. Amazon documents an [Alexa+ MCP Toolkit](https://developer.amazon.com/docs/alexaplus/add-ons/mcp-toolkit-overview.html): you bring an existing MCP server, Alexa+ acts as the client, and an add-on bridges the two with a web simulator for testing. Recall already meets most of what it asks — MCP 2025-11-25 (negotiated), streamable HTTP, a public HTTPS endpoint, and round-trip well inside the 500 ms requirement. The gap is authentication: the toolkit mandates OAuth 2.0 with PKCE and a Protected Resource Metadata document, and Recall authenticates with per-household bearer tokens. Reported availability is unclear — one Amazon page describes the MCP Toolkit as open, another as limited to select partners — so confirm access before building against it.
 
 ### 3.1 Alternatives considered
 
