@@ -13,6 +13,9 @@ COPY packages ./packages
 COPY apps/console ./apps/console
 COPY apps/simulator ./apps/simulator
 RUN pnpm install --frozen-lockfile
+# Identifies this build to the browser, so a tab from an older one reloads rather than erroring.
+ARG NEXT_DEPLOYMENT_ID=dev
+ENV NEXT_DEPLOYMENT_ID=$NEXT_DEPLOYMENT_ID
 RUN pnpm --filter @recall/console build
 RUN pnpm --filter @recall/simulator... build
 RUN pnpm --filter @recall/simulator deploy --prod /sim
@@ -20,7 +23,9 @@ RUN pnpm --filter @recall/simulator deploy --prod /sim
 FROM node:22-slim
 WORKDIR /app
 # RECALL_API_URL and SIMULATOR_URL are read at request time, never baked in (see next.config.mjs).
-ENV NODE_ENV=production PORT=3000 \
+ARG NEXT_DEPLOYMENT_ID=dev
+# The running server compares against the same id the client bundles were built with.
+ENV NODE_ENV=production PORT=3000 NEXT_DEPLOYMENT_ID=$NEXT_DEPLOYMENT_ID \
     SIM_HOST=127.0.0.1 SIM_PORT=3200 SIMULATOR_URL=http://127.0.0.1:3200
 COPY --from=build /repo/apps/console/.next/standalone ./
 COPY --from=build /repo/apps/console/.next/static ./apps/console/.next/static
