@@ -17,6 +17,18 @@ Each work item has a week, a priority, and a "done when". Priorities:
 
 ## Progress
 
+**Deployment (2026-09-15)**
+
+- ✅ Bedrock for real: `BedrockProvider` over the Converse API (Nova Lite, JSON schemas enforced by forcing one tool call) and `BedrockEmbedder` over Titan v2 at 1024 dims. The message reshaping is covered by tests, because that is where an adapter like this quietly goes wrong
+- ✅ Similarity floors are now a property of the embedding model, not of Recall. Titan sits on a different scale from qwen3-embedding — the cook/vegetarian pair scores 0.073 against 0.313 — so the old 0.34 floor would have returned almost nothing. Measured with `pnpm --filter @recall/mcp-server calibrate`, committed with the evidence: query 0.12, statement 0.18
+- ✅ Live on AWS: server and console on App Runner, RDS Postgres 16 with pgvector behind a VPC connector, Bedrock and SES reached through interface endpoints rather than a NAT gateway. `/health` reports db and Bedrock reachable; 26 tools over authenticated HTTPS
+- ✅ Sign-in sends a real email through SES (link no longer written to the log; delivery failures logged rather than returned, so the form still cannot be used to ask who has an account). SES production access requested, pending review — until it lands only verified addresses can receive a link
+- ✅ A scoped IAM user (`recall-deploy`) replaces root for day-to-day work; the App Runner instance role may invoke exactly two Bedrock models and send from one verified identity
+- ✅ Nova Lite measured against the demo beats: §1 3/4 and §7 4/4, where `qwen3:8b` manages 0/4 and 2/4. The deployed stack is the one to record
+- ⏳ **AgentCore Runtime not used** — App Runner instead, which the console and simulator can reach with a bearer token. The image already satisfies AgentCore's contract apart from the port (ARM64 ✓, stateless streamable HTTP ✓, `POST /mcp` ✓, needs 8000), so this is a deliberate deviation to revisit, not a dead end. It affects the AWS Builder mini challenge write-up
+- ⏳ **Simulator not deployed** — the account is capped at two App Runner services per region, an account restriction rather than a quota, so it needs an AWS Support case. The console took the second slot
+- ⏳ Replays not yet re-run on AWS; no p95 logged for the deployed stack
+
 **W5 (started early, as of 2026-09-13)**
 
 - ✅ Console API on the server (`/console/households/:id/...`): the 30-day console session rather than a household token, every read and write under the signed-in person's own access rules, reusing the voice path's services and the same event log
@@ -357,16 +369,16 @@ Not a general chatbot. Must-show moments: fixing a wrong fact, a rule blocking a
 - [x] Simulator source included in the repo [T§7]
 
 ### WS13 — LLM provider and workers (W1 local → W4 Bedrock, P0)
-- [ ] `LlmProvider` interface + adapters: Ollama/MLX (local), Anthropic API, Bedrock (Nova Lite for extraction; Claude on Bedrock for pre-flight/propose if budget allows) [T§1, T§4] — interface + Ollama ✓ (chat and embeddings); Bedrock stubbed
-- [ ] Bedrock adapter written and documented early; switching is one env var [T§3] — env switch ✓; Converse and Titan calls when credits land
+- [x] `LlmProvider` interface + adapters: Ollama/MLX (local), Anthropic API, Bedrock (Nova Lite for extraction; Claude on Bedrock for pre-flight/propose if budget allows) [T§1, T§4] — Ollama and Bedrock both real (Converse + Titan v2); Claude on Bedrock not needed so far, Nova Lite outperforms the local model on both demo beats
+- [x] Bedrock adapter written and documented early; switching is one env var [T§3] — `LLM_PROVIDER=bedrock`, verified end to end on the deployed server
 - [ ] Job queue (per the decision in §2.2) and stateless workers: extractor, consolidator, pre-flight checker, explainer, rule parser. One orchestrator; workers hold no memory and don't talk to each other [A§7] — Postgres queue ✓, extractor + judge ✓; the rest as their features land
 - [x] Keep the LLM off the read path entirely [A§7.1] — `recall` and `session_brief` are SQL only
 
 ### WS14 — AWS deployment (W4 first deploy, W6 final, P0)
 - [x] Dockerfile for the server from W1 [T§3]
-- [ ] AgentCore Runtime deployment; keep instances warm [T§4]
-- [ ] RDS or containerised Postgres; persistent pool [T§4]
-- [ ] Region co-located with the Alexa+ endpoint (us-east-1); simulator co-located for the video [T§4]
+- [ ] AgentCore Runtime deployment; keep instances warm [T§4] — deployed to App Runner instead (bearer-token auth the console and simulator can use); the image already meets AgentCore's contract apart from the port
+- [x] RDS or containerised Postgres; persistent pool [T§4] — RDS Postgres 16, pgvector 0.8.2, private to the VPC, TLS verified against Amazon's CA bundle shipped in the image
+- [ ] Region co-located with the Alexa+ endpoint (us-east-1); simulator co-located for the video [T§4] — us-east-1 ✓; the simulator has no service slot until the App Runner restriction is lifted
 - [ ] Re-run the replay scripts on AWS; log p95 regressions in the friction log [T§4]
 - [ ] Document the Bedrock/AgentCore integration (AWS Builder mini challenge) [T§4]
 - [ ] Optional: Strands SDK for the orchestrator + worker pattern [T§4]
