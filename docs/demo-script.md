@@ -71,6 +71,12 @@ A household in Brooklyn, on `America/New_York`.
 Devices: `kitchen-echo`, `bedroom-echo` (Ruth's), `living-firetv`, `ruth-bee` (worn),
 `emma-watch` (worn).
 
+`pnpm db:seed` fills **every console page**, and is safe to re-run — it replaces what it owns rather
+than adding to it, so the demo is the same twice. Four rules (one a caregiver safety rule), five
+routines including one marked broken and one still only a candidate, Ruth's care plan with three
+reminders and six days of doses plus today in progress, her Bee's last reading against her own
+learned resting rate, and one fact erased for good so `forget` has a tombstone to show.
+
 Seeded facts: Emma vegetarian · Daniel likes very spicy food · Sofia allergic to peanuts · household
 takeaway is Napoli Pizza · family dinner ~19:30 weekdays · delivery address (tagged PII) · Ruth
 takes tea with condensed milk (entered by Nina) · the fridge water filter is replaced every 3 months.
@@ -456,15 +462,43 @@ Three assemblies. All are ⏱ ~3:00 including talking.
 
 **Best for:** a technical judging panel.
 
+### Cut D — "Two questions" (the short presentation) ★ recommended
+
+Two queries asked properly, everything else at a run. The bet: one caregiver question and one
+shopping question show more of the product than six features shown briefly, because both are things
+a real person would actually say out loud, and both end somewhere no other entrant will be.
+
+Sign in as **Nina** (caregiver). Have the console open on Ruth's care page and the simulator in a
+second tab.
+
+| ⏱ | Beat | Say / do | What lands |
+|---|---|---|---|
+| 0:00–0:15 | Open | "This is a memory layer for Alexa+, owned by the household rather than the assistant." Console overview. | Counts are real: facts, rules, routines, one broken, actions today |
+| **0:15–1:10** | **The caregiver question** | Ruth's care page. Today's doses: morning and lunch confirmed, evening still to come. Scroll to three days ago — one missed. Then vitals: 74 against *her own* resting 72. | A day in progress, not a dashboard |
+| | | Voice: *"Where's Arthur?"* | Redirected **in Nina's words**, read from the care plan. Never corrected, never improvised |
+| | | Point at the dose log: *"unconfirmed is not the same as not taken"* | The design position, visible on screen rather than asserted |
+| **1:10–2:00** | **The groceries question** | Voice: *"What did I buy last time?"* | The actual record — wet food from Chewy, with the date |
+| | | *"What do we need to order again?"* | Coffee a week overdue. Wet food due in three days. **AA batteries bought twice and deliberately not claimed as a cycle** |
+| | | *"We replace the fridge water filter every 3 months"* → ask again | Now overdue, and it **quotes her own sentence back**. One purchase plus one sentence, where mining alone would find nothing |
+| | | *"Order more wet food"* | Pre-flight. Money is only ever drafted for confirmation |
+| 2:00–2:40 | The rest, fast | Six beats, ~6 s each: §1.2 same question two people · §2.5 forget → gone on every device · §3.4 a rule blocking an action, quoted · §5.3 a routine that **stopped working** · §6.1 context with its reasons · §12 sync | Breadth, without pretending each is a feature demo |
+| 2:40–3:00 | Close | §15: Bedrock Nova Lite, App Runner, Postgres + pgvector. 296 tests. `session_brief` 10 ms p50 server-side. | Credibility |
+
+**Why these two.** The caregiver beat is the one nobody else will have, and the groceries beat is the
+one that shows memory doing work rather than being recited — including the two moments where Recall
+*declines* to claim something (batteries, and never saying the cupboard is empty). Restraint is
+harder to fake than recall, and it is the whole argument.
+
 ---
 
 ## Recommendation
 
-**Cut B.** §1 gets you in the door, but every entrant will have a memory demo. The medication beat
-(§8.4 vs §8.5 vs §8.6) is the one nobody else will have, and it's the one where the design position —
-*record what is known, never what is assumed* — is visible on screen rather than asserted in voiceover.
+**Cut D**, for a three-minute slot. Two questions asked properly beat six features shown briefly, and
+both of its beats end somewhere hard to copy: a care plan spoken back in the caregiver's own words,
+and a repurchase cycle that refuses to guess. Cuts A–C stay here because they are better assemblies
+for longer slots or a specific room.
 
-If the audience skews technical, **Cut C**, but keep §8.6 in place of §12; it's the better 30 seconds.
+If the audience skews technical, **Cut C** — but keep §8.6 in place of §12; it's the better 30 seconds.
 
 ---
 
