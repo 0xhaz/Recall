@@ -1,0 +1,7 @@
+{
+  "name": "@recall/skill",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agent Skill: how to use a household's Recall memory without getting it wrong",
+  "files": ["SKILL.md", "references"]
+}

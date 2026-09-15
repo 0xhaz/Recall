@@ -61,6 +61,25 @@ Things to try, speaking as someone from the demo household:
 - *"What do you know about me?"* and *"Do you know anything about my uncle?"*
 - *"Forget that I'm off coffee."*
 
+## Agent Skill
+
+`packages/skill` packages the same capability as an Agent Skill: not a second implementation, but
+instructions for an agent that already has the MCP tools — which to call first, what the brief's
+ordering means, and what not to say. The rules that make Recall behave (answer from the speaker's
+own facts, ask rather than guess an unrecognised voice, quote the rule that blocked something, never
+claim an action is done unless `decide_action` returned `executed`) live there rather than in each
+assistant's prompt.
+
+```
+packages/skill/
+  SKILL.md               how to use Recall, and the mistakes worth avoiding
+  references/tools.md    the full tool surface and which to reach for
+  references/http.md     calling Recall over HTTP when no MCP client is connected
+```
+
+Point a Claude Code or Claude Desktop skills directory at it, or copy the folder in. The
+`references/` files load on demand, so the instructions stay short until something needs the detail.
+
 ## Console
 
 With the server running, `pnpm console` serves the console on http://localhost:3000: what Recall remembers, and the

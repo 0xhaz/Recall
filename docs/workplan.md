@@ -403,9 +403,9 @@ Budgets [T§5]: `session_brief` < 400 ms p95 · `recall` < 300 ms p95 · `get_co
 - [ ] Proactivity: offer acceptance rate (self-report in the demo)
 
 ### WS17 — Agent Skill and open source (W5, P0)
-- [ ] Package the same capability as an Agent Skill in `packages/skill`; verify in Claude and Kiro [A§6, T§1]
+- [x] Package the same capability as an Agent Skill in `packages/skill`; verify in Claude and Kiro [A§6, T§1] — SKILL.md plus `references/tools.md` and `references/http.md`; every tool it names checked against the deployed server's `tools/list`, which caught it describing the simulator's digest shape rather than the real `session_brief` payload. Not yet loaded into Claude or Kiro
 - [ ] Show the Skill in the video [T§7]
-- [ ] README: what it is, architecture diagram, run instructions (self-hosted `docker compose`), latency table, licence
+- [ ] README: what it is, architecture diagram, run instructions (self-hosted `docker compose`), latency table, licence — Skill section ✓; architecture diagram and latency table still to add
 - [ ] Open Source mini challenge fields: contribution URL, repo URL, GitHub username, description [T§7]
 
 ### WS18 — Demo, video, submission (W5 dry run, W6 ship)
