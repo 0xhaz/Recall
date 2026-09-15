@@ -7,6 +7,7 @@ export * from './fusion.js';
 export * from './hlc.js';
 export * from './holidays.js';
 export * from './music.js';
+export * from './occasions.js';
 export * from './projection.js';
 export * from './repurchase.js';
 export * from './routines.js';

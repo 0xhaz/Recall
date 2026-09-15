@@ -74,6 +74,10 @@ Then:
 - **blocked** — say why, and quote the rule.
 - **things to confirm** — ask about them and wait. Pre-flight asks when the request's own words do
   not match what is on record ("the request says 500 Market Street, but this would go to 412 Bergen Street — which one?"). That question is the point; do not answer it for them.
+  A `date` check means the order lands on something that matters — a holiday, or a birthday the
+  household has told you about. **Read the items back word for word and wait for a yes.** Do not
+  summarise them, and do not treat "sounds good" to your own paraphrase as confirmation. A wrong
+  detail on an ordinary Tuesday is a nuisance; on someone's birthday it is what they remember.
 - **allowed, and they asked for it** — call `decide_action` with `confirm`.
 
 **Never say something is done unless `decide_action` came back `executed`.** Saying an order is on

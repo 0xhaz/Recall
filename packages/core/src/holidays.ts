@@ -23,6 +23,11 @@ const HOLIDAYS_2026: readonly [date: string, name: string, festive: boolean][] =
 /** Days a missed routine isn't counted against. */
 export const US_HOLIDAYS_2026: ReadonlySet<string> = new Set(HOLIDAYS_2026.map(([date]) => date));
 
+/** Every holiday by date, named. A date worth confirming an order against, festive or not. */
+export const US_HOLIDAY_NAMES_2026: ReadonlyMap<string, string> = new Map(
+  HOLIDAYS_2026.map(([date, name]) => [date, name.replace(' (observed)', '')]),
+);
+
 /** Celebrations that make a festive context (playlist bias only, never an action on their own). */
 export const US_FESTIVALS_2026: ReadonlyMap<string, string> = new Map(
   HOLIDAYS_2026.filter(([, , festive]) => festive).map(([date, name]) => [date, name.replace(' (observed)', '')]),

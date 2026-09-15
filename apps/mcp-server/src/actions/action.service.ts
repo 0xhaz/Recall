@@ -13,11 +13,14 @@ import {
   evaluatePreflight,
   evaluateRules,
   formatMinute,
+  holidayDates,
+  type ImportantDate,
   intentForKind,
   inverseCommand,
   localClock,
   type OfferStats,
   type OfferTier,
+  occasionIn,
   offerTier,
   type PastOrder,
   type Preflight,
@@ -47,6 +50,7 @@ const REOFFER_HOURS = { routine: 12, music: 2 };
 const BACK_OFF = 3;
 const MUSIC_CONTEXTS: readonly ContextName[] = ['workout', 'party', 'festive', 'focus'];
 const DECIDES_FOR_OTHERS = new Set(['owner', 'adult', 'caregiver']);
+const READ_BACK_INTENTS = new Set(['order.food', 'purchase', 'ride.book', 'booking', 'reminder']);
 
 export interface ActionInput {
   intent: ActionIntent;
@@ -376,6 +380,10 @@ export class ActionService {
       details.venue ? this.venueFacts(household.id, speaker, details.venue) : [],
       personId && given ? this.routinesOn(household, personId, when) : [],
     ]);
+    const whenLocal = localMinute(household.timezone, when);
+    const importantDates = READ_BACK_INTENTS.has(input.intent)
+      ? await this.importantDates(household, speaker, whenLocal.date)
+      : [];
     const rules = evaluateRules(inForce, {
       intent: input.intent,
       topics: input.topics ?? [],
@@ -398,7 +406,9 @@ export class ActionService {
       venueFacts,
       orders,
       routines,
-      whenMinute: given ? localMinute(household.timezone, when).minute : null,
+      whenMinute: given ? whenLocal.minute : null,
+      whenDate: whenLocal.date,
+      importantDates,
       now,
     });
   }
@@ -700,6 +710,34 @@ export class ActionService {
       items: r.details.items ?? [],
       at: r.decided_at.toISOString(),
     }));
+  }
+
+  /**
+   * Dates this household keeps: the public calendar, plus any birthday or anniversary someone has
+   * said out loud. Facts are read under the same visibility rule as everywhere else, so an occasion
+   * only one person recorded stays theirs.
+   */
+  private async importantDates(
+    household: Household,
+    speaker: Speaker | null,
+    onDate: string,
+  ): Promise<ImportantDate[]> {
+    const year = Number(onDate.slice(0, 4));
+    const { rows } = await this.db.query<{ id: string; content: string }>(
+      `SELECT f.id, f.content FROM fact f
+        WHERE f.household_id = $1 AND f.forgotten_at IS NULL AND f.valid_to IS NULL
+          AND (f.ttl IS NULL OR f.valid_from + f.ttl > now())
+          AND (f.scope_type = 'household' OR (f.scope_type = 'person' AND f.scope_id = $2::uuid))
+          AND f.content ~* '(birthday|anniversary)'
+        LIMIT 200`,
+      [household.id, speaker?.person_id ?? null],
+    );
+    const said: ImportantDate[] = [];
+    for (const r of rows) {
+      const found = occasionIn(r.content, year);
+      if (found) said.push({ ...found, fact_id: r.id });
+    }
+    return [...holidayDates(year), ...said];
   }
 
   /** Facts about a venue ("the usual takeaway is Napoli Pizza"): the place is known before any order. */

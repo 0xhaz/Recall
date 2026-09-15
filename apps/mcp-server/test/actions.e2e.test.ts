@@ -241,3 +241,44 @@ describe('propose_action', () => {
     expect(await propose('Alice')).toMatchObject({ offers: [], withheld: { reason: 'quiet_hours' } });
   });
 });
+
+describe('dates worth stopping for', () => {
+  // Thanksgiving 2026 is a Thursday. Everything here is pinned to real dates so the test does not
+  // drift with the clock: `when` decides the date, not today.
+  const buy = (summary: string, when: string, details: Record<string, unknown>) =>
+    preflight({ speaker: 'Emma', action: { intent: 'purchase', summary, details: { when, ...details } } });
+
+  it('reads the order back on a holiday, instead of placing it', async () => {
+    const out = await buy('Order the turkey', '2026-11-26T15:00:00-05:00', {
+      items: ['turkey', 'cranberry sauce'],
+      venue: 'Whole Foods',
+      amount: 48.2,
+      currency: 'USD',
+    });
+    expect(out.decision).toBe('confirm');
+    expect(out.confirm.find((c) => c.check === 'date')?.message).toBe(
+      'Thanksgiving: read this back before it goes — turkey, cranberry sauce, from Whole Foods, USD 48.20.',
+    );
+  });
+
+  it('reads it back before a birthday the household told us about', async () => {
+    await t.db.query(
+      `INSERT INTO fact (household_id, region, scope_type, scope_id, type, content, confidence)
+       VALUES ($1, 'us', 'household', $1, 'semantic', 'Sofia''s birthday is March 3', 0.95)`,
+      [hh.id],
+    );
+    const out = await buy("A cake for Sofia's birthday", '2026-02-28T15:00:00-05:00', { items: ['chocolate cake'] });
+    expect(out.confirm.find((c) => c.check === 'date')?.message).toBe(
+      "Sofia's birthday: read this back before it goes — chocolate cake.",
+    );
+  });
+
+  it('leaves an ordinary order near a holiday alone', async () => {
+    const out = await buy('Order the usual wet food', '2026-11-23T15:00:00-05:00', {
+      items: ['wet food'],
+      venue: 'Chewy',
+      amount: 23.4,
+    });
+    expect(out.confirm.some((c) => c.check === 'date')).toBe(false);
+  });
+});

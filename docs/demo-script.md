@@ -213,9 +213,16 @@ The music catalogue is **mocked** — say so. It's labelled as such in the UI.
 | 7.4 | *"Undo that"* | Taken back. Device changes reverse with the inverse command. |
 | 7.5 | Console → **Actions** | Everything done on your behalf, what pre-flight asked, and undo while the window is open. |
 
+| 7.6 | *"Order a cake for Sofia's birthday"* | Pre-flight reads the order **back, item by item**, and waits. The birthday came from a fact the household stated; the confirm item cites it. |
+| 7.7 | *"Order the usual wet food"* three days before Thanksgiving | Nothing extra. Being near a holiday is not a reason to interrupt — only being **on** the date, or naming the occasion. |
+
 ★★★ **7.2 is the strongest correctness beat in the project** — the agent tried to substitute a detail
 and pre-flight caught it by comparing the request's own words against the details. That's a real class
 of failure, caught deterministically.
+
+7.6 and 7.7 are a pair, and the second one is the point: this is the fix for a complaint we logged
+from r/alexa — custom actions that fire on anything nearby — so the feature that adds a confirmation
+had to be narrow enough not to become that complaint itself.
 
 Anything that costs money is only ever **drafted** for confirmation. Never spend money live on camera.
 

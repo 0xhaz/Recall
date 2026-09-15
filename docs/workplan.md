@@ -240,6 +240,7 @@ Checkboxes are the tasks. "Done when" is the acceptance test.
 - [ ] pgvector embeddings + keyword index + entity edge table [A§1.4] — embeddings ✓, keyword index ✓, backfill job ✓; entity edges deferred (neither demo needs them)
 - [ ] Retrieval: fuse vector + keyword + graph hops → rerank → top-k compact results [A§1.4] — vector + keyword fused by reciprocal rank ✓; graph hops deferred with entity edges
 - [x] Speaker scoping: below the confidence threshold, return household-scoped facts only and ask who's speaking [A§1.3]
+- [x] Dates worth stopping for: an order on a holiday, birthday or anniversary is read back item by item and confirmed, not placed. Narrow trigger (occasion named within the lead time, or the day itself) so it does not become the over-firing it is meant to fix
 - [ ] Preference conflicts: household rule → speaker identity → ask; never favour the owner [A§1.3]
 - [ ] Consolidation worker: merge duplicates, expire TTLs, decay unused facts; per-person size budget → "review these" prompt, not silent pruning [A§1.4]
 - [x] Forget: by fact id or topic → tombstone, close `valid_to`; "forget me" cascades across all memberships [A§1.3] — erases the words everywhere they were kept

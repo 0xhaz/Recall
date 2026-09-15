@@ -1,4 +1,5 @@
 import type { ContextName } from './context.js';
+import { type ImportantDate, occasionsFor } from './occasions.js';
 import { formatMinute } from './routines.js';
 import type { Intent, RuleDecision, RuleRef, Weekday } from './rules.js';
 import { tagsFor } from './sensitivity.js';
@@ -52,7 +53,7 @@ export interface PastOrder {
   at: string;
 }
 
-export type ConfirmCheck = 'rule' | 'speaker' | 'venue' | 'address' | 'duplicate' | 'amount' | 'routine';
+export type ConfirmCheck = 'rule' | 'speaker' | 'venue' | 'address' | 'duplicate' | 'amount' | 'routine' | 'date';
 
 export interface ConfirmItem {
   check: ConfirmCheck;
@@ -96,6 +97,7 @@ export const UNDO_WINDOW_S: Record<ActionIntent, number> = {
 const MONEY: ReadonlySet<ActionIntent> = new Set(['order.food', 'purchase', 'ride.book', 'booking']);
 const ORDERS: ReadonlySet<ActionIntent> = new Set(['order.food', 'purchase']);
 const CLASHES: ReadonlySet<ActionIntent> = new Set(['ride.book', 'booking']);
+const READ_BACK: ReadonlySet<ActionIntent> = new Set(['order.food', 'purchase', 'ride.book', 'booking', 'reminder']);
 const LOW_RISK: ReadonlySet<ActionIntent> = new Set(['media.play', 'smart_home']);
 /** Device kinds that are the person's own doing, sensors, or unsafe to automate: never offered. */
 const NEVER_OFFER = new Set([
@@ -293,6 +295,10 @@ export interface PreflightInput {
   /** The person's routines on the day it would happen. */
   routines: { kind: string; minute: number }[];
   whenMinute: number | null;
+  /** Household-local date the action would happen on, YYYY-MM-DD. */
+  whenDate: string | null;
+  /** Holidays, birthdays and anniversaries this household keeps. */
+  importantDates: ImportantDate[];
   now: Date;
 }
 
@@ -337,6 +343,17 @@ export function evaluatePreflight(p: PreflightInput): Preflight {
     });
   }
   if (ORDERS.has(intent)) confirm.push(...orderChecks(intent, details, p));
+  if (READ_BACK.has(intent) && p.whenDate) {
+    // Read it back rather than place it. A wrong detail on an ordinary Tuesday is a nuisance;
+    // on someone's birthday it is the thing they remember.
+    for (const date of occasionsFor(p.importantDates, p.whenDate, `${summary} ${topics.join(' ')}`)) {
+      confirm.push({
+        check: 'date',
+        message: `${date.name}: read this back before it goes — ${readBack(details)}.`,
+        evidence: date.fact_id ? { fact_id: date.fact_id } : undefined,
+      });
+    }
+  }
   if (CLASHES.has(intent) && p.whenMinute !== null) {
     for (const r of p.routines) {
       if (Math.abs(signedMinutes(r.minute, p.whenMinute)) > ROUTINE_CLASH_MIN) continue;
@@ -359,6 +376,15 @@ export function evaluatePreflight(p: PreflightInput): Preflight {
         ? `Check with the person first: ${items.map((c) => c.message).join(' ')}`
         : 'Clear to go ahead.';
   return { decision, blocked_by, withheld: final, confirm: items, message };
+}
+
+/** The order in the person's own terms, so confirming it means something. */
+function readBack(d: ActionDetails): string {
+  const parts: string[] = [];
+  if (d.items?.length) parts.push(d.items.join(', '));
+  if (d.venue) parts.push(`from ${d.venue}`);
+  if (typeof d.amount === 'number') parts.push(`${d.currency ? `${d.currency} ` : ''}${d.amount.toFixed(2)}`);
+  return parts.length > 0 ? parts.join(', ') : 'nothing on record to read back, so say what this covers';
 }
 
 const HOME_WORDS = new Set(['home', 'my home', 'our home', 'the house', 'my place', 'here']);

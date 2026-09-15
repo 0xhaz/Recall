@@ -126,6 +126,18 @@ const facts = [
     origin: 'seed',
   },
   {
+    // Gives the pre-flight read-back something real to stop for (design.md §3.2).
+    id: 'fa',
+    household: DEMO_HOUSEHOLD_ID,
+    scope: 'household',
+    owner: DEMO_HOUSEHOLD_ID,
+    type: 'semantic',
+    content: "Sofia's birthday is March 3",
+    confidence: 0.95,
+    tag: 'none',
+    origin: 'seed',
+  },
+  {
     // A cycle nobody could mine: the filter has never been bought through Recall. Said out loud, it counts.
     id: 'f9',
     household: DEMO_HOUSEHOLD_ID,
@@ -167,10 +179,28 @@ export async function seed(databaseUrl: string, devToken: string | undefined): P
     await client.query('BEGIN');
     for (const h of households) {
       await client.query(
+        // Region and timezone must converge too. They did not, and a database seeded before the
+        // move to US regions stayed on Asia/Kuala_Lumpur for good: US holidays never matched, and
+        // every local time in the demo was read in the wrong zone.
         `INSERT INTO household (id, name, region, timezone) VALUES ($1, $2, 'us', 'America/New_York')
-         ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name`,
+         ON CONFLICT (id) DO UPDATE SET
+           name = EXCLUDED.name, region = EXCLUDED.region, timezone = EXCLUDED.timezone`,
         [h.id, h.name],
       );
+      // Child rows carry their own copy of the region for residency, so they move with it.
+      for (const table of [
+        'fact',
+        'rule',
+        'device',
+        'action',
+        'activity',
+        'routine',
+        'notice',
+        'event',
+        'household_token',
+      ]) {
+        await client.query(`UPDATE ${table} SET region = 'us' WHERE household_id = $1 AND region <> 'us'`, [h.id]);
+      }
     }
     for (const p of people) {
       await client.query(

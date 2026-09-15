@@ -28,6 +28,8 @@ const base = (over: Partial<PreflightInput> = {}): PreflightInput => ({
   source: null,
   speaker: { role: 'owner' },
   rules: ALLOW,
+  whenDate: null,
+  importantDates: [],
   quietHours: { active: false, because: [] },
   knownAddresses: [],
   venueFacts: [],
@@ -209,5 +211,62 @@ describe('evaluatePreflight', () => {
     expect(evaluatePreflight(notice('Your Napoli Pizza order is on its way')).decision).toBe('allow');
     expect(evaluatePreflight(base({ speaker: { role: 'guest' } })).withheld?.reason).toBe('guest');
     expect(evaluatePreflight(base({ speaker: null })).confirm.map((c) => c.check)).toEqual(['speaker']);
+  });
+
+  describe('dates worth stopping for', () => {
+    const DATES = [
+      { date: '2026-11-26', name: 'Thanksgiving' },
+      { date: '2026-03-03', name: "Sofia's birthday", fact_id: 'f9' },
+    ];
+    const buy = (summary: string, whenDate: string, details = {}) =>
+      base({
+        action: { intent: 'purchase', summary, topics: [], details },
+        whenDate,
+        importantDates: DATES,
+      });
+
+    it('reads the order back on the day itself', () => {
+      const out = evaluatePreflight(
+        buy('Order the turkey', '2026-11-26', {
+          items: ['turkey', 'cranberry sauce'],
+          venue: 'Whole Foods',
+          amount: 48.2,
+          currency: 'USD',
+        }),
+      );
+      expect(out.decision).toBe('confirm');
+      const date = out.confirm.find((c) => c.check === 'date');
+      expect(date?.message).toBe(
+        'Thanksgiving: read this back before it goes — turkey, cranberry sauce, from Whole Foods, USD 48.20.',
+      );
+    });
+
+    it('reads it back ahead of a birthday the request names, and cites the fact it came from', () => {
+      const out = evaluatePreflight(buy("A cake for Sofia's birthday", '2026-02-28', { items: ['chocolate cake'] }));
+      const date = out.confirm.find((c) => c.check === 'date');
+      expect(date?.message).toBe("Sofia's birthday: read this back before it goes — chocolate cake.");
+      expect(date?.evidence).toEqual({ fact_id: 'f9' });
+    });
+
+    it('stays out of the way of an ordinary order near a holiday', () => {
+      const out = evaluatePreflight(buy('Order the usual wet food', '2026-11-23', { items: ['wet food'] }));
+      expect(out.confirm.some((c) => c.check === 'date')).toBe(false);
+    });
+
+    it('asks what it covers when there is nothing to read back', () => {
+      const out = evaluatePreflight(buy('Order something', '2026-11-26'));
+      expect(out.confirm.find((c) => c.check === 'date')?.message).toContain('nothing on record to read back');
+    });
+
+    it('does not read back a device change', () => {
+      const out = evaluatePreflight(
+        base({
+          action: { intent: 'smart_home', summary: 'Turn on the porch light', topics: [], details: {} },
+          whenDate: '2026-11-26',
+          importantDates: DATES,
+        }),
+      );
+      expect(out.confirm.some((c) => c.check === 'date')).toBe(false);
+    });
   });
 });
