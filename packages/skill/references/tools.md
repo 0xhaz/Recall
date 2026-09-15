@@ -36,6 +36,7 @@ carries the device-local date and time, so "tonight" means tonight where the per
 | `action_preflight` | **Before** any order, booking, ride, call or device change. Rules, quiet hours, the address on record, venues used before, repeat orders, unusual amounts, routine clashes |
 | `propose_action` | You may offer something: a routine that is due, the next step of a chain, music for the live context. One offer, with its source. Nothing during quiet hours |
 | `decide_action` | The person answered. `confirm` carries it out with an undo window; `dismiss` teaches the offer to back off |
+| `purchase_history` | "What did I buy last time?", "what do I need to order again?", or before repeating a past order. Also what this household buys on a cycle, and what is due |
 | `undo` | "Undo that" — reverses the last action while its window is open |
 
 ## Devices and context

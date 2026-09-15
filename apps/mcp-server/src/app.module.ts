@@ -3,6 +3,7 @@ import { type DynamicModule, Module } from '@nestjs/common';
 import { HybridClock } from '@recall/core';
 import { createEmbedder, createLlmProvider, type Embedder, type LlmProvider } from '@recall/llm';
 import { ActionService } from './actions/action.service.js';
+import { RepurchaseService } from './actions/repurchase.service.js';
 import { ConsoleAuthController } from './auth/console-auth.controller.js';
 import { ConsoleAuthService } from './auth/console-auth.service.js';
 import { createEmailSender, EMAIL_SENDER, type EmailSender } from './auth/email.js';
@@ -93,6 +94,7 @@ export class AppModule {
         ContextService,
         MusicService,
         ActionService,
+        RepurchaseService,
         CareService,
         ReminderService,
         ReminderWatcher,

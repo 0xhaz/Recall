@@ -125,6 +125,18 @@ const facts = [
     tag: 'none',
     origin: 'seed',
   },
+  {
+    // A cycle nobody could mine: the filter has never been bought through Recall. Said out loud, it counts.
+    id: 'f9',
+    household: DEMO_HOUSEHOLD_ID,
+    scope: 'household',
+    owner: DEMO_HOUSEHOLD_ID,
+    type: 'procedural',
+    content: 'We replace the fridge water filter every 3 months',
+    confidence: 0.9,
+    tag: 'none',
+    origin: 'seed',
+  },
 ] as const;
 
 const devices = [
@@ -134,6 +146,18 @@ const devices = [
   // Worn, not spoken to: it reports heart rate and movement, and only derived context is kept.
   { id: 'ruth-bee', name: "Ruth's Bee", location: 'Worn', primary: DEMO_PEOPLE.som },
   { id: 'emma-watch', name: "Emma's watch", location: 'Worn', primary: DEMO_PEOPLE.emma },
+];
+
+// Past purchases, so "what did I buy last time?" and "what are we due for?" have something to answer
+// from. Weekly wet food, coffee every fortnight, and one of Daniel's own — which Emma must not see.
+// `days` counts back from whenever the seed runs, so the cycles stay true however long the demo sits.
+const PURCHASES: { person: string | null; venue: string; item: string; amount: number; days: number[] }[] = [
+  { person: null, venue: 'Chewy', item: 'wet food (12 pouches)', amount: 23.4, days: [4, 11, 18, 25, 32] },
+  { person: null, venue: 'Blue Bottle', item: 'coffee beans', amount: 18.0, days: [21, 35, 49] },
+  { person: null, venue: 'Target', item: 'AA batteries', amount: 12.99, days: [40, 130] },
+  // Bought once. No cycle is mineable from one purchase — the cycle comes from what Emma said.
+  { person: null, venue: 'Home Depot', item: 'fridge water filter', amount: 49.99, days: [100] },
+  { person: DEMO_PEOPLE.daniel, venue: 'GNC', item: 'protein powder', amount: 44.0, days: [6, 34, 62] },
 ];
 
 export async function seed(databaseUrl: string, devToken: string | undefined): Promise<void> {
@@ -186,6 +210,23 @@ export async function seed(databaseUrl: string, devToken: string | undefined): P
           f.tag,
         ],
       );
+    }
+    // Seeded purchases are replaced rather than added to, so re-running the seed keeps the cycles honest.
+    await client.query(`DELETE FROM action WHERE household_id = $1 AND details->>'seed' = 'true'`, [DEMO_HOUSEHOLD_ID]);
+    for (const p of PURCHASES) {
+      for (const days of p.days) {
+        await client.query(
+          `INSERT INTO action (household_id, region, person_id, intent, summary, topics, details, status, decided_at)
+           VALUES ($1, 'us', $2, 'purchase', $3, ARRAY['shopping'], $4, 'executed', now() - ($5 || ' days')::interval)`,
+          [
+            DEMO_HOUSEHOLD_ID,
+            p.person,
+            `Order ${p.item} from ${p.venue}`,
+            JSON.stringify({ venue: p.venue, amount: p.amount, currency: 'USD', items: [p.item], seed: true }),
+            String(days),
+          ],
+        );
+      }
     }
     // The hackathon build keeps 7 days of raw events so compaction actually runs (architecture.md §4.1).
     await client.query('UPDATE household SET retention_days = 7 WHERE id = ANY($1)', [households.map((h) => h.id)]);

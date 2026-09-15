@@ -116,14 +116,14 @@ describe('evaluatePreflight', () => {
   });
 
   it('checks the delivery address against the one on record', () => {
-    const knownAddresses = [{ fact_id: 'f1', content: 'Home delivery address is 12 Bergen Street, KL' }];
+    const knownAddresses = [{ fact_id: 'f1', content: 'Home delivery address is 12 Bergen Street, Brooklyn' }];
     const orders = [order(3 * 24 * 60)];
     const home = evaluatePreflight(
       base({ ...food({ venue: 'Napoli Pizza', address: '12 Bergen Street' }), knownAddresses, orders }),
     );
     expect(home.decision).toBe('allow');
     const office = evaluatePreflight(
-      base({ ...food({ venue: 'Napoli Pizza', address: 'Menara KL, Level 30' }), knownAddresses, orders }),
+      base({ ...food({ venue: 'Napoli Pizza', address: '500 Market Street, Floor 30' }), knownAddresses, orders }),
     );
     expect(office.confirm).toEqual([expect.objectContaining({ check: 'address', evidence: { fact_id: 'f1' } })]);
   });

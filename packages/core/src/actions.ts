@@ -270,7 +270,7 @@ const words = (s: string | null | undefined) =>
       .split(' ')
       .filter((w) => w.length >= 3 && !STOP_WORDS.has(w)),
   );
-/** Every word of the needle appears in the haystack: "12 Bergen Street" in "Home is 12 Bergen Street, KL". */
+/** Every word of the needle appears in the haystack: "12 Bergen Street" in "Home is 12 Bergen Street, Brooklyn". */
 function mentions(haystack: string, needle: string): boolean {
   const hay = new Set(norm(haystack).split(' '));
   const wanted = norm(needle).split(' ').filter(Boolean);

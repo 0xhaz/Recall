@@ -113,7 +113,7 @@ describe('action_preflight', () => {
     expect(Date.parse(done.undo_until ?? '')).toBeGreaterThan(Date.now());
     orderId = first.action_id;
 
-    const second = await preflight(order('Menara KL, Level 30'));
+    const second = await preflight(order('500 Market Street, Floor 30'));
     expect(second.confirm.map((c) => c.check)).toEqual(['address', 'duplicate']);
     expect(second.confirm[0]?.message).toContain('Past orders went to 12 Bergen Street');
   });

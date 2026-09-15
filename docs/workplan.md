@@ -313,6 +313,7 @@ NestJS, MCP spec 2025-11-25+, Streamable HTTP; the repo must actually call MCP i
 - [ ] Support, confidence, `last_seen`, decay; drift detection (recent vs long window) [A§2]
 - [ ] Exceptions as conditions: weekday/weekend, US federal holidays, travel [A§2]
 - [ ] Lifecycle: candidate → offered → active → retired; first occurrence is an offer [A§2]
+- [x] Repurchase cycles: what the household buys again and how often, mined from executed purchases; a stated cycle overrides the mined one and is quoted. `purchase_history` answers "what did I buy last time?" and "what are we due for?" — no schema change, and buying still goes through pre-flight
 - [ ] Regression guard: "stopped doing it" vs "action started failing" → broken-routine flag in the console + friction log — B [A§2]
 - [ ] Absence detection for check-in routines: prompt the person first, then escalate; never auto-send [A§2]
 - [ ] Per-person baselines feed context thresholds [A§3]

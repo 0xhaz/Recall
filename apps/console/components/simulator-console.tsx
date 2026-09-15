@@ -11,7 +11,7 @@ const SUGGESTIONS = [
   'What should we cook tonight?',
   'Remember I am off coffee until Wednesday',
   'What do you know about me?',
-  'Order dinner from the usual place to Menara KL, level 30',
+  'Order dinner from the usual place to 500 Market Street, floor 30',
   'Play something',
 ];
 

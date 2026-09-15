@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ActionService } from '../actions/action.service.js';
+import { RepurchaseService } from '../actions/repurchase.service.js';
 import type { HouseholdContext } from '../auth/household-auth.js';
 import { CareService } from '../care/care.service.js';
 import { ReminderService } from '../care/reminder.service.js';
@@ -41,6 +42,7 @@ export class McpTools {
     @Inject(MusicService) private readonly music: MusicService,
     @Inject(RoutineMiner) private readonly routines: RoutineMiner,
     @Inject(ActionService) private readonly actions: ActionService,
+    @Inject(RepurchaseService) private readonly repurchase: RepurchaseService,
     @Inject(CareService) private readonly care: CareService,
     @Inject(ReminderService) private readonly reminders: ReminderService,
     @Inject(LatencyTracker) private readonly latency: LatencyTracker,
@@ -65,7 +67,7 @@ export class McpTools {
     registerRuleTools(server, ctx, { memory, rules }, timed);
     registerCareTools(server, ctx, { memory, checkins, care, reminders: this.reminders }, timed);
     registerContextTools(server, ctx, { memory, contexts, music, routines }, timed);
-    registerActionTools(server, ctx, { memory, actions }, timed);
+    registerActionTools(server, ctx, { memory, actions, repurchase: this.repurchase }, timed);
     registerDeviceTools(server, ctx, { memory, events, devices, sessions }, timed);
     return server;
   }

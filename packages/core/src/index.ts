@@ -8,6 +8,7 @@ export * from './hlc.js';
 export * from './holidays.js';
 export * from './music.js';
 export * from './projection.js';
+export * from './repurchase.js';
 export * from './routines.js';
 export * from './rules.js';
 export * from './sensitivity.js';

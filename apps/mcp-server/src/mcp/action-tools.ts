@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { ACTION_INTENTS, temporalStamp } from '@recall/core';
 import * as z from 'zod';
 import type { ActionService } from '../actions/action.service.js';
+import type { RepurchaseService } from '../actions/repurchase.service.js';
 import type { HouseholdContext } from '../auth/household-auth.js';
 import type { MemoryService } from '../memory/memory.service.js';
 import { deviceArg, json, speakerArgs, type Timed } from './tool-kit.js';
@@ -9,6 +10,7 @@ import { deviceArg, json, speakerArgs, type Timed } from './tool-kit.js';
 export interface ActionToolDeps {
   memory: MemoryService;
   actions: ActionService;
+  repurchase: RepurchaseService;
 }
 
 const COMMAND_KIND = /^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$/;
@@ -20,7 +22,7 @@ const actionArg = z.object({
     .string()
     .min(3)
     .max(300)
-    .describe('What would be done, in plain words: "Order nasi lemak from Napoli Pizza to 12 Bergen Street".'),
+    .describe('What would be done, in plain words: "Order a large pepperoni from Napoli Pizza to 12 Bergen Street".'),
   topics: z.array(z.string().max(40)).max(10).optional(),
   device: deviceArg,
   details: z
@@ -51,7 +53,7 @@ export function registerActionTools(
   deps: ActionToolDeps,
   timed: Timed,
 ): void {
-  const { memory, actions } = deps;
+  const { memory, actions, repurchase } = deps;
 
   const whoAndWhere = async (speaker?: string, confidence?: number) => {
     const [household, identity] = await Promise.all([
@@ -134,6 +136,35 @@ export function registerActionTools(
       timed('undo', async () => {
         const { household, identity } = await whoAndWhere(speaker, speaker_confidence);
         return json(await actions.undo(household, identity.speaker, action_id));
+      }),
+  );
+
+  server.registerTool(
+    'purchase_history',
+    {
+      title: 'Purchase history and repeat buys',
+      description:
+        'What this household has bought through Recall, and what it buys on a cycle — wet food every week, ' +
+        'a filter every few months. Call it for "what did I buy last time?", "what do I need to order again?" or ' +
+        'before repeating a past order, so the items and the venue come from the record rather than memory. ' +
+        'Pass `item` to ask about one thing. Each repeat carries how many times it was bought (`bought`), when ' +
+        '(`last_date`) and how sure this is (`confidence`); when `source` is "stated", quote `said.text` — those ' +
+        "are the person's own words. A null `due_in_days` means nothing has been bought through Recall yet, so " +
+        'there is nothing to count from: say so rather than guessing. ' +
+        'IMPORTANT: this only sees purchases made through Recall, so it is evidence ' +
+        'that something is due, never that the cupboard is empty. Say "you last ordered this on the 3rd, about ' +
+        'weekly", not "you have run out". To actually buy it, go through action_preflight.',
+      inputSchema: {
+        ...speakerArgs,
+        item: z.string().max(80).optional().describe('Ask about one thing, e.g. "wet food".'),
+        limit: z.number().int().min(1).max(25).optional().describe('How many past purchases to list; default 10.'),
+      },
+    },
+    ({ speaker, speaker_confidence, item, limit }) =>
+      timed('purchase_history', async () => {
+        const { household, identity } = await whoAndWhere(speaker, speaker_confidence);
+        const history = await repurchase.history(household, identity.speaker, { item, limit });
+        return json({ ...history, temporal: temporalStamp(household.timezone) });
       }),
   );
 }

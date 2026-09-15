@@ -73,7 +73,12 @@ Devices: `kitchen-echo`, `bedroom-echo` (Ruth's), `living-firetv`, `ruth-bee` (w
 
 Seeded facts: Emma vegetarian · Daniel likes very spicy food · Sofia allergic to peanuts · household
 takeaway is Napoli Pizza · family dinner ~19:30 weekdays · delivery address (tagged PII) · Ruth
-takes tea with condensed milk (entered by Nina).
+takes tea with condensed milk (entered by Nina) · the fridge water filter is replaced every 3 months.
+
+Seeded purchases (dated back from whenever the seed runs, so the cycles stay true): wet food from
+Chewy five times at 7-day gaps · coffee beans from Blue Bottle three times at 14-day gaps, now a week
+overdue · AA batteries twice, too few to be a cycle · a fridge water filter once, 100 days ago · and
+protein powder that is **Daniel's own**, which Emma must never see.
 
 ⚠️ Only Emma's address receives mail while SES is in sandbox. The other demo addresses are on a
 domain that cannot receive anything — a link requested for them is minted and goes nowhere, which is
@@ -213,6 +218,24 @@ and pre-flight caught it by comparing the request's own words against the detail
 of failure, caught deterministically.
 
 Anything that costs money is only ever **drafted** for confirmation. Never spend money live on camera.
+
+---
+
+## 7b. Buying it again ⏱ 60s ★★
+
+| Step | Say | ✅ Expect |
+|---|---|---|
+| 7b.1 | *"What did I buy last time?"* | The actual purchases, newest first, with the venue and what was in them — read off the record, not recalled from a model. |
+| 7b.2 | *"What are we due for?"* | Wet food every 7 days, bought five times, due in three. Coffee every fortnight, a week overdue. AA batteries bought twice and therefore **not** claimed as a cycle. |
+| 7b.3 | *"We replace the fridge water filter every 3 months"* → ask again | The filter is now overdue, and Recall **quotes the sentence back**. One purchase plus one sentence, where no amount of mining would have found a cycle. |
+| 7b.4 | *"Order more wet food"* | Goes through pre-flight like any other spend. The items and venue come from the record; the money still waits for a confirmation. |
+
+★★ **7b.2 is the restraint beat.** Two purchases is not a pattern, so nothing is claimed. And an item
+Recall has never seen bought is listed but never called due — it only sees what was bought *through
+Recall*, so it says "you last ordered this on the 3rd, about weekly", never "you have run out".
+
+> Worth saying out loud: this needed no new table and no new way to spend money. The purchases were
+> already there as executed actions; what was missing was a way to ask.
 
 ---
 

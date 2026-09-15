@@ -46,6 +46,7 @@ describe('tools', () => {
       'ingest_events',
       'list_rules',
       'propose_action',
+      'purchase_history',
       'recall',
       'remember',
       'remove_rule',
