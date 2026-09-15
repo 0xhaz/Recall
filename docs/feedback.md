@@ -19,7 +19,12 @@ Every tool, API and SDK used, what we used it for, and what would have helped. F
 
 | Request | Urgency | Evidence |
 |---|---|---|
+| A caregiving check-in primitive: an expected daily contact, and a named person told when it does not happen | critical | r/alexa, repeatedly and for years — an 80-year-old who says "hello Alexa" each morning whose son lives out of state (31 comments); a 96-year-old wanting good morning / good night sent to a family group; a 90-year-old with Echos in five rooms. Families are buying third-party hardware for this, and one thread's top advice is not to trust Alexa with it at all |
 | Kindle Assistive Reader media controls by voice on Alexa+ | critical | Accessibility regression; works via app only (design.md §1.1) |
+| Deferred one-off actions: "turn off the garage lights in 5 minutes" | important | r/alexa, 8 years old, 32 upvotes, still unsolved. The accepted answer is a routine that pauses 300 s, or IFTTT. Acting now and acting on a schedule are both supported; the gap is everything in between |
+| Conditions that work with voice-triggered routines | important | r/alexa: "turn on my speakers" should differ at 2pm and at midnight. Conditions exist, but a commenter confirms voice triggers are not compatible with them — so the one trigger a person actually uses is the one that cannot be conditional |
+| Custom actions that fire only on what they were defined for | important | r/alexa: a birthday routine triggering on unrelated requests. Same root as false wake — matching wide and acting, rather than matching narrowly and asking |
+| Per-response opt-out, starting with the sung "you're welcome" | nice-to-have | r/alexa: "sounds 10x louder than any other response" at bedtime; users report searching for twenty minutes and finding no setting. It fires on politeness, which people are not willing to stop saying |
 | Developer sandbox for Alexa+ MCP servers | critical | No path to test outside Preview |
 | Deterministic smart-home routing for simple intents (small-model routing, local execution) | important | 10–15 s latency; late "Timer started" (architecture.md §7.1) |
 | Streaming TTS | important | Latency becomes an honesty problem when acknowledgements arrive late |

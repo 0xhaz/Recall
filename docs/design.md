@@ -28,7 +28,10 @@ Reviews of Alexa+ (Tom's Guide, Wirecutter, Consumer Reports, The Verge, The Str
 
 Strengths to preserve: natural multi-turn conversation, child speech comprehension, natural-language smart-home control and one-shot routine creation, Voice ID / Visual ID, Ring integration, document/PDF ingestion (which Gemini for Home lacks).
 
-### 1.1 Community-reported failures (r/alexa, r/AlexaPlus, 2026)
+### 1.1 Community-reported failures (r/alexa, r/AlexaPlus)
+
+Mostly 2026 reports. Some threads below are years old and still unresolved, which is noted where it matters — a
+complaint that survives eight years and a platform rewrite is a structural gap, not a bug.
 
 | Failure | Example | Why it matters |
 |---|---|---|
@@ -43,7 +46,11 @@ Strengths to preserve: natural multi-turn conversation, child speech comprehensi
 | Belief vs system state mismatch | "I'm not subscribed to those notifications" while they keep arriving; "I see something is playing but can't interact with it" while the app controls it; thumbs-down "acknowledged" with no effect | Assistant answers about state from model belief, not the system; general case of the session-history failure |
 | Unnecessary commentary | Taco tips when adding canned corn to a list; "it's going to be a wonderful day" on a workday morning (61 upvotes) | Verbosity and cheer on transactional intents; no way to turn it off |
 | Accessibility regression | Kindle Assistive Reader media controls fail by voice on Alexa+, work via app; workaround requires a second device | Accessibility regression; high-severity friction log item |
-| Missing caretaking routine | 96-year-old mother wants "Good morning" / "Good night" → text to family group; no such routine | Real caretaking need (a hackathon priority category); absence of check-in is the important signal |
+| Missing caretaking routine | 96-year-old mother wants "Good morning" / "Good night" → text to family group; no such routine. Recurring: an 80-year-old living alone who says "hello Alexa" each morning, whose son out of state wants to know when he *doesn't* (31 comments); a 90-year-old with Echos in five rooms and a standing 7am call; families buying third-party hardware (JubileeTV, fall buttons) for what the assistant will not do | Real caretaking need (a hackathon priority category); absence of check-in is the important signal. The demand is old and unmet enough that people pay someone else for it |
+| No deferred action | "Alexa, turn off the garage lights in 5 minutes" — 8 years old, still unsolved; the accepted workaround is a routine that pauses 300 s, or IFTTT | A one-off delay is not a routine. The assistant can act now or on a schedule, with nothing in between |
+| Routines cannot be conditional on a voice trigger | "Turn on my speakers" should do different things at 2pm and at midnight. Conditions exist, but a commenter confirms voice triggers are not compatible with them | The context a request arrives in is exactly what decides the right answer, and it is the one thing a routine cannot see |
+| Custom actions match too loosely | A birthday routine fires on unrelated requests | Same root as false wake: matching wide and acting anyway, instead of matching narrowly and asking |
+| No way to switch off one canned response | The sung "you're so very very welcome" — "sounds 10x louder than any other response" at bedtime, no setting to disable it; users report googling for twenty minutes and giving up | Personality is applied globally and cannot be edited per response. Related to unnecessary commentary, but worse: it fires on politeness, which people will not stop saying |
 
 **Thesis:** the highest-leverage fix is not more personality but a trustworthy memory: per-person, inspectable, editable, forgettable, routine-aware, and consistent across every device in the house.
 
