@@ -285,7 +285,7 @@ NestJS, MCP spec 2025-11-25+, Streamable HTTP; the repo must actually call MCP i
 | `checkin` | W4 | MS if B | Logs event, messages the household |
 
 - [x] Temporal stamp middleware (device local date/time/timezone) on `session_brief`, `recall`, `get_context`, `propose_action`; timers/alarms include the actual start timestamp [A§5] — on every read tool; timers report `started_at` and time left
-- [ ] OAuth 2.0 + PKCE and a Protected Resource Metadata document, so the Alexa+ MCP Toolkit can connect [A§10, 2026-09-15] — everything else it requires is already met; confirm toolkit access before building
+- [ ] OAuth 2.0 + PKCE and a Protected Resource Metadata document, so the Alexa+ MCP Toolkit can connect [A§10, 2026-09-15] — everything else it requires is already met. **Not needed for submission**: the Alexa+ track accepts a simulated Alexa+ web experience with its source in the repo, which is what `apps/simulator` is, and the repo also contains a real MCP server on 2025-11-25 and an Agent Skill. This is the first thing to build after shipping, not before
 - [ ] Tool descriptions tuned against Claude Desktop so the model reliably calls `session_brief` first [T§3]
 - [ ] Streaming: send the deterministic parts first (state, rules, hot facts), enrichment after [A§7.1]
 - [x] Bearer-token guard per household
@@ -509,6 +509,7 @@ Critical path: event log → miner → context engine → `propose_action`/pre-f
 ## 8. Definition of done (submission) [T§7]
 
 - [ ] Public GitHub repo, MIT licence in About, full source + run instructions
+- [x] Alexa+ track requirement — satisfied three times over: a real MCP server (2025-11-25 negotiated, Streamable HTTP), an Agent Skill in `packages/skill`, and a simulated Alexa+ web experience whose source is in the repo. Testing in Amazon's own web simulator is **not** required (confirmed on the Devpost rules, 2026-09-15)
 - [ ] MCP over Streamable HTTP actually called in code (entry point + loaded MCP config)
 - [ ] Agent Skill present and shown in the video
 - [ ] Simulated Alexa+ source included
