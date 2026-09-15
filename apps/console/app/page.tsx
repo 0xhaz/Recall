@@ -20,9 +20,11 @@ import { ApiError, getProfile, type Profile } from '@/lib/recall';
 // The front door. Anyone can open it: someone arriving for the first time should be told what
 // Recall is before being asked for an email address. A signed-in person never sees it.
 //
-// Every exchange quoted below is a real reply from the deployed assistant (Nova Lite on Bedrock),
-// measured 2026-09-15 — not copy written to sound good. If the behaviour changes, this page is
-// wrong and should be re-measured rather than reworded.
+// The exchanges below were measured against the live server on 2026-09-15, with Nova Lite on
+// Bedrock answering, not written to sound good. The model is not deterministic, so the wording is
+// one real run rather than a reproducible transcript — which is why the caption says so. What is
+// stable, and what the beat is actually about, is which person's facts it answers from. Re-measure
+// with apps/simulator against the deployed server; do not reword.
 
 const SAID = [
   {
@@ -30,21 +32,21 @@ const SAID = [
     role: 'vegetarian',
     tone: 'text-cyan-300',
     asked: 'What should we cook tonight?',
-    replied: 'What about a vegetarian stir-fry with rice?',
+    replied: 'What about a vegetarian pasta dish?',
   },
   {
     who: 'Daniel',
     role: 'likes it very spicy',
     tone: 'text-violet-300',
     asked: 'What should we cook tonight?',
-    replied: 'Spicy food is good. How about we order from Warung Mak Teh?',
+    replied: 'What about making a spicy curry for dinner tonight?',
   },
   {
     who: null,
     role: 'voice match below the threshold',
     tone: 'text-amber-300',
     asked: 'What do you know about me?',
-    replied: "I don't know who is speaking. Could you please tell me your name?",
+    replied: "I'm not sure who is speaking. Could you please identify yourself?",
   },
 ];
 
@@ -234,8 +236,9 @@ export default async function Home() {
 
         <Reveal>
           <p className="mt-6 text-sm text-slate-500">
-            Real replies from the deployed assistant, not written for this page. It has no memory of its own — only
-            Recall, over MCP.
+            One real run against the live server, with Nova Lite answering — not copy written for this page. The model
+            is not deterministic, so the wording moves between runs; which person&rsquo;s facts it answers from does
+            not. The assistant has no memory of its own, only Recall, over MCP.
           </p>
         </Reveal>
       </section>
@@ -348,6 +351,17 @@ export default async function Home() {
           </div>
         </Reveal>
       </section>
+
+      <footer className="mx-auto max-w-5xl px-6 pb-16">
+        <div className="space-y-3 border-t border-slate-800 pt-6 text-xs leading-relaxed text-slate-500">
+          <p>
+            Recall is an MCP server: any assistant that speaks the protocol can use this memory, and an Agent Skill
+            ships alongside it carrying the rules that keep it honest — ask who is speaking rather than guess, quote the
+            rule that blocked something, never say a thing is done that is not.
+          </p>
+          <p>Open source, MIT. Raw health signals never leave the server, and forgetting reaches every device.</p>
+        </div>
+      </footer>
     </main>
   );
 }
