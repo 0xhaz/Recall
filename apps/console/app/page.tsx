@@ -184,9 +184,11 @@ export default async function Home() {
         </div>
 
         <Reveal>
-          <p className="mx-auto max-w-2xl text-sm text-slate-500">
-            Devices sync by sequence number and merge by hybrid logical clock, so a device that was offline catches up
-            in the right order. Raw events are kept seven days; what was learned outlives them.
+          <p className="mx-auto max-w-3xl text-sm leading-relaxed text-slate-500">
+            Every line is MCP, and every line runs both ways. A device reports what happened and syncs the memory it is
+            allowed to hold; what Recall decides travels back the same way, and the device says what it actually did —
+            which is why &ldquo;it&rsquo;s done&rdquo; is only ever said about something a device confirmed. They sync
+            by sequence number and merge by hybrid logical clock, so one that was offline catches up in the right order.
           </p>
         </Reveal>
       </section>

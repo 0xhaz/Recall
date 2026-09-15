@@ -77,6 +77,12 @@ export function ProductHero() {
         aria-hidden
       >
         <defs>
+          <marker id="hero-in" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto">
+            <path d="M 0 1 L 7 4 L 0 7 z" fill="rgb(34 211 238)" fillOpacity="0.85" />
+          </marker>
+          <marker id="hero-out" viewBox="0 0 8 8" refX="1" refY="4" markerWidth="5" markerHeight="5" orient="auto">
+            <path d="M 8 1 L 1 4 L 8 7 z" fill="rgb(34 211 238)" fillOpacity="0.5" />
+          </marker>
           <linearGradient id="hero-wire" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="rgb(34 211 238)" stopOpacity="0.25" />
             <stop offset="55%" stopColor="rgb(34 211 238)" stopOpacity="0.9" />
@@ -92,16 +98,12 @@ export function ProductHero() {
               stroke="url(#hero-wire)"
               strokeWidth="2.5"
               className="flow"
+              markerStart="url(#hero-out)"
+              markerEnd="url(#hero-in)"
               style={{ animationDelay: `${i * 0.35}s` }}
             />
           </g>
         ))}
-        <text x="205" y="196" textAnchor="middle" className="fill-slate-500 font-mono text-[11px] tracking-[0.18em]">
-          MCP
-        </text>
-        <text x="795" y="196" textAnchor="middle" className="fill-slate-500 font-mono text-[11px] tracking-[0.18em]">
-          MCP
-        </text>
       </svg>
 
       {/* The screen. */}
