@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Agent,
   type AgentModel,
+  clean,
   digest,
   isToolTalk,
   type ModelMessage,
@@ -255,5 +256,22 @@ describe('digest', () => {
     });
     expect(out).toMatchObject({ they_asked_earlier: ['What should we cook tonight?', 'something lighter'] });
     expect(JSON.stringify(out)).not.toContain('Warung Mak Teh');
+  });
+});
+
+describe('clean', () => {
+  it('strips the reasoning each model shows, and keeps the reply', () => {
+    // Nova puts its reasoning in <thinking> and the answer after it.
+    expect(clean('<thinking>She is vegetarian.</thinking>\nHow about a vegetarian dish?')).toBe(
+      'How about a vegetarian dish?',
+    );
+    // qwen uses <think>.
+    expect(clean('<think>hmm</think>Noted.')).toBe('Noted.');
+    expect(clean('Nothing to strip.')).toBe('Nothing to strip.');
+  });
+
+  it('drops a tag left open, because the rest is reasoning cut off mid-thought', () => {
+    expect(clean('<thinking>I should check whether')).toBe('');
+    expect(clean('Here you go.<think>wait, no')).toBe('Here you go.');
   });
 });

@@ -396,28 +396,30 @@ Walk all fourteen and mark each. Anything that fails is worth more than anything
 - [ ] §13 caregiver without the grant can't see her own memory; export works
 - [ ] §14 `pnpm test` green; latency within budget
 
-### Known weak point — measured, not guessed
+### The model: measured, not guessed
 
-`qwen3:8b` is the weak link, and the shape of it is now known. Two beats pull in opposite
-directions, and no prompt wording tested gets both from one model:
+Deployed on Bedrock, Nova Lite does both of the beats that pull against each other locally. This is
+the single biggest reason to demo against the deployed stack rather than your laptop.
 
-| model | §1 the beat (uses the speaker's own fact) | §7 pre-flight fires |
-|---|---|---|
-| `qwen3:8b` (configured) | 0–1 in 4 | **4 in 4** |
-| `qwen3.6` (local, 24GB) | **3 in 3** | 0 in 3 |
+| model | §1 the beat (Aisyah / Daniel) | §7 pre-flight fires | falsely claims done | latency |
+|---|---|---|---|---|
+| **amazon.nova-lite-v1:0** (deployed) | **3/4 · 3/4** | **4/4** | 0/4 | ~2.7s |
+| `qwen3:8b` (local) | 0/4 · 2/4 | 2/4 | 0/4 | ~1.6s |
 
-So **§1 and §7 are best recorded separately**, or with `SIM_MODEL=qwen3.6:latest` for the memory
-beats and the default for the action beat. Nothing in Recall changes either way — the brief is
-correct in both cases, and the care beats (§8, §9) do not depend on this.
+Measured 2026-09-15, 4 runs per cell, scoring the reply as spoken — after `clean()` strips the
+model's reasoning. Nova wraps its reasoning in `<thinking>`, qwen in `<think>`; both are stripped,
+and a tag left open discards everything after it.
+
+So **record against the deployed stack**. Locally, §1 and §7 still pull apart and you will be
+fighting the model rather than showing the product.
 
 Three things that will waste your time if you don't know them:
 
-- **Ask each question once, on a clean session.** Asking twice triggers Recall's repeat detector,
-  which is correct behaviour (it exists for §9.3) but makes the assistant answer "shall I order that
+- **Ask each question once, on a clean session.** Asking twice trips Recall's repeat detector, which
+  is correct behaviour (it exists for §9.3) but makes the assistant answer "shall I order that
   *again*?" rather than from the facts. Between takes:
   `docker exec recall-postgres-1 psql -U recall -d recall -c "DELETE FROM session_turn; DELETE FROM session;"`
 - **Sessions hand off between devices**, so switching device does not give you a fresh conversation.
-- **The model is not deterministic** even at temperature 0.2. Identical input gives different answers
-  run to run, so rehearse each beat and keep the takes where it behaved. The server is deterministic
-  and correct; the stand-in assistant is neither.
+- **Neither model is deterministic**, even at temperature 0.2. Rehearse each beat and keep the takes
+  where it behaved. The server is deterministic and correct; the stand-in assistant is not.
 

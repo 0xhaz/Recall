@@ -205,7 +205,16 @@ export function digest(b: Brief): Record<string, unknown> {
   );
 }
 
-const clean = (s: string) => s.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+/**
+ * Reasoning the model shows its work in, which is never speech: qwen wraps it in <think>, Nova in
+ * <thinking>. A tag left open means the output was cut off mid-thought, so everything after it is
+ * reasoning too — spoken aloud it would be the model muttering its way to an answer.
+ */
+export const clean = (s: string): string =>
+  s
+    .replace(/<think(?:ing)?>[\s\S]*?<\/think(?:ing)?>/g, '')
+    .replace(/<think(?:ing)?>[\s\S]*$/, '')
+    .trim();
 
 export class Agent {
   constructor(
