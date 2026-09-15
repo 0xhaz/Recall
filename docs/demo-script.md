@@ -16,7 +16,26 @@ A beat that fails is worth more than a beat that passes. Note it and move on; do
 
 ---
 
-## 0. Setup (once, before any demo)
+## 0. Setup
+
+**Demo against the deployed stack.** Nova Lite answers there, and it does both of the beats that
+fight each other on a local model — see "The model" at the end. Nothing needs to be running on your
+laptop.
+
+| | |
+|---|---|
+| Console | https://6gpwq7kegp.us-east-1.awsapprunner.com |
+| MCP server | https://v9d346pzw7.us-east-1.awsapprunner.com/mcp |
+
+✅ `curl -s https://v9d346pzw7.us-east-1.awsapprunner.com/health` reports `db: true` and Bedrock
+reachable.
+
+The simulated Alexa+ is a **page inside the console** now (Simulator, bottom of the nav), not a
+separate site on :3200. It runs in the same container; if it is ever down the page says so and every
+other page still works.
+
+<details>
+<summary>Running it locally instead</summary>
 
 ```sh
 pnpm db:up && pnpm db:migrate && pnpm db:seed
@@ -25,20 +44,24 @@ pnpm console                  # terminal 2 — console, :3000
 pnpm sim                      # terminal 3 — simulated Alexa+, :3200
 ```
 
-✅ `curl -s localhost:3100/health` reports the database and LLM reachable.
+Locally the assistant is `qwen3:8b`, which is markedly worse at these beats. Use it for development,
+not for recording.
 
 **Never run `pnpm build` while `pnpm console` is up** — `next build` and `next dev` share `.next` and
-the dev server starts serving corrupted chunks. If pages 500 across the board, that's why: stop the
+the dev server starts serving corrupted chunks. If pages 500 across the board, that is why: stop the
 dev server, `rm -rf apps/console/.next`, restart.
 
 **If a new endpoint 404s but the server is healthy**, `tsx watch` has gone stale. Restart `pnpm dev`.
-This has bitten three times; it is never a code problem.
+It is never a code problem.
+</details>
 
 ### Seeded starting state
 
+A household in Brooklyn, on `America/New_York`.
+
 | Person | Role | Signs in as |
 |---|---|---|
-| Emma | owner | `emma@demo.recall.local` |
+| Emma | owner | the address set in `DEMO_OWNER_EMAIL` |
 | Daniel | adult | `daniel@demo.recall.local` |
 | Sofia | child | — |
 | Ruth | cared for | — |
@@ -52,24 +75,23 @@ Seeded facts: Emma vegetarian · Daniel likes very spicy food · Sofia allergic 
 takeaway is Napoli Pizza · family dinner ~19:30 weekdays · delivery address (tagged PII) · Ruth
 takes tea with condensed milk (entered by Nina).
 
-### Signing in to the console
+⚠️ Only Emma's address receives mail while SES is in sandbox. The other demo addresses are on a
+domain that cannot receive anything — a link requested for them is minted and goes nowhere, which is
+correct behaviour and looks identical from the form.
 
-```sh
-curl -s -X POST localhost:3100/auth/magic-link -H 'content-type: application/json' \
-  -d '{"email":"emma@demo.recall.local"}'
-```
+### Signing in
 
-The link is printed in the **Recall server log** (terminal 1) as `[email] to=… http://localhost:3000/auth/verify?token=…`.
-Paste it in the browser. Sessions last 30 days, so do this once.
+Open the console, enter Emma's address, and **the link arrives by email** — from SES, single-use,
+valid 15 minutes. Sessions last 30 days, so do it once.
 
-⚠️ For a recorded demo, sign in **before** you start recording. Fishing a token out of a log is the
-least interesting thing in this project.
+⚠️ Sign in **before** you start recording. Waiting for an email is the least interesting thing in
+this project.
 
 ---
 
 ## 1. Memory that knows who's talking ⏱ 90s ★★★
 
-The core claim. Do this in the **simulator** (`:3200`) with two devices side by side.
+The core claim. Do this on the console's **Simulator** page, which has two devices side by side.
 
 | Step | Say | ✅ Expect |
 |---|---|---|
@@ -133,7 +155,10 @@ better line than any correct answer, because most assistants will happily invent
 ## 5. Routines the house actually has ⏱ 75s ★★
 
 ```sh
-pnpm replay mornings          # three weeks of history, lands in seconds
+# Replays run from your machine and drive whichever Recall they are pointed at.
+export RECALL_URL=https://v9d346pzw7.us-east-1.awsapprunner.com/mcp
+export RECALL_DEV_TOKEN=…            # the household token minted at deploy
+pnpm replay mornings                 # three weeks of history, lands in seconds
 ```
 
 | Step | Where | ✅ Expect |
@@ -153,7 +178,7 @@ the console already has something to show.
 ## 6. Context and music ⏱ 90s ★★★
 
 ```sh
-pnpm replay heart-rate        # 4 minutes real time — start it, then talk over it
+pnpm replay heart-rate               # 4 minutes real time — start it, then talk over it
 ```
 
 | Step | Where | ✅ Expect |
@@ -234,7 +259,7 @@ the carer. She is told what's shared about her.
 ## 10. The Bee as a tracker ⏱ 60s ★★
 
 ```sh
-pnpm replay bee-night         # resting, stillness, then she gets up
+pnpm replay bee-night                # resting, stillness, then she gets up
 ```
 
 | Step | Where | ✅ Expect |
@@ -254,7 +279,7 @@ Raw health signals never leave the server; raw heart rate is deleted after 7 day
 ## 11. Check-ins and absence ⏱ 45s ★
 
 ```sh
-pnpm replay checkins          # two weeks of ~07:30 and ~21:30
+pnpm replay checkins                 # two weeks of ~07:30 and ~21:30
 ```
 
 | Step | Say | ✅ Expect |
@@ -299,24 +324,60 @@ label — there's an e2e test for exactly this.
 Worth a single slide, not screen time:
 
 ```sh
-pnpm test        # 235 tests across 4 packages, incl. a latency check that fails the build
-curl -s localhost:3100/metrics/latency
+pnpm test        # 257 tests across 4 packages, incl. a latency check that fails the build
+curl -s https://v9d346pzw7.us-east-1.awsapprunner.com/metrics/latency
 ```
 
-- 235 tests (3 llm · 112 core · 8 simulator · 112 server), scripted LLM + deterministic embedder — no
+- 257 tests (7 llm · 112 core · 21 simulator · 117 server), scripted LLM + deterministic embedder — no
   model needed to run them.
 - p95 per tool against a budget; the suite **fails** if a read tool exceeds it.
 - The model never runs on the read path.
 
-⚠️ **Warm the server before quoting latency.** `/metrics/latency` is empty until tools are called, and
-the *first* `session_brief` after a restart takes ~3.8s while the embedding model loads — against a
-400ms budget. Warm calls land where they should (`session_brief` ~37–138ms, `recall` ~227ms against a
-300ms budget). Run `pnpm smoke` twice before showing the endpoint or quoting a number, and quote the
-warm figures only — with the cold-start caveat if asked, because it's a real characteristic, not a
-blemish to hide.
+⚠️ **Quote the server-side number, and say which one it is.** Measured on the deployed stack:
+
+| | p50 | p95 | budget |
+|---|---|---|---|
+| `session_brief` | 10 ms | 199 ms | 400 ms |
+| `recall` | 143 ms | 143 ms | 300 ms |
+| `device_state` | 53 ms | 83 ms | 100 ms |
+
+A round trip from a laptop in Malaysia to us-east-1 is about **1.1 s** for the same calls — that is
+distance, not Recall, and a viewer in the US sees a fraction of it. Both numbers are honest; saying
+which one you mean is what keeps them honest. `/metrics/latency` is empty until tools have been
+called, so warm it before showing the endpoint.
 
 ★ Not a story beat, but one line — *"the model never runs on the read path"* — earns more credibility
 than a minute of demo.
+
+---
+
+## 15. What is actually running ⏱ 20s ★
+
+Worth knowing before someone asks on camera, and worth saying plainly rather than being caught out.
+
+```
+Console + simulated Alexa+   App Runner (one container, two processes)
+Recall MCP server            App Runner, VPC egress
+Memory                       RDS Postgres 16 + pgvector 0.8.2, private to the VPC
+Model                        Bedrock — Nova Lite for chat, Titan v2 for embeddings
+Mail                         SES, for the sign-in link
+```
+
+Bedrock and SES are reached over **VPC interface endpoints** rather than a NAT gateway: the server
+sends all its egress through the VPC to reach RDS privately, so those endpoints are what keep it
+able to reach anything at all. That is a ~$7/month decision instead of ~$32.
+
+Three things that are true and better said than discovered:
+
+- **AgentCore Runtime is not used.** App Runner is, because the console and the simulator
+  authenticate with a bearer token and AgentCore speaks only SigV4 or OAuth. The image already meets
+  AgentCore's contract apart from the port, so this is a deviation rather than a dead end.
+- **The simulator shares the console's container.** The account is capped at two App Runner services
+  per region — an account restriction, not a quota — and the server and console hold both. Locally
+  they are still two separate services.
+- **SES is in sandbox.** Only verified addresses receive a sign-in link. Anyone else gets the same
+  "if that belongs to someone here" answer and no mail, which is the correct behaviour for an
+  account-enumeration question and indistinguishable from success at the form.
 
 ---
 
@@ -418,7 +479,9 @@ Three things that will waste your time if you don't know them:
 - **Ask each question once, on a clean session.** Asking twice trips Recall's repeat detector, which
   is correct behaviour (it exists for §9.3) but makes the assistant answer "shall I order that
   *again*?" rather than from the facts. Between takes:
-  `docker exec recall-postgres-1 psql -U recall -d recall -c "DELETE FROM session_turn; DELETE FROM session;"`
+  against RDS — `psql "$DATABASE_URL" -c "DELETE FROM session_turn; DELETE FROM session;"`, or the
+  same through the local Postgres container as a client:
+  `docker exec -e PGPASSWORD=… recall-postgres-1 psql -h <rds-endpoint> -U recall -d recall -c "DELETE FROM session_turn; DELETE FROM session;"`
 - **Sessions hand off between devices**, so switching device does not give you a fresh conversation.
 - **Neither model is deterministic**, even at temperature 0.2. Rehearse each beat and keep the takes
   where it behaved. The server is deterministic and correct; the stand-in assistant is not.
