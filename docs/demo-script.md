@@ -71,6 +71,10 @@ A household in Brooklyn, on `America/New_York`.
 Devices: `kitchen-echo`, `bedroom-echo` (Ruth's), `living-firetv`, `ruth-bee` (worn),
 `emma-watch` (worn).
 
+Deployed with `scripts/deploy.sh` (build, push, `start-deployment`, wait, health-check) and seeded
+with `scripts/seed-prod.sh`, which is kept separate because it writes to the live database. **The
+deploy does not seed.** A fresh deployment has working software and empty pages until you run it.
+
 `pnpm db:seed` fills **every console page**, and is safe to re-run — it replaces what it owns rather
 than adding to it, so the demo is the same twice. Four rules (one a caregiver safety rule), five
 routines including one marked broken and one still only a candidate, Ruth's care plan with three
