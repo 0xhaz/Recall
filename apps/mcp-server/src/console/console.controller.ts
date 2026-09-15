@@ -16,6 +16,18 @@ const FactQuery = z.object({
 });
 const CorrectBody = z.object({ content: z.string().min(3).max(500) });
 const LimitQuery = z.object({ limit: z.coerce.number().int().min(1).max(200).optional() });
+const AddPersonBody = z.object({
+  name: z.string().trim().min(1).max(80),
+  email: z.string().email().max(200).nullish(),
+  // Not 'owner': a household has one, and it is the person who created it.
+  role: z.enum(['adult', 'child', 'guest', 'caregiver', 'cared_for']),
+});
+const ForgetRangeBody = z.object({
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+const PauseBody = z.object({ minutes: z.number().int().min(0).max(720) });
+
 const RetentionBody = z.object({ retention_days: z.number().int().min(7).max(365) });
 const RoutineDecision = z.object({ decision: z.enum(['accept', 'dismiss']) });
 const CarePolicyBody = z.object({
@@ -232,6 +244,47 @@ export class ConsoleController {
     const person = await this.auth.requirePerson(authorization);
     const { retention_days } = parseBody(RetentionBody, body);
     return this.console.setRetention(household, person, retention_days);
+  }
+
+  @Post('people')
+  async addPerson(
+    @Headers('authorization') authorization: string | undefined,
+    @Param('householdId') household: string,
+    @Body() body: unknown,
+  ) {
+    const person = await this.auth.requirePerson(authorization);
+    return this.console.addPerson(household, person, parseBody(AddPersonBody, body));
+  }
+
+  @Delete('people/:subjectId')
+  async removePerson(
+    @Headers('authorization') authorization: string | undefined,
+    @Param('householdId') household: string,
+    @Param('subjectId') subjectId: string,
+  ) {
+    const person = await this.auth.requirePerson(authorization);
+    return this.console.removePerson(household, person, subjectId);
+  }
+
+  @Post('forget-range')
+  async forgetRange(
+    @Headers('authorization') authorization: string | undefined,
+    @Param('householdId') household: string,
+    @Body() body: unknown,
+  ) {
+    const person = await this.auth.requirePerson(authorization);
+    const { from, to } = parseBody(ForgetRangeBody, body);
+    return this.console.forgetRange(household, person, from, to);
+  }
+
+  @Post('pause')
+  async pause(
+    @Headers('authorization') authorization: string | undefined,
+    @Param('householdId') household: string,
+    @Body() body: unknown,
+  ) {
+    const person = await this.auth.requirePerson(authorization);
+    return this.console.pause(household, person, parseBody(PauseBody, body).minutes);
   }
 
   @Get('export')

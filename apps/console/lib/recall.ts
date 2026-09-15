@@ -181,6 +181,8 @@ export interface Settings {
   timezone: string;
   region: string;
   retention_days: number;
+  /** Temporary mode: while this is in the future, nothing is read or stored. */
+  paused_until: string | null;
 }
 
 export interface Overview {
@@ -309,6 +311,21 @@ export const undoAction = (id: string, actionId: string) =>
 
 export const setRetention = (id: string, days: number) =>
   call<Settings>(`${household(id)}/settings`, { method: 'PATCH', body: { retention_days: days } });
+
+export const addPerson = (id: string, body: { name: string; email: string | null; role: string }) =>
+  call<{ person_id: string; name: string; role: string }>(`${household(id)}/people`, { method: 'POST', body });
+
+export const removePerson = (id: string, subjectId: string) =>
+  call<{ removed: string; name: string }>(`${household(id)}/people/${subjectId}`, { method: 'DELETE' });
+
+export const forgetRange = (id: string, from: string, to: string) =>
+  call<{ forgotten: number; from: string; to: string }>(`${household(id)}/forget-range`, {
+    method: 'POST',
+    body: { from, to },
+  });
+
+export const pauseHousehold = (id: string, minutes: number) =>
+  call<{ paused_until: string | null }>(`${household(id)}/pause`, { method: 'POST', body: { minutes } });
 
 export const setCarePolicy = (id: string, body: Record<string, unknown>) =>
   call<{ saved: boolean; message: string }>(`${household(id)}/care/policies`, { method: 'POST', body });

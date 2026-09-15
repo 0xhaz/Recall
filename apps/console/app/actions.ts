@@ -4,10 +4,14 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import {
   ApiError,
+  addPerson,
   confirmDose,
   correctFact,
   decideRoutine,
   forgetFact,
+  forgetRange,
+  pauseHousehold,
+  removePerson,
   removeReminder,
   removeRule,
   requestMagicLink,
@@ -145,6 +149,54 @@ export async function setRetentionAction(_state: ActionState, form: FormData): P
   return run(`/h/${household}/settings`, async () => {
     const saved = await setRetention(household, days);
     return `Raw events are now kept ${saved.retention_days} days. Anything forgotten stays forgotten.`;
+  });
+}
+
+export async function addPersonAction(_state: ActionState, form: FormData): Promise<ActionState> {
+  const household = text(form, 'household');
+  const name = text(form, 'name');
+  const email = text(form, 'email');
+  const role = text(form, 'role');
+  if (!name) return { error: 'Give them a name' };
+  return run(`/h/${household}/people`, async () => {
+    const added = await addPerson(household, { name, email: email || null, role });
+    return `${added.name} is in the household as ${added.role.replace('_', ' ')}.`;
+  });
+}
+
+export async function removePersonAction(_state: ActionState, form: FormData): Promise<ActionState> {
+  const household = text(form, 'household');
+  const subject = text(form, 'person_id');
+  return run(`/h/${household}/people`, async () => {
+    const gone = await removePerson(household, subject);
+    // Revoked, not deleted: what they said stays theirs, and forget is how it goes.
+    return `${gone.name} was removed. Anything they told Recall is still theirs to forget.`;
+  });
+}
+
+export async function forgetRangeAction(_state: ActionState, form: FormData): Promise<ActionState> {
+  const household = text(form, 'household');
+  const from = text(form, 'from');
+  const to = text(form, 'to');
+  if (!from || !to) return { error: 'Choose both dates' };
+  if (from > to) return { error: 'That range ends before it starts' };
+  return run(`/h/${household}/settings`, async () => {
+    const done = await forgetRange(household, from, to);
+    return done.forgotten === 0
+      ? `Nothing was recorded between ${from} and ${to}.`
+      : `${done.forgotten} ${done.forgotten === 1 ? 'fact' : 'facts'} forgotten, on every device. It cannot be undone.`;
+  });
+}
+
+export async function pauseAction(_state: ActionState, form: FormData): Promise<ActionState> {
+  const household = text(form, 'household');
+  const minutes = Number(text(form, 'minutes'));
+  if (!Number.isInteger(minutes) || minutes < 0 || minutes > 720) return { error: 'Choose up to 12 hours' };
+  return run(`/h/${household}/settings`, async () => {
+    const paused = await pauseHousehold(household, minutes);
+    return paused.paused_until
+      ? `Paused until ${new Date(paused.paused_until).toLocaleTimeString()}. Nothing is read or stored until then.`
+      : 'Recall is listening again.';
   });
 }
 

@@ -1,5 +1,7 @@
-import { Download, Settings as SettingsIcon } from 'lucide-react';
+import { Download, PauseCircle, Settings as SettingsIcon, Trash2 } from 'lucide-react';
+import { ForgetRangeForm } from '@/components/forget-range-form';
 import { Panel } from '@/components/panel';
+import { PauseForm } from '@/components/pause-form';
 import { RetentionForm } from '@/components/retention-form';
 import { requireMembership, requireProfile } from '@/lib/guard';
 import { getSettings } from '@/lib/recall';
@@ -36,12 +38,29 @@ export default async function Settings({ params }: { params: Promise<{ household
         </p>
       </Panel>
 
-      <Panel title="Not built yet">
-        <ul className="space-y-1 text-xs text-slate-500">
-          <li>· Deleting by day or range (forget by topic works by voice, and fact by fact here)</li>
-          <li>· Temporary mode, where nothing at all is stored for a while</li>
-          <li>· Adding and removing people from the household</li>
-        </ul>
+      <Panel
+        title="Forget a day, or a stretch of days"
+        icon={Trash2}
+        subtitle="By topic, say “forget that I'm on a diet”. Fact by fact, use the Memory page. This is for “delete last Tuesday”."
+      >
+        <ForgetRangeForm household={household} />
+        <p className="mt-3 text-xs text-slate-500">
+          Only what you are allowed to delete: your own memory, the household&rsquo;s, and a child&rsquo;s if you are
+          their parent. Each fact goes the same way a spoken <span className="font-mono">forget</span> sends it — a
+          tombstone every device picks up, and the words erased where Recall kept them.
+        </p>
+      </Panel>
+
+      <Panel
+        title="Pause for a while"
+        icon={PauseCircle}
+        subtitle="Temporary mode: Recall neither reads nor writes until it is over."
+      >
+        <PauseForm household={household} pausedUntil={settings.paused_until} />
+        <p className="mt-3 text-xs text-slate-500">
+          The whole household pauses together — pausing in the kitchen while the bedroom kept listening would be worse
+          than not offering it. Nothing already stored is affected; this is only about the next few minutes.
+        </p>
       </Panel>
     </>
   );

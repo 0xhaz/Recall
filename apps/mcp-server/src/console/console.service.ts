@@ -4,9 +4,13 @@ import {
   canDeletePersonMemory,
   canEditCarePlan,
   canEnterFactsFor,
+  canManageMembers,
   canReadPersonMemory,
+  canRevokeCaregiver,
   canViewDaily,
+  DEFAULT_CAREGIVER_GRANTS,
   type Member,
+  type MembershipRole,
   mergeCarePolicies,
   type SensitivityTag,
   screen,
@@ -81,6 +85,8 @@ interface FactRow {
 const iso = (d: Date | null) => d?.toISOString() ?? null;
 
 /** Everything the console reads and writes, under the signed-in person's own permissions. */
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
 @Injectable()
 export class ConsoleService {
   constructor(
@@ -513,6 +519,135 @@ export class ConsoleService {
     }));
   }
 
+  /**
+   * Add someone to the household. The owner's call alone (architecture.md §1.3), and logged like
+   * every other membership change. An existing person is re-admitted rather than duplicated, so a
+   * revoked member coming back keeps the memory that was always theirs.
+   */
+  async addPerson(
+    householdId: string,
+    personId: string,
+    input: { name: string; email?: string | null; role: MembershipRole },
+  ) {
+    const actor = await this.requireMember(householdId, personId);
+    if (!canManageMembers(actor)) throw new ForbiddenException('Only the household owner can add people');
+    if (input.role === 'owner') throw new BadRequestException('A household has one owner');
+
+    return this.db.transaction(async (tx) => {
+      const email = input.email?.trim().toLowerCase() || null;
+      const existing = email
+        ? await tx.query<{ id: string }>('SELECT id FROM person WHERE lower(email) = $1', [email])
+        : { rows: [] as { id: string }[] };
+      let subjectId = existing.rows[0]?.id;
+      if (!subjectId) {
+        const { rows } = await tx.query<{ id: string }>(
+          'INSERT INTO person (display_name, email) VALUES ($1, $2) RETURNING id',
+          [input.name.trim(), email],
+        );
+        subjectId = rows[0]?.id;
+      }
+      if (!subjectId) throw new BadRequestException('Could not create that person');
+
+      // The unique index covers active memberships only, so a revoked one stays as history and
+      // re-admitting somebody adds a row rather than rewriting the record of them having left.
+      const active = await tx.query(
+        'SELECT 1 FROM membership WHERE household_id = $1 AND person_id = $2 AND revoked_at IS NULL',
+        [householdId, subjectId],
+      );
+      if (active.rowCount) throw new BadRequestException('They are already in this household');
+      const grants = input.role === 'caregiver' ? [...DEFAULT_CAREGIVER_GRANTS] : [];
+      await tx.query(
+        `INSERT INTO membership (household_id, person_id, role, grants, granted_by)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [householdId, subjectId, input.role, grants, personId],
+      );
+      await audit(tx, {
+        householdId,
+        actorId: personId,
+        action: 'membership.added',
+        targetType: 'person',
+        targetId: subjectId,
+        detail: { role: input.role },
+      });
+      return { person_id: subjectId, name: input.name.trim(), role: input.role };
+    });
+  }
+
+  /**
+   * Remove someone. The owner may remove anyone but themselves; a cared-for person may also revoke
+   * their own caregiver, unless a capacity flag is recorded — which is itself visible and logged.
+   * The membership is revoked, never deleted: what they said stays theirs, and `forget` erases it.
+   */
+  async removePerson(householdId: string, personId: string, subjectId: string) {
+    const actor = await this.requireMember(householdId, personId);
+    const subject = (await this.members(householdId)).find((m) => m.person_id === subjectId);
+    if (!subject) throw new NotFoundException('Not a member of this household');
+    if (subject.role === 'owner') throw new BadRequestException('The household owner cannot be removed');
+
+    // The owner may remove anyone; a cared-for person may also revoke their own caregiver, which is
+    // what canRevokeCaregiver checks against their own membership and capacity flag.
+    const allowed = canManageMembers(actor) || (subject.role === 'caregiver' && canRevokeCaregiver(actor, actor));
+    if (!allowed) throw new ForbiddenException('Not yours to remove');
+
+    await this.db.transaction(async (tx) => {
+      await tx.query(
+        'UPDATE membership SET revoked_at = now() WHERE household_id = $1 AND person_id = $2 AND revoked_at IS NULL',
+        [householdId, subjectId],
+      );
+      await audit(tx, {
+        householdId,
+        actorId: personId,
+        action: 'membership.revoked',
+        targetType: 'person',
+        targetId: subjectId,
+        detail: { role: subject.role },
+      });
+    });
+    return { removed: subjectId, name: subject.display_name };
+  }
+
+  /**
+   * Forget everything recorded between two dates. `forget` by topic works by voice and fact by fact
+   * here; this is the "delete last Tuesday" case. Only what the actor may delete is touched, and
+   * every fact goes through the same tombstone path as a spoken forget, so devices drop it too.
+   */
+  async forgetRange(householdId: string, personId: string, from: string, to: string) {
+    const actor = await this.requireMember(householdId, personId);
+    if (!ISO_DATE.test(from) || !ISO_DATE.test(to)) throw new BadRequestException('Dates must be YYYY-MM-DD');
+    if (from > to) throw new BadRequestException('That range ends before it starts');
+
+    const household = await this.household(householdId);
+    const all = await this.members(householdId);
+    const deletable = all.filter((s) => canDeletePersonMemory(actor, s)).map((m) => m.person_id);
+
+    return this.db.transaction(async (tx) => {
+      await lockHousehold(tx, householdId);
+      // Local dates, so "last Tuesday" means the household's Tuesday and not UTC's.
+      const { rows } = await tx.query<{ id: string }>(
+        `SELECT id FROM fact
+          WHERE household_id = $1 AND forgotten_at IS NULL
+            AND (timezone($2, valid_from))::date BETWEEN $3::date AND $4::date
+            AND (scope_type = 'household' AND $5 OR scope_type = 'person' AND scope_id = ANY($6::uuid[]))`,
+        [householdId, household.timezone, from, to, actor.role === 'owner' || actor.role === 'adult', deletable],
+      );
+      const forgotten = await this.eraser.forgetFacts(
+        tx,
+        householdId,
+        rows.map((r) => r.id),
+        personId,
+      );
+      await audit(tx, {
+        householdId,
+        actorId: personId,
+        action: 'memory.forgot_range',
+        targetType: 'household',
+        targetId: householdId,
+        detail: { from, to, facts: forgotten.length },
+      });
+      return { forgotten: forgotten.length, from, to };
+    });
+  }
+
   async notices(householdId: string, personId: string, limit = 30) {
     await this.requireMember(householdId, personId);
     const { rows } = await this.db.query<{
@@ -656,13 +791,46 @@ export class ConsoleService {
 
   async settings(householdId: string, personId: string) {
     await this.requireMember(householdId, personId);
-    const { rows } = await this.db.query<{ name: string; timezone: string; region: string; retention_days: number }>(
-      'SELECT name, timezone, region, retention_days FROM household WHERE id = $1',
-      [householdId],
-    );
+    const { rows } = await this.db.query<{
+      name: string;
+      timezone: string;
+      region: string;
+      retention_days: number;
+      paused_until: Date | null;
+    }>('SELECT name, timezone, region, retention_days, paused_until FROM household WHERE id = $1', [householdId]);
     const household = rows[0];
     if (!household) throw new NotFoundException('No such household');
     return household;
+  }
+
+  /**
+   * Temporary mode: for the next `minutes`, Recall neither reads nor writes. Held on the household,
+   * not the session — pausing in the kitchen while the bedroom kept listening would be worse than
+   * not offering it. Pass 0 to resume. Nothing already stored is affected; this is about the next
+   * few minutes, and `forget` is still how you undo the past.
+   */
+  async pause(householdId: string, personId: string, minutes: number) {
+    const actor = await this.requireMember(householdId, personId);
+    if (actor.role !== 'owner' && actor.role !== 'adult') {
+      throw new ForbiddenException('Only an adult in the household can pause it');
+    }
+    if (!Number.isInteger(minutes) || minutes < 0 || minutes > 720) {
+      throw new BadRequestException('Pause for between 0 and 720 minutes');
+    }
+    const { rows } = await this.db.query<{ paused_until: Date | null }>(
+      `UPDATE household SET paused_until = CASE WHEN $2 = 0 THEN NULL ELSE now() + ($2 || ' minutes')::interval END
+        WHERE id = $1 RETURNING paused_until`,
+      [householdId, minutes],
+    );
+    await audit(this.db, {
+      householdId,
+      actorId: personId,
+      action: minutes === 0 ? 'household.resumed' : 'household.paused',
+      targetType: 'household',
+      targetId: householdId,
+      detail: { minutes },
+    });
+    return { paused_until: rows[0]?.paused_until ?? null };
   }
 
   /** How long raw events are kept. Tombstones outlive it by 30 days, so forgetting still sticks. */

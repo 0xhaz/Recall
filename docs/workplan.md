@@ -205,10 +205,10 @@ Checkboxes are the tasks. "Done when" is the acceptance test.
 - [x] `household_id` + `region` on every household-owned table; every query filters on `household_id` (enforce with a repository layer or Postgres RLS) [A§1.2, D§9] — repository layer
 - [x] `person` (global, no `household_id`) + `membership {household_id, person_id, role, granted_by, granted_at, revoked_at, capacity_flag}`; roles: owner, adult, child, guest, caregiver, cared_for [A§1.3]
 - [x] Caregiver grants per membership: `edit_care_plan`, `view_daily`, `enter_facts`, `set_rules` (default on), `view_full_memory` (opt-in); never other members' memory [A§1.3] — `@recall/core` access rules
-- [ ] Revocation rules: owner always; cared-for person unless `capacity_flag` is set (flag visible to the person + logged) [A§1.3] — rules and tests done; API with the console (W5)
-- [ ] Audit log for membership, role and grant changes — table done, token and sign-in changes logged; membership changes get logged when their API lands (W5)
+- [x] Revocation rules: owner always; cared-for person unless `capacity_flag` is set (flag visible to the person + logged) [A§1.3] — API and console UI landed; removing revokes rather than deletes, so the record of someone having been here survives
+- [x] Audit log for membership, role and grant changes — `membership.added` and `membership.revoked` logged with the actor and role, alongside token and sign-in changes
 - [x] Magic-link auth for the console; per-household bearer token on the MCP endpoint [D§9, T§1]
-- [ ] Guest = ephemeral (store nothing by default); child = minimal retention + parental deletion [A§1.3] — guest ✓, child facts expire within 30 days ✓; parental deletion needs the forget path (W3)
+- [x] Guest = ephemeral (store nothing by default); child = minimal retention + parental deletion [A§1.3] — guest ✓, child facts expire within 30 days ✓, parental deletion ✓ via the console's fact-by-fact forget and forget-by-range, both gated on `canDeletePersonMemory`
 - [x] Usage metering on LLM calls per household (free-tier protection) [D§9]
 - [x] Migrations + seed script for the demo household (two adults, a child, a guest, a cared-for elder, a caregiver in another household) [T§2 `scripts/seed`] — in `src/db/seed.ts` for now; moves to `scripts/seed` with the replay scripts
 
@@ -246,7 +246,7 @@ Checkboxes are the tasks. "Done when" is the acceptance test.
 - [x] Forget: by fact id or topic → tombstone, close `valid_to`; "forget me" cascades across all memberships [A§1.3] — erases the words everywhere they were kept
 - [x] `communication_style` fact (terse / warm / no jokes / no emotional language) — IG [D§3.2 #6] — per person, with response rules in `session_brief`
 - [ ] Intent aliases as per-person facts learned from successful invocations — B [D§3.3]
-- [ ] Temporary-chat mode: neither reads nor writes [D§4.2]
+- [x] Temporary-chat mode: neither reads nor writes [D§4.2] — household-scoped `paused_until`; `session_brief`, `recall` and `remember` all return `paused` with a plain message rather than an empty result, because a silent empty brief reads exactly like amnesia. Console: 30 min / 2 h / rest of day
 
 **Done when:** two family members get different, correct answers to "what should we cook tonight?"; a guest gets household-only; "forget that I'm on a diet" sets `valid_to` and the fact drops out of every retrieval. ✅ Met 2026-09-11 (`memory.e2e`, `forget.e2e`).
 

@@ -4,7 +4,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { hashToken, newToken } from '../src/auth/tokens.js';
-import { personId, startApp, type TestApp, type TestHousehold } from './support.js';
+import { callTool, personId, startApp, type TestApp, type TestHousehold } from './support.js';
 
 let t: TestApp;
 let hh: TestHousehold;
@@ -337,5 +337,135 @@ describe('medication reminders', () => {
       body: { person: 'Ruth', label: 'Something', times: ['09:00'] },
     });
     expect(res.status).toBe(403);
+  });
+});
+
+describe('people', () => {
+  it('lets the owner add someone, and nobody else', async () => {
+    const denied = await api('Sofia', '/people', { method: 'POST', body: { name: 'Leo', role: 'adult' } });
+    expect(denied.status).toBe(403);
+
+    const added = await api<{ person_id: string; role: string }>('Emma', '/people', {
+      method: 'POST',
+      body: { name: 'Leo', email: 'leo@test.local', role: 'adult' },
+    });
+    expect(added.status).toBe(201);
+    expect(added.body.role).toBe('adult');
+    const { body } = await api<{ people: { name: string; role: string }[] }>('Emma', '/people');
+    expect(body.people.find((p) => p.name === 'Leo')).toMatchObject({ role: 'adult' });
+  });
+
+  it('gives a caregiver the default grants, and refuses a second owner', async () => {
+    const carer = await api<{ person_id: string }>('Emma', '/people', {
+      method: 'POST',
+      body: { name: 'Priya', email: 'priya@test.local', role: 'caregiver' },
+    });
+    expect(carer.status).toBe(201);
+    const { body } = await api<{ people: { name: string; grants: string[] }[] }>('Emma', '/people');
+    expect(body.people.find((p) => p.name === 'Priya')?.grants).toContain('edit_care_plan');
+
+    const second = await api('Emma', '/people', { method: 'POST', body: { name: 'Max', role: 'owner' } });
+    expect(second.status).toBe(400);
+  });
+
+  it('will not add the same person twice', async () => {
+    const again = await api('Emma', '/people', {
+      method: 'POST',
+      body: { name: 'Leo', email: 'leo@test.local', role: 'adult' },
+    });
+    expect(again.status).toBe(400);
+  });
+
+  it('removes someone by revoking, so the record of them having been here survives', async () => {
+    const { body: before } = await api<{ people: { person_id: string; name: string }[] }>('Emma', '/people');
+    const leo = before.people.find((p) => p.name === 'Leo');
+    if (!leo) throw new Error('Leo missing');
+
+    const removed = await api('Emma', `/people/${leo.person_id}`, { method: 'DELETE' });
+    expect(removed.status).toBe(200);
+
+    const { body: after } = await api<{ people: { name: string }[] }>('Emma', '/people');
+    expect(after.people.some((p) => p.name === 'Leo')).toBe(false);
+    const { rows } = await t.db.query('SELECT revoked_at FROM membership WHERE household_id = $1 AND person_id = $2', [
+      hh.id,
+      leo.person_id,
+    ]);
+    expect(rows[0]?.revoked_at).not.toBeNull();
+    const log = await t.db.query(
+      `SELECT 1 FROM audit_log WHERE household_id = $1 AND action = 'membership.revoked' AND target_id = $2`,
+      [hh.id, leo.person_id],
+    );
+    expect(log.rowCount).toBe(1);
+  });
+
+  it('never removes the owner', async () => {
+    const { body } = await api<{ people: { person_id: string; role: string }[] }>('Emma', '/people');
+    const owner = body.people.find((p) => p.role === 'owner');
+    if (!owner) throw new Error('no owner');
+    expect((await api('Emma', `/people/${owner.person_id}`, { method: 'DELETE' })).status).toBe(400);
+  });
+
+  it('lets a cared-for person revoke their own caregiver', async () => {
+    const { body } = await api<{ people: { person_id: string; name: string }[] }>('Emma', '/people');
+    const nina = body.people.find((p) => p.name === 'Nina');
+    if (!nina) throw new Error('Nina missing');
+    // Ruth is cared for and has no capacity flag, so this is hers to do (architecture.md §1.3).
+    expect((await api('Ruth', `/people/${nina.person_id}`, { method: 'DELETE' })).status).toBe(200);
+  });
+});
+
+describe('forget by date range', () => {
+  it('forgets what was recorded in the window, and leaves the rest alone', async () => {
+    const old = await fact('Emma booked a table on Tuesday', 'household', hh.id);
+    const recent = await fact('Emma is learning Spanish', 'household', hh.id);
+    await t.db.query(`UPDATE fact SET valid_from = '2026-03-10T12:00:00Z' WHERE id = $1`, [old]);
+    await t.db.query(`UPDATE fact SET valid_from = '2026-05-01T12:00:00Z' WHERE id = $1`, [recent]);
+
+    const { status, body } = await api<{ forgotten: number }>('Emma', '/forget-range', {
+      method: 'POST',
+      body: { from: '2026-03-09', to: '2026-03-11' },
+    });
+    expect(status).toBe(201);
+    expect(body.forgotten).toBeGreaterThanOrEqual(1);
+
+    const { rows } = await t.db.query<{ id: string; content: string; forgotten_at: Date | null }>(
+      'SELECT id, content, forgotten_at FROM fact WHERE id = ANY($1::uuid[])',
+      [[old, recent]],
+    );
+    const gone = rows.find((r) => r.id === old);
+    const kept = rows.find((r) => r.id === recent);
+    expect(gone?.forgotten_at).not.toBeNull();
+    expect(gone?.content).toBe(''); // the words are erased, not just hidden
+    expect(kept?.forgotten_at).toBeNull();
+  });
+
+  it('refuses a range that ends before it starts', async () => {
+    const bad = await api('Emma', '/forget-range', { method: 'POST', body: { from: '2026-05-02', to: '2026-05-01' } });
+    expect(bad.status).toBe(400);
+  });
+});
+
+describe('temporary mode', () => {
+  it('stops reading and writing while paused, and says so plainly', async () => {
+    const client = await t.mcp(hh.token);
+    expect((await api('Emma', '/pause', { method: 'POST', body: { minutes: 30 } })).status).toBe(201);
+
+    const brief = await callTool<{ paused?: boolean; message?: string }>(client, 'session_brief', { speaker: 'Emma' });
+    expect(brief.paused).toBe(true);
+    expect(brief.message).toContain('paused');
+
+    const stored = await callTool<{ paused?: boolean }>(client, 'remember', { speaker: 'Emma', text: 'I like pears' });
+    expect(stored.paused).toBe(true);
+    const { rows } = await t.db.query(`SELECT 1 FROM utterance WHERE text = 'I like pears'`);
+    expect(rows).toHaveLength(0);
+
+    expect((await api('Emma', '/pause', { method: 'POST', body: { minutes: 0 } })).status).toBe(201);
+    const resumed = await callTool<{ paused?: boolean }>(client, 'session_brief', { speaker: 'Emma' });
+    expect(resumed.paused).toBeUndefined();
+    await client.close();
+  });
+
+  it('is not a guest or child decision', async () => {
+    expect((await api('Sofia', '/pause', { method: 'POST', body: { minutes: 30 } })).status).toBe(403);
   });
 });

@@ -26,6 +26,13 @@ export interface Household {
   name: string;
   region: string;
   timezone: string;
+  /** Temporary mode: while this is in the future, Recall neither reads nor writes (design.md §4.2). */
+  paused_until: Date | null;
+}
+
+/** True while the household has asked Recall to stop, so both paths can check the same thing. */
+export function isPaused(household: Household, now: Date = new Date()): boolean {
+  return household.paused_until !== null && household.paused_until.getTime() > now.getTime();
 }
 
 export interface Speaker {
@@ -186,9 +193,10 @@ export class MemoryService {
   ) {}
 
   async household(householdId: string): Promise<Household | null> {
-    const { rows } = await this.db.query<Household>('SELECT id, name, region, timezone FROM household WHERE id = $1', [
-      householdId,
-    ]);
+    const { rows } = await this.db.query<Household>(
+      'SELECT id, name, region, timezone, paused_until FROM household WHERE id = $1',
+      [householdId],
+    );
     return rows[0] ?? null;
   }
 

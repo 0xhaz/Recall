@@ -1,5 +1,7 @@
 import { Users } from 'lucide-react';
 import { Panel } from '@/components/panel';
+import { AddPerson, RemovePerson } from '@/components/people-admin';
+import { requireMembership, requireProfile } from '@/lib/guard';
 import { getPeople } from '@/lib/recall';
 
 const ROLES: Record<string, string> = {
@@ -21,7 +23,11 @@ const GRANTS: Record<string, string> = {
 
 export default async function People({ params }: { params: Promise<{ household: string }> }) {
   const { household } = await params;
-  const { people } = await getPeople(household);
+  const [{ people }, profile] = await Promise.all([getPeople(household), requireProfile()]);
+  const me = requireMembership(profile, household);
+  // The owner manages the household; a cared-for person may also let their own caregiver go.
+  const canRemove = (role: string) =>
+    role !== 'owner' && (me.role === 'owner' || (role === 'caregiver' && me.role === 'cared_for'));
 
   return (
     <Panel
@@ -48,10 +54,19 @@ export default async function People({ params }: { params: Promise<{ household: 
                 </ul>
               ) : null}
             </div>
-            <p className="max-w-xs text-right text-xs text-slate-500">{person.sees}</p>
+            <div className="max-w-xs text-right">
+              <p className="text-xs text-slate-500">{person.sees}</p>
+              {canRemove(person.role) ? (
+                <div className="mt-1">
+                  <RemovePerson household={household} personId={person.person_id} name={person.name} />
+                </div>
+              ) : null}
+            </div>
           </li>
         ))}
       </ul>
+
+      {me.role === 'owner' ? <AddPerson household={household} /> : null}
 
       <p className="mt-4 text-xs text-slate-500">
         Guests are in ephemeral mode: Recall answers from household memory but stores nothing they say. A caregiver only

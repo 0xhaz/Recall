@@ -7,7 +7,7 @@ import type { ContextService } from '../context/context.service.js';
 import type { DeviceService } from '../devices/device.service.js';
 import type { ExplainService } from '../memory/explain.service.js';
 import type { ForgetService } from '../memory/forget.service.js';
-import type { MemoryService } from '../memory/memory.service.js';
+import { isPaused, type MemoryService } from '../memory/memory.service.js';
 import type { RulesService } from '../rules/rules.service.js';
 import type { SessionService } from '../sessions/session.service.js';
 import { deviceArg, json, speakerArgs, type Timed } from './tool-kit.js';
@@ -42,6 +42,16 @@ export function registerMemoryTools(
     return { household, identity };
   };
 
+  // Temporary mode (design.md §4.2): neither read nor write. The assistant is told plainly, so it
+  // says the house is paused rather than that it has no memory of anything — a silent empty brief
+  // reads exactly like amnesia, which is the one impression this product cannot afford to give.
+  const paused = (household: { paused_until: Date | null }) =>
+    json({
+      paused: true,
+      until: household.paused_until?.toISOString() ?? null,
+      message: 'Memory is paused for this household: nothing is being read or stored right now. Say so plainly.',
+    });
+
   server.registerTool(
     'session_brief',
     {
@@ -65,6 +75,7 @@ export function registerMemoryTools(
     ({ speaker, speaker_confidence, device, hint }) =>
       timed('session_brief', async () => {
         const { household, identity } = await whoAndWhere(speaker, speaker_confidence);
+        if (isPaused(household)) return paused(household);
         const who = identity.speaker;
         const [facts, style, applicableRules, session, deviceStates, reading] = await Promise.all([
           memory.recall(ctx.householdId, who, hint ?? '', 8),
@@ -129,6 +140,7 @@ export function registerMemoryTools(
     ({ speaker, speaker_confidence, query, limit }) =>
       timed('recall', async () => {
         const { household, identity } = await whoAndWhere(speaker, speaker_confidence);
+        if (isPaused(household)) return paused(household);
         const facts = await memory.recall(ctx.householdId, identity.speaker, query, limit);
         return json({ temporal: temporalStamp(household.timezone), speaker_resolved: !!identity.speaker, facts });
       }),
@@ -155,6 +167,8 @@ export function registerMemoryTools(
     },
     ({ speaker, speaker_confidence, device, text, scope, said_hlc }) =>
       timed('remember', async () => {
+        const household = await memory.household(ctx.householdId);
+        if (household && isPaused(household)) return paused(household);
         const identity = await memory.identify(ctx.householdId, speaker, speaker_confidence);
         return json(await memory.remember(ctx.householdId, identity.speaker, text, scope, device, said_hlc));
       }),
