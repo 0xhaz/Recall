@@ -1,14 +1,18 @@
 // The simulated Alexa+ web app (workplan WS12). Start Recall (pnpm dev), then: pnpm sim
 import { readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { Agent, OllamaAgentModel } from './agent.js';
+import { Agent, type AgentModel, OllamaAgentModel } from './agent.js';
+import { BedrockAgentModel } from './bedrock-model.js';
 import { config, DEMO, PRODUCERS } from './config.js';
 import { SimHome } from './devices.js';
 import { RecallClient } from './recall.js';
 import { listReplays, loadReplay, runReplay } from './replay.js';
 
 const recall = new RecallClient(config.recallUrl, config.token);
-const model = new OllamaAgentModel(config.ollamaUrl, config.model);
+const model: AgentModel =
+  config.provider === 'bedrock'
+    ? new BedrockAgentModel(config.region, config.bedrockModel)
+    : new OllamaAgentModel(config.ollamaUrl, config.model);
 const agent = new Agent(recall, model);
 const home = new SimHome(recall, DEMO.devices);
 
@@ -140,6 +144,6 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(config.port, '127.0.0.1', () => {
-  console.log(`Simulated Alexa+ on http://127.0.0.1:${config.port} · Recall ${config.recallUrl} · ${model.model}`);
+server.listen(config.port, config.host, () => {
+  console.log(`Simulated Alexa+ on http://${config.host}:${config.port} · Recall ${config.recallUrl} · ${model.model}`);
 });

@@ -7,11 +7,17 @@ if (existsSync(envFile)) process.loadEnvFile(envFile);
 
 export const config = {
   port: Number(process.env.SIM_PORT ?? 3200),
+  /** Loopback locally; a container has to bind 0.0.0.0 or nothing outside it can connect. */
+  host: process.env.SIM_HOST ?? '127.0.0.1',
   recallUrl: process.env.RECALL_URL ?? `http://127.0.0.1:${process.env.PORT ?? 3100}/mcp`,
   token: process.env.RECALL_DEV_TOKEN ?? '',
   ollamaUrl: process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434',
   model: process.env.SIM_MODEL ?? process.env.OLLAMA_MODEL ?? 'qwen3:8b',
   timezone: process.env.SIM_TIMEZONE ?? 'Asia/Kuala_Lumpur',
+  /** Which model answers: ollama locally, bedrock once deployed (there is no Ollama on AWS). */
+  provider: process.env.SIM_LLM_PROVIDER ?? process.env.LLM_PROVIDER ?? 'ollama',
+  region: process.env.AWS_REGION ?? 'us-east-1',
+  bedrockModel: process.env.SIM_BEDROCK_MODEL_ID ?? 'amazon.nova-lite-v1:0',
 };
 
 export interface DeviceInfo {

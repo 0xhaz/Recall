@@ -1,8 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // The console talks to the Recall server from the server side only, so the token never reaches the browser.
-  env: { RECALL_API_URL: process.env.RECALL_API_URL ?? 'http://127.0.0.1:3100' },
+  // A self-contained server bundle, so the container carries only what it runs.
+  output: 'standalone',
+  // RECALL_API_URL and SIMULATOR_URL are deliberately not listed here: `env` inlines values at
+  // build time, which would freeze the deployed server's address into the image. They are read
+  // from process.env on the server at request time, and never reach the browser.
 };
 
 export default nextConfig;

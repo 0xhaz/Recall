@@ -1,0 +1,18 @@
+# The build context is the repo root for every image; everything below is rebuilt inside it.
+node_modules
+**/node_modules
+**/dist
+**/.next
+**/*.tsbuildinfo
+
+.git
+.github
+docs
+futuristic-dashboard
+
+.env
+.env.*
+!.env.example
+
+**/*.log
+.DS_Store

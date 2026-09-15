@@ -12,6 +12,7 @@
     "replay": "tsx --conditions=development src/replay-cli.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1132.0",
     "@modelcontextprotocol/sdk": "1.30.0",
     "@recall/core": "workspace:*"
   }
