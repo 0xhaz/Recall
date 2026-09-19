@@ -1,5 +1,5 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { canEditCarePlan, type DayPattern, formatMinute, type Member, screen } from '@recall/core';
+import { addDays, canEditCarePlan, type DayPattern, dayMatches, formatMinute, type Member, screen } from '@recall/core';
 import { audit } from '../audit.js';
 import { Db } from '../db/db.js';
 import { lockHousehold } from '../events/event-log.service.js';
@@ -54,6 +54,24 @@ export interface DueDose {
   how: 'voice' | 'console' | null;
   note: string | null;
   by: string | null;
+}
+
+export interface DoseRecord {
+  label: string;
+  kind: ReminderKind;
+  due: string;
+  /** `no_record` means nothing was logged — not that it was skipped. */
+  status: 'confirmed' | 'missed' | 'skipped' | 'unanswered' | 'no_record';
+  confirmed_at: string | null;
+  how: 'voice' | 'console' | null;
+  by: string | null;
+}
+
+export interface DoseDay {
+  date: string;
+  doses: DoseRecord[];
+  missed: number;
+  unrecorded: number;
 }
 
 export type ConfirmResult =
@@ -185,6 +203,9 @@ export class ReminderService {
 
     const doses: DueDose[] = [];
     for (const reminder of reminders.rows) {
+      // A weekdays-only reminder is not due on a Saturday. The watcher has always known that; this
+      // did not, so the care page showed a dose nobody was ever going to be asked about.
+      if (!dayMatches(reminder.days, local.date)) continue;
       for (const minute of reminder.times) {
         const log = logged.rows.find((l) => l.reminder_id === reminder.id && l.local_minute === minute);
         doses.push({
@@ -203,6 +224,73 @@ export class ReminderService {
       }
     }
     return doses.sort((a, b) => a.due.localeCompare(b.due));
+  }
+
+  /**
+   * The days behind today, so a caregiver can see what has been missed rather than only what is due
+   * now. Every scheduled dose is listed, including ones with no log row at all: "no record" is its
+   * own answer and is not the same as "not taken" (design.md §5). Days a reminder does not run on
+   * are skipped, so a weekday tablet is never counted missed on a Sunday.
+   */
+  async history(household: Household, personId: string, days = 7, now: Date = new Date()): Promise<DoseDay[]> {
+    const local = localMinute(household.timezone, now);
+    const from = addDays(local.date, -days);
+    const [reminders, logged] = await Promise.all([
+      this.db.query<ReminderRow>(
+        `SELECT id, kind, label, dose, times, days, device_id, grace_minutes, escalate_after_minutes
+           FROM care_reminder WHERE household_id = $1 AND person_id = $2 AND removed_at IS NULL`,
+        [household.id, personId],
+      ),
+      this.db.query<{
+        reminder_id: string;
+        local_date: string;
+        local_minute: number;
+        /** What the table can actually hold: `not_due` is computed for today, never stored. */
+        status: 'pending' | 'confirmed' | 'missed' | 'skipped';
+        confirmed_at: Date | null;
+        how: 'voice' | 'console' | null;
+        by: string | null;
+      }>(
+        `SELECT l.reminder_id, to_char(l.local_date, 'YYYY-MM-DD') AS local_date, l.local_minute, l.status,
+                l.confirmed_at, l.how, p.display_name AS by
+           FROM care_reminder_log l LEFT JOIN person p ON p.id = l.confirmed_by
+          WHERE l.household_id = $1 AND l.person_id = $2 AND l.local_date >= $3::date AND l.local_date < $4::date`,
+        [household.id, personId, from, local.date],
+      ),
+    ]);
+
+    const out: DoseDay[] = [];
+    for (let back = 1; back <= days; back++) {
+      const date = addDays(local.date, -back);
+      const doses: DoseRecord[] = [];
+      for (const reminder of reminders.rows) {
+        if (!dayMatches(reminder.days, date)) continue;
+        for (const minute of reminder.times) {
+          const log = logged.rows.find(
+            (l) => l.reminder_id === reminder.id && l.local_date === date && l.local_minute === minute,
+          );
+          doses.push({
+            label: reminder.label,
+            kind: reminder.kind,
+            due: formatMinute(minute),
+            // A log still 'pending' on a day that has ended was asked and never answered.
+            status: log ? (log.status === 'pending' ? 'unanswered' : log.status) : 'no_record',
+            confirmed_at: log?.confirmed_at?.toISOString() ?? null,
+            how: log?.how ?? null,
+            by: log?.by ?? null,
+          });
+        }
+      }
+      if (doses.length > 0) {
+        out.push({
+          date,
+          doses: doses.sort((a, b) => a.due.localeCompare(b.due)),
+          missed: doses.filter((d) => d.status === 'missed' || d.status === 'unanswered').length,
+          unrecorded: doses.filter((d) => d.status === 'no_record').length,
+        });
+      }
+    }
+    return out;
   }
 
   /**

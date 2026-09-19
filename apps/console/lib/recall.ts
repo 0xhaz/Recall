@@ -248,12 +248,32 @@ export interface Vitals {
   moved_at: string | null;
 }
 
+export interface DoseRecord {
+  label: string;
+  due: string;
+  /** `no_record` means nothing was logged — not that it was skipped. */
+  status: 'confirmed' | 'missed' | 'skipped' | 'unanswered' | 'no_record';
+  confirmed_at: string | null;
+  how: 'voice' | 'console' | null;
+  by: string | null;
+}
+
+export interface DoseDay {
+  date: string;
+  doses: DoseRecord[];
+  missed: number;
+  unrecorded: number;
+}
+
 export interface CarePlan {
   person: { id: string; name: string };
+  /** The household's own clock at the moment this was read. */
+  now: { local_date: string; local_time: string; weekday: string; timezone: string };
   can_edit: boolean;
   policies: CarePolicy[];
   reminders: Reminder[];
   doses: DueDose[];
+  history: DoseDay[];
   vitals: Vitals | null;
   day: { kind: string; at: string; ok: boolean }[];
   alerts: { kind: string; text: string; at: string; acknowledged_at: string | null }[];

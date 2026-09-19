@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { addDays, formatHlc, temporalStamp } from '@recall/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { ConsoleService } from '../src/console/console.service.js';
 import { PresenceWatcher } from '../src/routines/presence.service.js';
 import { callTool, personId, startApp, type TestApp, type TestHousehold } from './support.js';
 
@@ -179,5 +180,70 @@ describe('care mode', () => {
       events: [report('motion.detected', late.getTime(), null)],
     });
     expect(await watcher.check(hh.id, new Date(late.getTime() + 60_000))).toBe(0);
+  });
+});
+
+describe('the days behind today', () => {
+  const RUTH = () => personId(hh, 'Ruth');
+
+  /** A reminder plus a day's worth of log rows, placed in the household's own zone. */
+  async function reminder(label: string, minute: number, days: 'daily' | 'weekdays' = 'daily') {
+    const { rows } = await t.db.query<{ id: string }>(
+      `INSERT INTO care_reminder (household_id, region, person_id, kind, label, times, days)
+       VALUES ($1, 'us', $2, 'medication', $3, $4, $5) RETURNING id`,
+      [hh.id, RUTH(), label, [minute], days],
+    );
+    const id = rows[0]?.id;
+    if (!id) throw new Error('reminder not inserted');
+    return id;
+  }
+
+  async function logged(reminderId: string, minute: number, daysAgo: number, status: string) {
+    await t.db.query(
+      `INSERT INTO care_reminder_log (household_id, region, reminder_id, person_id, local_date, local_minute,
+                                      due_at, status, confirmed_at, confirmed_by, how)
+       SELECT $1, 'us', $2, $3, ld, $4::smallint, due, $5,
+              CASE WHEN $5 = 'confirmed' THEN due END,
+              CASE WHEN $5 = 'confirmed' THEN $3::uuid END,
+              CASE WHEN $5 = 'confirmed' THEN 'voice' END
+         FROM (SELECT ld, timezone($7, ld + ($4::text || ' minutes')::interval) AS due
+                 FROM (SELECT (timezone($7, now()))::date - $6::int AS ld) d) t`,
+      [hh.id, reminderId, RUTH(), minute, status, String(daysAgo), TZ],
+    );
+  }
+
+  it('shows what was taken, what was missed, and what was never recorded at all', async () => {
+    const id = await reminder('Morning tablets', 510);
+    await logged(id, 510, 1, 'confirmed');
+    await logged(id, 510, 2, 'missed');
+    // Day 3 gets nothing: no record is its own answer, and is not the same as not taken.
+
+    const plan = await t.app.get(ConsoleService).carePlan(hh.id, personId(hh, 'Nina'), RUTH());
+    const byDate = Object.fromEntries(plan.history.map((d) => [d.date, d]));
+    const day = (back: number) => byDate[addDays(temporalStamp(TZ).local_date, -back)];
+
+    expect(day(1)?.doses[0]).toMatchObject({ status: 'confirmed', how: 'voice', due: '08:30' });
+    expect(day(2)?.doses[0]).toMatchObject({ status: 'missed' });
+    expect(day(2)?.missed).toBe(1);
+    expect(day(3)?.doses[0]).toMatchObject({ status: 'no_record' });
+    // A day with no record is not counted as missed: Recall will not guess the difference.
+    expect(day(3)?.missed).toBe(0);
+    expect(day(3)?.unrecorded).toBe(1);
+  });
+
+  it("reads the clock in the household's own zone", async () => {
+    const plan = await t.app.get(ConsoleService).carePlan(hh.id, personId(hh, 'Nina'), RUTH());
+    expect(plan.now.timezone).toBe(TZ);
+    expect(plan.now.local_date).toBe(temporalStamp(TZ).local_date);
+  });
+
+  it('never counts a weekday tablet missed at the weekend', async () => {
+    const id = await reminder('Weekday tablet', 600, 'weekdays');
+    const plan = await t.app.get(ConsoleService).carePlan(hh.id, personId(hh, 'Nina'), RUTH());
+    for (const day of plan.history) {
+      const weekend = [0, 6].includes(new Date(`${day.date}T00:00:00Z`).getUTCDay());
+      if (weekend) expect(day.doses.some((d) => d.label === 'Weekday tablet')).toBe(false);
+    }
+    await t.db.query('DELETE FROM care_reminder WHERE id = $1', [id]);
   });
 });

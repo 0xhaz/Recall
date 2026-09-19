@@ -15,6 +15,7 @@ import {
   type SensitivityTag,
   screen,
   tagsFor,
+  temporalStamp,
 } from '@recall/core';
 import { ActionService } from '../actions/action.service.js';
 import { audit } from '../audit.js';
@@ -690,7 +691,7 @@ export class ConsoleService {
     if (!maySee) throw new ForbiddenException('Not yours to see');
 
     const household = await this.household(householdId);
-    const [policies, day, alerts, reminders, doses, vitals] = await Promise.all([
+    const [policies, day, alerts, reminders, doses, history, vitals] = await Promise.all([
       this.db.query<Omit<CarePolicy, 'set_by'>>(
         `SELECT topic, keywords, policy, guidance FROM care_policy
           WHERE household_id = $1 AND person_id = $2 AND removed_at IS NULL ORDER BY created_at`,
@@ -711,6 +712,7 @@ export class ConsoleService {
       ),
       this.reminders.list(householdId, subjectId),
       this.reminders.today(household, subjectId),
+      this.reminders.history(household, subjectId),
       // What a worn tracker last reported, against this person's own learned resting rate. Readings
       // only: Recall records a number and a time, and never turns either into a diagnosis.
       this.db.query<{
@@ -737,10 +739,13 @@ export class ConsoleService {
     const reading = vitals.rows[0];
     return {
       person: { id: subject.person_id, name: subject.display_name },
+      // The page is about times, so it says plainly what time it is reading them at.
+      now: temporalStamp(household.timezone),
       can_edit: canEditCarePlan(actor, subject) || actor.role === 'owner',
       policies: mergeCarePolicies(policies.rows.map((p) => ({ ...p, set_by: 'caregiver' as const }))),
       reminders,
       doses,
+      history,
       vitals:
         reading && (reading.bpm !== null || reading.steps !== null)
           ? {
