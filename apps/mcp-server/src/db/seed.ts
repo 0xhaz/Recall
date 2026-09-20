@@ -380,9 +380,19 @@ export async function seed(databaseUrl: string, devToken: string | undefined): P
     }
     for (const f of facts) {
       await client.query(
+        // Converge, don't skip. DO NOTHING meant a database first seeded before the move to US
+        // names and places kept "Aisyah is vegetarian" and a Kuala Lumpur delivery address for
+        // good, while the repo said Emma and Brooklyn — the demo read from one and the code from
+        // the other. The embedding is cleared so the backfill worker re-embeds the new words, and
+        // the tombstone is lifted so a fact forgotten during a demo comes back for the next one.
         `INSERT INTO fact (id, household_id, region, scope_type, scope_id, type, content, source, confidence, sensitivity_tag)
          VALUES ($1, $2, 'us', $3, $4, $5, $6, $7, $8, $9)
-         ON CONFLICT (id) DO NOTHING`,
+         ON CONFLICT (id) DO UPDATE SET
+           region = EXCLUDED.region, scope_type = EXCLUDED.scope_type, scope_id = EXCLUDED.scope_id,
+           type = EXCLUDED.type, content = EXCLUDED.content, source = EXCLUDED.source,
+           confidence = EXCLUDED.confidence, sensitivity_tag = EXCLUDED.sensitivity_tag,
+           embedding = CASE WHEN fact.content IS DISTINCT FROM EXCLUDED.content THEN NULL ELSE fact.embedding END,
+           forgotten_at = NULL, valid_to = NULL, superseded_by = NULL`,
         [
           `00000000-0000-4000-8000-0000000000${f.id}`,
           f.household,
@@ -398,8 +408,13 @@ export async function seed(databaseUrl: string, devToken: string | undefined): P
         ],
       );
     }
-    // Seeded purchases are replaced rather than added to, so re-running the seed keeps the cycles honest.
-    await client.query(`DELETE FROM action WHERE household_id = $1 AND details->>'seed' = 'true'`, [DEMO_HOUSEHOLD_ID]);
+    // The whole action history, not only the rows the seed wrote. Anything ordered by hand while
+    // testing survived otherwise, and both `purchase_history` and the Actions page read it — which
+    // is how a Kuala Lumpur takeaway from an old test run was still in line to appear in the demo.
+    await client.query(`DELETE FROM event WHERE household_id = ANY($1) AND kind LIKE 'action.%'`, [
+      households.map((h) => h.id),
+    ]);
+    await client.query('DELETE FROM action WHERE household_id = ANY($1)', [households.map((h) => h.id)]);
     for (const p of PURCHASES) {
       for (const days of p.days) {
         await client.query(
@@ -415,6 +430,18 @@ export async function seed(databaseUrl: string, devToken: string | undefined): P
         );
       }
     }
+    // Conversation history too. A demo should start from a known conversation, and transcripts are
+    // where old wording lives longest: the facts said "Emma" again within a minute of the fix, while
+    // 117 session turns still said "Aisyah" and "Warung Mak Teh" because a transcript is a record of
+    // what was said and is never rewritten. session_history reads these, so they reach the assistant.
+    await client.query(
+      `DELETE FROM event WHERE household_id = ANY($1) AND kind IN ('session.turn', 'notice.created')`,
+      [households.map((h) => h.id)],
+    );
+    for (const table of ['session_turn', 'session']) {
+      await client.query(`DELETE FROM ${table} WHERE household_id = ANY($1)`, [households.map((h) => h.id)]);
+    }
+
     // Rules, routines, care and context: replaced wholesale each run so the demo is the same twice.
     await client.query(`DELETE FROM care_reminder_log WHERE household_id = $1`, [DEMO_HOUSEHOLD_ID]);
     for (const table of ['rule', 'care_reminder', 'care_policy', 'notice', 'activity', 'routine', 'context_baseline']) {
@@ -622,8 +649,30 @@ export async function seed(databaseUrl: string, devToken: string | undefined): P
        ON CONFLICT (id) DO NOTHING`,
       ['00000000-0000-4000-8000-0000000000fb', DEMO_HOUSEHOLD_ID, DEMO_PEOPLE.emma],
     );
+    // A fact.created event embeds the fact as it was, and the backfill will not overwrite one that
+    // already exists. Drop the seeded facts' events and snapshots so both are rebuilt from the
+    // current words — otherwise a device syncing from zero is told the old ones.
+    await client.query(
+      `DELETE FROM event WHERE household_id = ANY($1) AND kind = 'fact.created'
+         AND event_id IN (SELECT md5('fact.created:' || id)::uuid FROM fact WHERE household_id = ANY($1)
+                           AND source->>'origin' IN ('seed', 'caregiver'))`,
+      [households.map((h) => h.id)],
+    );
+    await client.query('DELETE FROM snapshot WHERE household_id = ANY($1)', [households.map((h) => h.id)]);
     // Seeded facts need fact.created events too, or a device syncing from zero wouldn't see them.
     await client.query('SELECT recall_backfill_fact_events()');
+    // Changing a fact's words clears its embedding, so ask for a re-embed rather than waiting for
+    // the maintenance sweep to notice. Without this the seed leaves facts that cannot be recalled
+    // by meaning, and "what do you know about me?" answers "nothing" on a freshly seeded database.
+    for (const h of households) {
+      await client.query(
+        `INSERT INTO job (household_id, kind, payload)
+         SELECT $1, 'embed', '{}' WHERE NOT EXISTS (
+           SELECT 1 FROM job WHERE household_id = $1 AND kind = 'embed' AND status = 'queued')`,
+        [h.id],
+      );
+    }
+    await client.query('SELECT pg_notify($1, $2)', ['recall_jobs', 'embed']);
     if (devToken) {
       // Lets .mcp.json and the smoke script keep using RECALL_DEV_TOKEN against the demo household.
       await client.query(

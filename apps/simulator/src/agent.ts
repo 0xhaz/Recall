@@ -210,11 +210,32 @@ export function digest(b: Brief): Record<string, unknown> {
  * <thinking>. A tag left open means the output was cut off mid-thought, so everything after it is
  * reasoning too — spoken aloud it would be the model muttering its way to an answer.
  */
-export const clean = (s: string): string =>
-  s
+/**
+ * Tags a model wraps its answer in rather than reasoning it hides. Nova Lite emits <response>
+ * unprompted, and nothing in the system prompt asks for it. Unlike <thinking>, the content is the
+ * answer, so the tags come off and the words stay.
+ *
+ * Deliberately a short list rather than "strip anything in angle brackets": this text is spoken
+ * aloud, and a person is far likelier to say "under 5 < 10" than to emit a stray tag.
+ */
+const WRAPPER = /<\/?(?:response|answer|reply|output|final_answer|final|speech|say)\s*\/?>/gi;
+
+export const clean = (s: string): string => {
+  // Reasoning first. An unclosed <thinking> means the answer never arrived, and an empty result
+  // here is the right one — that rule predates the wrapper handling and still holds.
+  const said = s
     .replace(/<think(?:ing)?>[\s\S]*?<\/think(?:ing)?>/g, '')
     .replace(/<think(?:ing)?>[\s\S]*$/, '')
     .trim();
+  const unwrapped = said
+    .replace(WRAPPER, ' ')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/ ?\n ?/g, '\n')
+    .trim();
+  // Only the unwrapping falls back: if taking the tags off left nothing, the tags were the whole
+  // message, and showing it untidied beats showing silence.
+  return unwrapped || said;
+};
 
 export class Agent {
   constructor(

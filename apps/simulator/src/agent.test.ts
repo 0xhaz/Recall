@@ -274,4 +274,22 @@ describe('clean', () => {
     expect(clean('<thinking>I should check whether')).toBe('');
     expect(clean('Here you go.<think>wait, no')).toBe('Here you go.');
   });
+
+  it('unwraps an answer the model put in tags, and keeps the words', () => {
+    // Nova Lite does this unprompted. Left in, the tags were shown on screen and read out by Polly.
+    expect(clean('<response>Playing the Secret Life of Walter Mitty. It can be undone until 21:56.</response>')).toBe(
+      'Playing the Secret Life of Walter Mitty. It can be undone until 21:56.',
+    );
+    expect(clean('<answer>Noted.</answer>')).toBe('Noted.');
+    expect(clean('<response>Pizza night is Friday.')).toBe('Pizza night is Friday.');
+    expect(clean('Pizza night is Friday.</response>')).toBe('Pizza night is Friday.');
+  });
+
+  it('leaves a comparison alone, because this gets spoken aloud', () => {
+    expect(clean('Anything under 5 < 10 works.')).toBe('Anything under 5 < 10 works.');
+  });
+
+  it('would rather return untidy words than none at all', () => {
+    expect(clean('<response></response>')).toBe('<response></response>');
+  });
 });
