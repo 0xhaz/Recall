@@ -25,19 +25,28 @@ let t: TestApp;
 let hh: TestHousehold;
 let client: Client;
 
-/** Days ago, at 10:00 in the household's own timezone, so the local date is never ambiguous. */
-const ago = (days: number): Date => new Date(Date.now() - days * 86_400_000 + 4 * 3_600_000);
+const TZ = 'America/New_York';
 
+/**
+ * A purchase `days` local days ago, at noon in the household's own zone.
+ *
+ * The date maths has to happen in that zone, not in UTC: `Date.now() - days * 86_400_000` counts
+ * back in UTC wall-clock, while `purchase_history` groups by local date. The two agree only while
+ * UTC and New York share a date, so a suite that passed all afternoon began failing by one day
+ * once UTC crossed midnight. Postgres does the conversion here, exactly as the seed does.
+ */
 async function bought(item: string, days: number, opts: { person?: string; venue?: string } = {}): Promise<void> {
   await t.db.query(
     `INSERT INTO action (household_id, region, person_id, intent, summary, details, status, decided_at)
-     VALUES ($1, 'us', $2, 'purchase', $3, $4, 'executed', $5)`,
+     SELECT $1, 'us', $2, 'purchase', $3, $4, 'executed',
+            timezone($6, ((timezone($6, now()))::date - $5::int) + interval '12 hours')`,
     [
       hh.id,
       opts.person ? personId(hh, opts.person) : null,
       `Order ${item}`,
       JSON.stringify({ venue: opts.venue ?? 'Chewy', amount: 24.5, currency: 'USD', items: [item] }),
-      ago(days),
+      String(days),
+      TZ,
     ],
   );
 }

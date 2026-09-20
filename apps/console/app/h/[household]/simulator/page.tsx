@@ -28,7 +28,9 @@ export default async function Simulator({ params }: { params: Promise<{ househol
     <Panel
       title="Speak to the assistant"
       icon={MessageSquare}
-      subtitle={`A stand-in for Alexa+ (${config.model}) that reaches Recall only through MCP. Watch what it asks for, and what the devices do about it.`}
+      subtitle={`A stand-in for Alexa+ (${config.model}${
+        config.voice ? `, spoken by Amazon Polly ${config.voice.id}` : ''
+      }) that reaches Recall only through MCP. Watch what it asks for, and what the devices do about it.`}
       className="flex-1"
     >
       <SimulatorConsole household={household} config={config} initialDevices={devices} />

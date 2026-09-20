@@ -7,6 +7,7 @@ import { config, DEMO, PRODUCERS } from './config.js';
 import { SimHome } from './devices.js';
 import { RecallClient } from './recall.js';
 import { listReplays, loadReplay, runReplay } from './replay.js';
+import { Voice } from './voice.js';
 
 const recall = new RecallClient(config.recallUrl, config.token);
 const model: AgentModel =
@@ -15,6 +16,11 @@ const model: AgentModel =
     : new OllamaAgentModel(config.ollamaUrl, config.model);
 const agent = new Agent(recall, model);
 const home = new SimHome(recall, DEMO.devices);
+// Alexa's own voice is not available outside Amazon; Polly is the same TTS family. Off with SIM_VOICE=off.
+const voice =
+  config.voice.toLowerCase() === 'off'
+    ? null
+    : new Voice(config.region, config.voice as never, config.voiceEngine as never);
 
 const PUBLIC = new URL('../public/', import.meta.url);
 const STATIC = /^[a-z0-9-]+\.(html|js|css)$/;
@@ -50,6 +56,7 @@ const routes: Record<string, Handler> = {
     replays: await listReplays(),
     model: model.model,
     recall: config.recallUrl,
+    voice: voice ? { id: config.voice, engine: config.voiceEngine } : null,
   }),
 
   'GET /api/devices': async () => ({
@@ -67,8 +74,11 @@ const routes: Record<string, Handler> = {
     const said = text(body.text, 500, 'text');
     home.lastActive = device.info.id;
     const reply = await agent.respond({ device: device.info.id, speaker, confidence, text: said });
+    // Spoken alongside the text, not after it: a second round trip would put a gap between the
+    // answer appearing and the device saying it, which is exactly what a real device does not do.
+    const spoken = voice ? await voice.say(reply.reply) : null;
     await device.recordTurns(speaker, confidence, said, reply.reply);
-    return reply;
+    return { ...reply, spoken };
   },
 
   'POST /api/event': async (body) => {

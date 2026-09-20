@@ -1,7 +1,7 @@
 'use client';
 
-import { Cpu, Mic, Send, Speaker as SpeakerIcon } from 'lucide-react';
-import { useActionState, useRef, useState } from 'react';
+import { Cpu, Mic, Send, Speaker as SpeakerIcon, Volume2, VolumeX } from 'lucide-react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { sayAction } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,8 +42,22 @@ export function SimulatorConsole({
 }) {
   const [state, submit, pending] = useActionState(sayAction, {});
   const [listening, setListening] = useState(false);
+  const [muted, setMuted] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const form = useRef<HTMLFormElement>(null);
+  const player = useRef<HTMLAudioElement | null>(null);
+  const spoken = state.reply?.spoken ?? null;
+
+  // The device says the answer as it appears. Autoplay is allowed because a turn only ever follows
+  // a click or a held mic, and a failed play is ignored: the text is already on screen.
+  useEffect(() => {
+    player.current?.pause();
+    if (!spoken || muted) return;
+    const audio = new Audio(`data:audio/mpeg;base64,${spoken.audio}`);
+    player.current = audio;
+    void audio.play().catch(() => undefined);
+    return () => audio.pause();
+  }, [spoken, muted]);
 
   const devices = state.devices ?? initialDevices;
   const addressed = state.device ?? config.devices[0]?.id;
@@ -158,11 +172,26 @@ export function SimulatorConsole({
             <div className="rounded-xl border border-slate-700/50 bg-slate-800/40 p-5">
               <p className="label-xs">{state.speaker ?? 'Unknown voice'} said</p>
               <p className="mt-1 text-base text-slate-300">“{state.said}”</p>
-              <p className="mt-4 label-xs">The assistant answered</p>
+              <div className="mt-4 flex items-center justify-between gap-3">
+                <p className="label-xs">The assistant answered</p>
+                {config.voice ? (
+                  <button
+                    type="button"
+                    onClick={() => setMuted((m) => !m)}
+                    className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300"
+                    aria-label={muted ? 'Turn the voice on' : 'Mute the voice'}
+                  >
+                    {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4 text-cyan-400" />}
+                    {muted ? 'Muted' : 'Speaking'}
+                  </button>
+                ) : null}
+              </div>
               <p className="mt-1 text-xl leading-relaxed text-slate-100">{state.reply.reply}</p>
               <p className="mt-3 text-xs text-slate-500">
                 {config.model} · thought for {seconds(state.reply.model_ms)}
                 {state.reply.ask_who ? ' · it does not know who is speaking' : ''}
+                {spoken ? ` · spoken by Polly ${spoken.voice} in ${seconds(spoken.ms)}` : ''}
+                {config.voice && !spoken ? ' · no voice this turn, so it is text only' : ''}
               </p>
             </div>
 

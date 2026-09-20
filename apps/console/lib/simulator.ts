@@ -16,6 +16,8 @@ export interface SimConfig {
   replays: { name: string; description: string; mode: string }[];
   model: string;
   recall: string;
+  /** Null when SIM_VOICE=off: the device answers in text only. */
+  voice: { id: string; engine: string } | null;
 }
 
 export interface SimStep {
@@ -26,8 +28,17 @@ export interface SimStep {
   error?: string;
 }
 
+export interface Spoken {
+  /** MP3, base64. It rides back with the reply so the voice and the text arrive together. */
+  audio: string;
+  voice: string;
+  ms: number;
+}
+
 export interface SimReply {
   reply: string;
+  /** Null when the voice is off, or when Polly failed and the turn carried on in text. */
+  spoken: Spoken | null;
   steps: SimStep[];
   speaker: { name: string; role: string } | null;
   ask_who: boolean;

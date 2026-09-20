@@ -18,6 +18,12 @@ export const config = {
   provider: process.env.SIM_LLM_PROVIDER ?? process.env.LLM_PROVIDER ?? 'ollama',
   region: process.env.AWS_REGION ?? 'us-east-1',
   bedrockModel: process.env.SIM_BEDROCK_MODEL_ID ?? 'amazon.nova-lite-v1:0',
+  /**
+   * The spoken voice. Alexa's own is not available outside Amazon, so this is Polly — the same TTS
+   * family — with `Joanna` as the nearest familiar register. Set SIM_VOICE=off for silence.
+   */
+  voice: process.env.SIM_VOICE ?? 'Joanna',
+  voiceEngine: process.env.SIM_VOICE_ENGINE ?? 'generative',
 };
 
 export interface DeviceInfo {
