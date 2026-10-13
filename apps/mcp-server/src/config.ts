@@ -10,6 +10,12 @@ export interface AppConfig {
   extractionWorker: boolean;
   /** Where magic links point (the console arrives in week 5). */
   consoleBaseUrl: string;
+  /**
+   * One-click sign-in to the seeded demo household, for judges and anyone being shown this.
+   * Off unless explicitly set. It can only ever reach the demo household — see
+   * ConsoleAuthService.demoSession — so turning it on exposes seeded fiction, never a real account.
+   */
+  demoSignIn: boolean;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -24,5 +30,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     speakerConfidenceThreshold: Number(env.SPEAKER_CONFIDENCE_THRESHOLD ?? 0.7),
     extractionWorker: env.EXTRACTION_WORKER !== 'off',
     consoleBaseUrl: env.CONSOLE_BASE_URL ?? 'http://localhost:3000',
+    demoSignIn: env.DEMO_SIGN_IN === 'on',
   };
 }

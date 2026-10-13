@@ -10,7 +10,7 @@ import { DEFAULT_CAREGIVER_GRANTS, type MembershipRole } from '@recall/core';
 import pg from 'pg';
 import { AppModule, type AppOverrides } from '../src/app.module.js';
 import { hashToken, newToken } from '../src/auth/tokens.js';
-import { loadConfig } from '../src/config.js';
+import { type AppConfig, loadConfig } from '../src/config.js';
 import { loadDotEnv } from '../src/env.js';
 import { JobWorker } from '../src/jobs/job-worker.js';
 import { testDatabaseUrl } from './database.js';
@@ -46,10 +46,10 @@ export async function callTool<T>(client: Client, name: string, args: Record<str
   return JSON.parse(text) as T;
 }
 
-export async function startApp(overrides: AppOverrides = {}): Promise<TestApp> {
+export async function startApp(overrides: AppOverrides = {}, settings: Partial<AppConfig> = {}): Promise<TestApp> {
   loadDotEnv();
   // The test database is created and migrated once by global-setup.ts.
-  const config = { ...loadConfig(), databaseUrl: testDatabaseUrl(), extractionWorker: false };
+  const config = { ...loadConfig(), databaseUrl: testDatabaseUrl(), extractionWorker: false, ...settings };
 
   const db = new pg.Client({ connectionString: config.databaseUrl });
   await db.connect();

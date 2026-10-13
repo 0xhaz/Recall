@@ -364,6 +364,23 @@ export const confirmDose = (id: string, logId: string, note?: string) =>
 
 // ---------------------------------------------------------------- sign-in
 
+/** Whether this deployment offers demo sign-in. False if the server is unreachable or says no. */
+export const demoOffered = async (): Promise<boolean> => {
+  try {
+    return (await call<{ enabled: boolean }>('/auth/demo', { token: null })).enabled;
+  } catch {
+    return false;
+  }
+};
+
+/** One-click sign-in to the seeded demo household. 404s unless the server has DEMO_SIGN_IN=on. */
+export const demoSignIn = (person?: string) =>
+  call<{ session_token: string; expires_at: string; name: string }>('/auth/demo', {
+    method: 'POST',
+    body: person ? { person } : {},
+    token: null,
+  });
+
 export const requestMagicLink = (email: string) =>
   call<{ ok: boolean }>('/auth/magic-link', { method: 'POST', body: { email }, token: null });
 

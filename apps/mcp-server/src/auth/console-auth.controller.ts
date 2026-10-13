@@ -16,6 +16,7 @@ import { ForgetService } from '../memory/forget.service.js';
 import { ConsoleAuthService } from './console-auth.service.js';
 
 const MagicLinkBody = z.object({ email: z.email() });
+const DemoBody = z.object({ person: z.string().max(80).optional() });
 const VerifyBody = z.object({ token: z.string().min(1) });
 /** Typed confirmation, so "forget me" can't happen by accident. */
 const ForgetMeBody = z.object({ confirm: z.literal('forget me') });
@@ -42,6 +43,22 @@ export class ConsoleAuthController {
     const { token } = parseBody(VerifyBody, body);
     const session = await this.auth.verify(token);
     if (!session) throw new UnauthorizedException('This sign-in link has expired or was already used');
+    return session;
+  }
+
+  /** Whether this deployment offers demo sign-in, so the console never shows a button it cannot use. */
+  @Get('auth/demo')
+  async demoOffered() {
+    return { enabled: await this.auth.demoOffered() };
+  }
+
+  /** One-click sign-in to the seeded demo household. 404s unless DEMO_SIGN_IN=on. */
+  @Post('auth/demo')
+  @HttpCode(200)
+  async demo(@Body() body: unknown) {
+    const { person } = parseBody(DemoBody, body);
+    const session = await this.auth.demoSession(person);
+    if (!session) throw new NotFoundException('Demo sign-in is not enabled here');
     return session;
   }
 

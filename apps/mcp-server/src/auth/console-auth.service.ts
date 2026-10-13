@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/commo
 import { audit } from '../audit.js';
 import { APP_CONFIG, type AppConfig } from '../config.js';
 import { Db } from '../db/db.js';
+import { DEMO_HOUSEHOLD_ID } from '../db/seed-ids.js';
 import { EMAIL_SENDER, type EmailSender } from './email.js';
 import { bearer, hashToken, newToken } from './tokens.js';
 
@@ -72,6 +73,61 @@ export class ConsoleAuthService {
         targetId: login.person_id,
       });
       return { session_token: session, expires_at: String(inserted.rows[0]?.expires_at.toISOString()) };
+    });
+  }
+
+  /** Whether this deployment offers demo sign-in at all. */
+  async demoOffered(): Promise<boolean> {
+    return this.config.demoSignIn;
+  }
+
+  /**
+   * One-click sign-in for judging and demos. Two things make this safe to expose:
+   *
+   *  - it is off unless DEMO_SIGN_IN=on, and
+   *  - the person is looked up **by household id**, never by anything the caller sends. There is no
+   *    input that can point it at another household, so the worst it can reach is seeded fiction.
+   *
+   * `person` only picks among that household's own adults and caregiver, so a judge can see the
+   * same memory from an owner's, an adult's and a carer's seat — which is the access model working,
+   * not a shortcut around it. Children, guests and the cared-for person are not sign-in accounts.
+   * The session is short: this is for a look around, not a login people keep.
+   */
+  async demoSession(person?: string): Promise<{ session_token: string; expires_at: string; name: string } | null> {
+    if (!this.config.demoSignIn) return null;
+    return this.db.transaction(async (tx) => {
+      const { rows } = await tx.query<{ id: string; display_name: string }>(
+        `SELECT p.id, p.display_name
+           FROM membership m JOIN person p ON p.id = m.person_id
+          WHERE m.household_id = $1 AND m.revoked_at IS NULL AND m.role IN ('owner', 'adult', 'caregiver')
+            AND ($2::text IS NULL OR lower(p.display_name) = lower($2))
+          ORDER BY (m.role = 'owner') DESC, p.display_name
+          LIMIT 1`,
+        [DEMO_HOUSEHOLD_ID, person ?? null],
+      );
+      const who = rows[0];
+      if (!who) return null;
+
+      const session = newToken('rcl_sess');
+      const inserted = await tx.query<{ expires_at: Date }>(
+        `INSERT INTO console_session (person_id, token_hash, expires_at)
+         VALUES ($1, $2, now() + interval '1 day') RETURNING expires_at`,
+        [who.id, hashToken(session)],
+      );
+      // Logged like any other sign-in, and distinguishable from one, so the log stays honest.
+      await audit(tx, {
+        householdId: DEMO_HOUSEHOLD_ID,
+        actorId: who.id,
+        action: 'console.demo_sign_in',
+        targetType: 'person',
+        targetId: who.id,
+      });
+      this.logger.log(`demo sign-in as ${who.display_name}`);
+      return {
+        session_token: session,
+        expires_at: String(inserted.rows[0]?.expires_at.toISOString()),
+        name: who.display_name,
+      };
     });
   }
 

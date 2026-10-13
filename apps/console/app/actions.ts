@@ -8,6 +8,7 @@ import {
   confirmDose,
   correctFact,
   decideRoutine,
+  demoSignIn,
   forgetFact,
   forgetRange,
   pauseHousehold,
@@ -20,7 +21,7 @@ import {
   setRetention,
   undoAction,
 } from '@/lib/recall';
-import { endSession } from '@/lib/session';
+import { endSession, startSession } from '@/lib/session';
 import { getSimDevices, type SimDevice, type SimReply, SimulatorOffline, saySomething } from '@/lib/simulator';
 
 // Everything the console changes goes through here: a server action, the person's own session,
@@ -140,6 +141,20 @@ export async function undoActionAction(_state: ActionState, form: FormData): Pro
   const household = text(form, 'household');
   const actionId = text(form, 'action');
   return run(`/h/${household}/actions`, async () => (await undoAction(household, actionId)).message);
+}
+
+export async function demoSignInAction(_state: ActionState, form: FormData): Promise<ActionState> {
+  const person = text(form, 'person') || undefined;
+  try {
+    const session = await demoSignIn(person);
+    await startSession(session.session_token, session.expires_at);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      return { error: 'Demo sign-in is not enabled on this deployment.' };
+    }
+    return { error: err instanceof ApiError ? err.message : 'Could not start the demo session.' };
+  }
+  redirect('/');
 }
 
 export async function setRetentionAction(_state: ActionState, form: FormData): Promise<ActionState> {

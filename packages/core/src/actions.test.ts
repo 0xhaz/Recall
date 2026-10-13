@@ -177,7 +177,7 @@ describe('evaluatePreflight', () => {
 
     const ride = evaluatePreflight(
       base({
-        action: { intent: 'ride.book', summary: 'Ride to KLCC', topics: [], details: {} },
+        action: { intent: 'ride.book', summary: 'Ride to Grand Central', topics: [], details: {} },
         routines: [{ kind: 'coffee_machine.start', minute: 430 }],
         whenMinute: 440,
       }),

@@ -1,7 +1,12 @@
 import { Hexagon } from 'lucide-react';
+import { DemoSignIn } from '@/components/demo-sign-in';
 import { SignInForm } from '@/components/sign-in-form';
+import { demoOffered } from '@/lib/recall';
 
-export default function SignIn() {
+// Shown only where the server offers it. The console asks the server rather than reading its own
+// env, so the button can never appear on a deployment that would then refuse it.
+export default async function SignIn() {
+  const demo = await demoOffered();
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
       <div className="mb-8 flex items-center gap-2">
@@ -17,6 +22,7 @@ export default function SignIn() {
           30 days.
         </p>
         <SignInForm />
+        {demo ? <DemoSignIn /> : null}
       </div>
       <p className="mt-4 text-xs text-slate-500">
         Running locally? The development mailer prints the link in the Recall server log.

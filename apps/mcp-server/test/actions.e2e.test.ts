@@ -95,12 +95,20 @@ beforeAll(async () => {
 afterAll(() => t?.close());
 
 describe('action_preflight', () => {
+  /**
+   * An ordinary Tuesday, pinned. Without a `when` these run on whatever today is, and the date
+   * read-back correctly adds a `confirm` item on a holiday — so the suite passed every day except
+   * Columbus Day, which is the day it was next run. The pre-flight beats here are about venues and
+   * addresses; the date beats have their own tests below.
+   */
+  const ORDINARY_DAY = '2026-10-20T18:00:00-04:00';
+
   const order = (address: string) => ({
     speaker: 'Alice',
     action: {
       intent: 'order.food',
       summary: `Order dinner from Napoli Pizza to ${address}`,
-      details: { venue: 'Napoli Pizza', address, amount: 30 },
+      details: { venue: 'Napoli Pizza', address, amount: 30, when: ORDINARY_DAY },
     },
   });
 
@@ -126,7 +134,9 @@ describe('action_preflight', () => {
     expect(guest).toMatchObject({ decision: 'block', withheld: { reason: 'guest' } });
     expect((await decide('Alice', guest.action_id, 'confirm')).refused).toBe('blocked');
 
-    const unknown = await preflight({ action: { intent: 'ride.book', summary: 'Book a ride to KLCC' } });
+    const unknown = await preflight({
+      action: { intent: 'ride.book', summary: 'Book a ride to Grand Central', details: { when: ORDINARY_DAY } },
+    });
     expect(unknown.confirm.map((c) => c.check)).toEqual(['speaker']);
   });
 

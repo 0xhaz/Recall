@@ -469,3 +469,102 @@ describe('temporary mode', () => {
     expect((await api('Sofia', '/pause', { method: 'POST', body: { minutes: 30 } })).status).toBe(403);
   });
 });
+
+describe('demo sign-in', () => {
+  /** The demo household is the seeded one, by id — the test household here is a different one. */
+  const DEMO_HOUSEHOLD = '00000000-0000-4000-8000-000000000001';
+
+  async function auth<T>(path: string, body?: unknown): Promise<{ status: number; body: T }> {
+    const res = await fetch(`${t.baseUrl}${path}`, {
+      method: body === undefined ? 'GET' : 'POST',
+      headers: body === undefined ? {} : { 'content-type': 'application/json' },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+    return { status: res.status, body: (await res.json()) as T };
+  }
+
+  it('is off unless the deployment turns it on', async () => {
+    // startApp() uses the default config, where DEMO_SIGN_IN is unset.
+    expect((await auth<{ enabled: boolean }>('/auth/demo')).body.enabled).toBe(false);
+    expect((await auth('/auth/demo', {})).status).toBe(404);
+  });
+
+  describe('when it is on', () => {
+    let demo: TestApp;
+
+    beforeAll(async () => {
+      demo = await startApp({}, { demoSignIn: true });
+      await demo.db.query(
+        `INSERT INTO household (id, name, region, timezone) VALUES ($1, 'Demo', 'us', 'America/New_York')
+         ON CONFLICT (id) DO NOTHING`,
+        [DEMO_HOUSEHOLD],
+      );
+      for (const [id, name, role] of [
+        ['00000000-0000-4000-8000-0000000000d1', 'DemoOwner', 'owner'],
+        ['00000000-0000-4000-8000-0000000000d2', 'DemoCarer', 'caregiver'],
+        ['00000000-0000-4000-8000-0000000000d3', 'DemoChild', 'child'],
+      ] as const) {
+        await demo.db.query('INSERT INTO person (id, display_name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING', [
+          id,
+          name,
+        ]);
+        await demo.db.query(
+          `INSERT INTO membership (household_id, person_id, role, grants) VALUES ($1, $2, $3, '{}')
+           ON CONFLICT DO NOTHING`,
+          [DEMO_HOUSEHOLD, id, role],
+        );
+      }
+    });
+
+    afterAll(async () => {
+      await demo.db.query('DELETE FROM console_session WHERE person_id = ANY($1)', [
+        [
+          '00000000-0000-4000-8000-0000000000d1',
+          '00000000-0000-4000-8000-0000000000d2',
+          '00000000-0000-4000-8000-0000000000d3',
+        ],
+      ]);
+      await demo.close();
+    });
+
+    const post = async <T>(body: unknown): Promise<{ status: number; body: T }> => {
+      const res = await fetch(`${demo.baseUrl}/auth/demo`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      return { status: res.status, body: (await res.json()) as T };
+    };
+
+    it('signs you in as the demo household owner by default', async () => {
+      const { status, body } = await post<{ name: string; session_token: string }>({});
+      expect(status).toBe(200);
+      expect(body.name).toBe('DemoOwner');
+      expect(body.session_token).toMatch(/^rcl_sess_/);
+    });
+
+    it('lets a judge pick another seat in that household', async () => {
+      expect((await post<{ name: string }>({ person: 'DemoCarer' })).body.name).toBe('DemoCarer');
+    });
+
+    it('refuses a child, a guest, or anyone who is not a sign-in account', async () => {
+      expect((await post({ person: 'DemoChild' })).status).toBe(404);
+    });
+
+    it('cannot be pointed at anyone outside the demo household', async () => {
+      // The real risk: a name that exists, but in someone else's house. Emma is in the test
+      // household, not the demo one, so this must find nobody rather than sign anyone in.
+      expect((await post({ person: 'Emma' })).status).toBe(404);
+      expect((await post({ person: 'Nina' })).status).toBe(404);
+    });
+
+    it('logs it as a demo sign-in, not as a real one', async () => {
+      await post({});
+      const { rows } = await demo.db.query<{ action: string }>(
+        `SELECT action FROM audit_log WHERE household_id = $1 AND action LIKE 'console.%' ORDER BY at DESC LIMIT 1`,
+        [DEMO_HOUSEHOLD],
+      );
+      expect(rows[0]?.action).toBe('console.demo_sign_in');
+    });
+  });
+});

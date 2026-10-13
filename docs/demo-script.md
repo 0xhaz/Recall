@@ -96,6 +96,11 @@ correct behaviour and looks identical from the form.
 
 ### Signing in
 
+**For judges:** the deployed console offers one-click sign-in on `/sign-in` — Emma (owner), Daniel
+(adult) or Nina (caregiver), no email needed. Asking the same question from two of those seats is
+the fastest way to see the access model: Daniel gets the household's memory and none of Emma's.
+It is enabled by `DEMO_SIGN_IN=on` and can only ever reach the seeded demo household.
+
 Open the console, enter Emma's address, and **the link arrives by email** — from SES, single-use,
 valid 15 minutes. Sessions last 30 days, so do it once.
 
