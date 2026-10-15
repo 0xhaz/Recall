@@ -1,41 +1,70 @@
 #!/usr/bin/env bash
-# Migrate and seed the deployed database. Run this yourself: it writes to production.
+# Seed the deployed demo household — from inside the VPC, by asking the server container to do it
+# on its next boot.
 #
-# It replaces the demo household's rules, routines, activity, care plan, reminders, notices,
-# context baselines and seeded purchases, so the demo is identical every time. It does NOT touch
-# people, memberships, household tokens, or any fact that is not part of the seed.
+# The obvious way is to connect to RDS from here and run `pnpm seed`. Don't: the database only
+# admits named addresses, a home IP moves, and "just add my IP" means re-opening that hole every
+# time and forgetting to close it. The container is already in the VPC and already runs migrations
+# on boot, so it is the right thing to hand this to.
+#
+# Two deployments: one with SEED_ON_BOOT=on, one to take it off again. Leaving it on would re-seed
+# on every restart, which is idempotent but would wipe anything entered during a live demo.
 set -euo pipefail
 
-# pnpm --filter runs the child with cwd set to the package directory, so every path here is
-# absolute: a relative NODE_EXTRA_CA_CERTS would silently resolve against apps/mcp-server.
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
-
 REGION="${AWS_REGION:-us-east-1}"
+SERVICE="${SERVICE:-recall-server}"
 export AWS_PAGER=""
 
-# RDS presents a chain rooted in "Amazon RDS Root 2019 CA", which is not in Node's trust store, so
-# a laptop gets SELF_SIGNED_CERT_IN_CHAIN even though the connection is perfectly good. The URL uses
-# sslmode=verify-full and should keep doing so: the fix is to trust Amazon's CA, never to turn
-# verification off. (NODE_TLS_REJECT_UNAUTHORIZED=0 would "work" here and would also disable
-# certificate checking for every other connection the process makes.)
-CA_BUNDLE="${NODE_EXTRA_CA_CERTS:-$ROOT/.cache/rds-global-bundle.pem}"
-if [ ! -s "$CA_BUNDLE" ]; then
-  echo "==> fetching Amazon's RDS CA bundle"
-  mkdir -p "$(dirname "$CA_BUNDLE")"
-  curl -fsS --max-time 60 -o "$CA_BUNDLE" https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
-fi
-export NODE_EXTRA_CA_CERTS="$CA_BUNDLE"
-
 arn="$(aws apprunner list-services --region "$REGION" \
-  --query "ServiceSummaryList[?ServiceName=='recall-server'].ServiceArn" --output text)"
-DATABASE_URL="$(aws apprunner describe-service --service-arn "$arn" --region "$REGION" \
-  --query 'Service.SourceConfiguration.ImageRepository.ImageConfiguration.RuntimeEnvironmentVariables.DATABASE_URL' \
-  --output text)"
-export DATABASE_URL
+  --query "ServiceSummaryList[?ServiceName=='$SERVICE'].ServiceArn" --output text)"
+[ -n "$arn" ] && [ "$arn" != "None" ] || { echo "No such service: $SERVICE" >&2; exit 1; }
 
-echo "==> migrating"
-pnpm --filter @recall/mcp-server migrate
-echo "==> seeding"
-pnpm --filter @recall/mcp-server seed
-echo "Done. Sign in to the console and every page should have something on it."
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+# Flip SEED_ON_BOOT, keeping every other environment variable exactly as it is.
+set_flag() {
+  aws apprunner describe-service --service-arn "$arn" --region "$REGION" \
+    --query 'Service.SourceConfiguration' --output json > "$tmp/config.json"
+  FLAG="$1" python3 - "$tmp/config.json" <<'PY'
+import json, os, sys
+path = sys.argv[1]
+cfg = json.load(open(path))
+env = cfg['ImageRepository']['ImageConfiguration']['RuntimeEnvironmentVariables']
+flag = os.environ['FLAG']
+if flag == 'off':
+    env.pop('SEED_ON_BOOT', None)
+else:
+    env['SEED_ON_BOOT'] = flag
+json.dump(cfg, open(path, 'w'))
+PY
+  aws apprunner update-service --service-arn "$arn" --region "$REGION" \
+    --source-configuration "file://$tmp/config.json" --query 'OperationId' --output text >/dev/null
+}
+
+wait_ready() {
+  while :; do
+    status="$(aws apprunner list-services --region "$REGION" \
+      --query "ServiceSummaryList[?ServiceName=='$SERVICE'].Status" --output text)"
+    [ "$status" = "OPERATION_IN_PROGRESS" ] || { echo "$status"; return 0; }
+    sleep 10
+  done
+}
+
+echo "==> asking $SERVICE to seed on its next boot"
+set_flag on
+echo "    $(wait_ready)"
+
+echo "==> taking the flag off again, so a restart does not re-seed"
+set_flag off
+echo "    $(wait_ready)"
+
+url="$(aws apprunner list-services --region "$REGION" \
+  --query "ServiceSummaryList[?ServiceName=='$SERVICE'].ServiceUrl" --output text)"
+curl -fsS "https://$url/health"; echo
+echo
+echo "Seeded. Check the application log for 'seeded demo households' if you want to see it happen:"
+echo "  aws logs tail /aws/apprunner/$SERVICE/\$(aws apprunner describe-service --service-arn $arn \\"
+echo "    --region $REGION --query 'Service.ServiceId' --output text)/application --since 15m --region $REGION"

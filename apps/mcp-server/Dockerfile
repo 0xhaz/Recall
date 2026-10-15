@@ -21,4 +21,8 @@ COPY --from=build /out/package.json ./package.json
 COPY --from=build /repo/apps/mcp-server/dist ./dist
 COPY --from=build /repo/apps/mcp-server/migrations ./migrations
 EXPOSE 3100
-CMD ["sh", "-c", "node dist/db/migrate.js && node dist/main.js"]
+# Migrations always; the demo seed only when asked for. Seeding runs here, inside the VPC, because
+# the alternative is opening the database to whatever address a laptop happens to have that day —
+# and a home IP moves, so that hole gets re-opened every time and tends to stay open.
+# A failed seed must not stop the server coming up: an unseeded demo is recoverable, a dead one is not.
+CMD ["sh", "-c", "node dist/db/migrate.js && { [ \"$SEED_ON_BOOT\" = on ] && (node dist/db/seed.js || echo 'seed failed, starting anyway'); true; } && node dist/main.js"]
