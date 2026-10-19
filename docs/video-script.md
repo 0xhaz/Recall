@@ -22,34 +22,29 @@ Three rules from the submission page, and what each one means here:
 | No copyrighted music or footage | **No soundtrack.** Do not demo `suggest_music` — the track names are real. Do not say *"play The Secret Life of Walter Mitty"*; say **"play something"**. |
 | No third-party trademarks | Alexa+ is the track's own technology, so naming it is expected. Everything else on screen is ours. |
 
-Prep, in order:
+Everything is recorded against the **hosted stack** — nothing runs on this machine, so there is no
+local server to fall over mid-take:
 
-```bash
-pnpm db:up && pnpm db:seed          # resets the demo to a known state
-pnpm dev                            # Recall on :3100
-pnpm sim                            # the simulated Alexa+ on :3200
-pnpm console                        # the console on :3000
-```
+- Console: **https://6gpwq7kegp.us-east-1.awsapprunner.com**
+- Sign in with the one-click demo buttons. Emma for the first half, Nina for the second.
 
 Then **make the medication dose filmable**. The seed confirms every dose that has already passed,
-and a spoken confirmation only lands within 60 minutes before or 240 after one — so without this,
-Ruth says she has taken her tablets and Recall correctly answers that nothing is due. This moves
-the evening dose to right now and leaves it waiting:
+and a spoken confirmation only lands within 60 minutes before or 240 after one — so filming at an
+arbitrary hour gets Ruth correctly told that nothing is due.
 
-```bash
-docker exec recall-postgres-1 psql -U recall -d recall -c "
-WITH n AS (SELECT timezone('America/New_York', now()) AS t),
-     m AS (UPDATE care_reminder SET times = ARRAY[(extract(hour from (SELECT t FROM n))*60
-                                                 + extract(minute from (SELECT t FROM n)))::smallint]
-            WHERE label = 'Evening tablets' RETURNING id, household_id, person_id, times[1] AS minute)
-INSERT INTO care_reminder_log (household_id, region, reminder_id, person_id, local_date,
-                               local_minute, due_at, status, prompted_at)
-SELECT m.household_id, 'us', m.id, m.person_id, (SELECT t FROM n)::date, m.minute, now(), 'pending', now()
-  FROM m ON CONFLICT (reminder_id, due_at) DO NOTHING;"
-```
+Do it as Nina, in the UI, a few minutes before you record:
 
-Open four tabs: **Simulator**, **Memory**, **Care**, **Overview**. Sign in with the one-click demo
-buttons — Emma for the first half, Nina for the second.
+1. **Care** page → *Add to the schedule*
+2. What to take: `Evening tablets` · How much: `2 tablets` · When: **two minutes from now**, in the
+   household's own clock (shown top right of that page) · Every day
+3. **Save reminder**, then wait. Within about two minutes the dose turns from *later today* to
+   **not confirmed** — that is the watcher prompting Ruth on her own device, which is what makes the
+   spoken confirmation land.
+
+Delete that reminder afterwards so the demo resets clean. *(Measured against production: pending
+105 seconds after saving.)*
+
+Open four tabs on the hosted console: **Simulator**, **Memory**, **Care**, **Overview**.
 
 ---
 
@@ -160,10 +155,10 @@ A memory worth trusting is one that knows what it does not know.”
 
 | Problem | Why | What to do |
 |---|---|---|
-| *“Nothing is waiting to be confirmed”* | The dose is outside the window, or already confirmed | Re-run the prep block above |
-| The new fact is not in Memory yet | Extraction is a background job | Wait a second and refresh; it lands in about one |
-| The assistant says it knows nothing about Emma | Facts unembedded on a fresh database | `pnpm db:seed` queues the re-embed; give it a few seconds |
-| Simulator page says it is offline | `pnpm sim` is a separate process | Start it, reload |
+| *“Nothing is waiting to be confirmed”* | The dose is outside the window, or already confirmed | Re-do the two-minute reminder above and wait for *not confirmed* |
+| The new fact is not in Memory yet | Extraction is a background job | Refresh; it lands in about a second |
+| The assistant says it knows nothing about Emma | Facts unembedded after a reseed | Give it a few seconds — the seed queues the re-embed itself |
+| Simulator page says it is offline | The hosted container is restarting | Wait ~30 s and reload; `curl .../health` confirms it is back |
 
 ## Cutting room
 

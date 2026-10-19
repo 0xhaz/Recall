@@ -1,237 +1,216 @@
 # Recall
 
-A user-owned memory layer for Alexa+ and any other agent, served as an MCP server over Streamable HTTP.
-Per-person, inspectable, editable, forgettable memory that stays consistent across every device in the house.
+**A memory layer for Alexa+ that the household owns.** Per-person, inspectable, correctable,
+erasable — and consistent across every device in the house.
 
-**Status:** week 4 of 6 — memory, stated rules, forgetting that reaches every device, device sync, honesty tools, routines
-with check-ins, and the context engine with music. See [docs/workplan.md](docs/workplan.md).
+Alexa+ forgets. Ask it something personal twice and you can get two different answers, and whatever
+it does remember, everyone on the account can see. Recall is the other half: a memory the people in
+the house can read, correct and delete, served to the assistant over MCP so it never touches the
+database itself.
 
-## Quickstart
-
-Requires Node 22+, pnpm 9, Docker, and [Ollama](https://ollama.com) with two models:
-`ollama pull qwen3:8b` (extraction and rule parsing) and `ollama pull qwen3-embedding:0.6b` (embeddings).
-
-```sh
-cp .env.example .env
-pnpm install
-pnpm db:up          # Postgres 16 + pgvector on localhost:5435
-pnpm db:migrate
-pnpm db:seed        # demo households and devices, plus RECALL_DEV_TOKEN as an MCP token for the demo household
-pnpm dev            # MCP server on http://127.0.0.1:3100/mcp, background jobs in-process
-pnpm smoke          # in another terminal: calls the tools the way an assistant would
-pnpm test           # unit + end-to-end on a separate <db>_test database
-```
-
-`GET /health` reports database and LLM reachability; `GET /metrics/latency` reports p50/p95 per tool against its budget.
-
-The demo seed has one household with Emma (owner), Daniel (adult), Sofia (child), Ruth (cared for), Tom (guest)
-and Nina (caregiver, who owns a separate household of her own), and three devices: `kitchen-echo`, `bedroom-echo`
-(Ruth's) and `living-firetv`.
-
-## Connect an assistant
-
-Weeks 1–3 use Claude as the Alexa+ stand-in. The endpoint expects `Authorization: Bearer <household token>`;
-after `pnpm db:seed`, `RECALL_DEV_TOKEN` is one for the demo household.
-
-**Claude Code** — this repo ships a project [`.mcp.json`](.mcp.json); open the repo in Claude Code and approve the `recall` server. Or add it by hand:
-
-```sh
-claude mcp add --transport http recall http://localhost:3100/mcp --header "Authorization: Bearer dev-token-change-me"
-```
-
-**Claude Desktop** — bridge the HTTP endpoint with `mcp-remote` in `claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "recall": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:3100/mcp", "--header", "Authorization:${AUTH_HEADER}"],
-      "env": { "AUTH_HEADER": "Bearer dev-token-change-me" }
-    }
-  }
-}
-```
-
-Things to try, speaking as someone from the demo household:
-
-- *"I'm Emma — what should we cook tonight?"*, then the same as Daniel, then without saying who you are.
-- *"I'm Daniel, remember I'm off coffee until Wednesday"*, then ask again a few seconds later.
-- *"Emma here. No music after 10pm on school nights."* Then, as Daniel: *"Always play music when I work out."*
-- *"What do you know about me?"* and *"Do you know anything about my uncle?"*
-- *"Forget that I'm off coffee."*
-
-## Agent Skill
-
-`packages/skill` packages the same capability as an Agent Skill: not a second implementation, but
-instructions for an agent that already has the MCP tools — which to call first, what the brief's
-ordering means, and what not to say. The rules that make Recall behave (answer from the speaker's
-own facts, ask rather than guess an unrecognised voice, quote the rule that blocked something, never
-claim an action is done unless `decide_action` returned `executed`) live there rather than in each
-assistant's prompt.
-
-```
-packages/skill/
-  SKILL.md               how to use Recall, and the mistakes worth avoiding
-  references/tools.md    the full tool surface and which to reach for
-  references/http.md     calling Recall over HTTP when no MCP client is connected
-```
-
-Point a Claude Code or Claude Desktop skills directory at it, or copy the folder in. The
-`references/` files load on demand, so the instructions stay short until something needs the detail.
-
-## Console
-
-With the server running, `pnpm console` serves the console on http://localhost:3000: what Recall remembers, and the
-controls over it.
-
-- **Memory** — every fact with where it came from, how sure it is, and whose it is. Fix one and the old wording is kept
-  as history; forget one and the tombstone reaches every device.
-- **Rules** — your rules word for word, and the log of what each one blocked.
-- **Routines** — what the miner noticed, waiting for a yes or no, plus the ones that have stopped working.
-- **Actions** — everything done on your behalf, what pre-flight asked first, and undo while the window is open.
-- **Context** — live scores with what raised them, quiet hours, and each person's learned thresholds.
-- **People, devices, settings** — who can see what, what has synced, how long raw events are kept, and a JSON export.
-- **Care** — for someone being cared for: the correct/redirect policies in the caregiver's own words, the day's
-  check-ins, and the alerts that went out.
-
-Sign in with a magic link. In development the mailer prints the link in the Recall server log; the demo owner is
-`emma@demo.recall.local`.
-
-## Simulated Alexa+
-
-With the server running (`pnpm dev`), `pnpm sim` serves a stand-in for Alexa+ on http://127.0.0.1:3200. It has:
-
-- two devices side by side, each keeping its own synced view of household memory
-- a speaker picker and a voice-match slider, standing in for Voice ID
-- browser speech in and out
-- buttons for simulated device events: coffee machine, lights, phone, Ring, front door, sleep
-- replays
-
-The assistant is `qwen3:8b` with tool calling. Its only memory is Recall over MCP, and every reply shows the Recall
-calls it made. Commands Recall sends (play this, undo that) are carried out by the simulated device, which reports
-back what it did.
-
-Replays are JSON streams in [`apps/simulator/replays`](apps/simulator/replays). They run from the page or the terminal:
-
-- `pnpm replay mornings`: three weeks of routine history
-- `pnpm replay heart-rate`: a 4-minute run, in real time
-- `pnpm replay checkins`, `pnpm replay evening` and `pnpm replay door-night`
-
-## Tools
-
-Every tool that concerns a person takes `speaker` and an optional `speaker_confidence` (a voice-match score). Below
-0.7 the speaker is treated as unknown: only household memory is used, and `session_brief` returns `speaker_candidate`
-so the assistant can ask "Is this Emma?". Every read carries the device-local date and time.
-
-| Tool | What it does |
+| | |
 |---|---|
-| **Memory** | |
-| `session_brief` | The first call for any request: local time, who is speaking and how they like to be spoken to, the rules that apply, relevant facts with provenance, the conversation in progress (even from another device), device state |
-| `recall` | Facts visible to the speaker, ranked by meaning and shared words |
-| `remember` | Screens, stores and acknowledges at once; facts are extracted in the background |
-| `forget` | Forgets for good on every device, by topic or id; asks when the match is unclear |
-| `explain_memory` | What is kept about the speaker and the household, with sources; "nothing stored about …" when there is nothing |
-| `verify_claim` | Evidence on record for a claim (and what changed), for the assistant to compare before asserting anything |
-| `set_communication_style` | The person's tone dial: brief, no commentary, humour or emotion-labelling unless they ask |
-| **Rules** | |
-| `set_rule` | Saves a stated rule verbatim with its structured form; reports conflicts, never resolves them |
-| `list_rules` / `remove_rule` | Rules in force, word for word; only the author (or a caregiver) removes one |
-| **Context and care** | |
-| `get_context` | Context scores (workout, wind-down, party, festive, focus) with their reasons, quiet hours, and routines due soon or not working |
-| `set_context` | "Workout mode" / "stop workout mode": wins over the signals for a while and calibrates the person's trigger |
-| `suggest_music` | Picks for the live context from a mock catalogue, ranked by fit and what this person plays or skips in that context; nothing when a rule forbids music |
-| `checkin` | "I'm up" / "good morning": recorded, and the carers are told; a missed usual check-in prompts the person, then the carers |
-| `set_care_policy` | A caregiver's instruction for a topic with the person they care for: correct (safety) or redirect (reassure, turn to something familiar) |
-| **Actions** | |
-| `action_preflight` | Before any order, booking, ride, call or device change: rules (quoted), quiet hours, the address on record, venues used before, repeat orders, unusual amounts and routine clashes decide whether to allow it, confirm specific things first, or block it |
-| `propose_action` | At most one offer, with its source: a routine that's due, the next step of a routine chain, or music for the live context. Nothing in quiet hours; after two accepts, low-risk ones just start |
-| `decide_action` | The person's answer: confirm carries it out with an undo window, dismiss teaches the offer to back off |
-| `undo` | Takes back the latest action while its window is open; device changes are reversed with the inverse command |
-| **Devices** | |
-| `resolve_speaker` | Simulated Voice ID: a confident match is the speaker; a weak match or the device's usual person is a candidate |
-| `ingest_events` | Device reports (media, timers, alarms, subscriptions, conversation turns, sensors), idempotent and HLC-ordered |
-| `sync` | Events since a cursor, or a snapshot once the log it needs has been compacted |
-| `device_state` | The only source for what is playing, timers, alarms, subscriptions and features |
-| `session_history` | The actual conversation log, before any claim about what was said |
+| **Track** | Alexa+ — self-hosted MCP server (spec `2025-11-25`, Streamable HTTP), **and** an Agent Skill, **and** a simulated Alexa+ experience |
+| **Mini challenges** | AWS Builder |
+| **Licence** | MIT |
+| **Live console** | https://6gpwq7kegp.us-east-1.awsapprunner.com |
+| **Live MCP endpoint** | `https://v9d346pzw7.us-east-1.awsapprunner.com/mcp` |
 
-The full planned tool surface is in [docs/architecture.md §6](docs/architecture.md).
+---
+
+## For judges: sign in without an email
+
+The console is at **https://6gpwq7kegp.us-east-1.awsapprunner.com/sign-in**. Under the email form
+there are three one-click buttons — **no credentials needed**:
+
+| Seat | What they see |
+|---|---|
+| **Emma** (owner) | The household's memory, and her own |
+| **Daniel** (adult) | The same household memory — and none of Emma's |
+| **Nina** (caregiver) | Only Ruth, and only what her grants allow |
+
+**The fastest 30 seconds:** sign in as Emma, open **Simulator**, ask *"what do you know about me?"*.
+Then sign in as Daniel and ask the same thing. The difference between those two answers is the
+product.
+
+Everyone in that household is invented and so is everything they said. The sign-in is scoped to the
+demo household by its id — there is no input that can point it at a real account
+([`console-auth.service.ts`](apps/mcp-server/src/auth/console-auth.service.ts)).
+
+---
 
 ## How it works
 
-**Writing memory.** A deterministic screen drops card numbers, passwords, account or ID numbers and diagnoses before
-anything is stored or sent to a model. The statement is stored and queued; until extraction runs it is recallable as
-`pending_extraction`. The model drafts facts, and code decides scope, confidence, sensitivity and expiry ("until
-Wednesday" is resolved to a date by code). Similar existing facts go to a model judge: a restatement raises confidence,
-a change supersedes the old fact (closed and linked, never deleted).
+```mermaid
+flowchart LR
+  subgraph house["In the house"]
+    echo["Echo / Fire TV<br/><i>simulated</i>"]
+    worn["Worn tracker<br/><i>replayed stream</i>"]
+  end
 
-**Forgetting.** A tombstone reaches every device, and the words are erased from the fact, the history it replaced, the
-statement it came from, past events and snapshots. A statement recorded before the forget can't bring it back.
+  subgraph assistant["Assistant · apps/simulator"]
+    agent["Agent loop<br/>Nova Lite"]
+    polly["Amazon Polly<br/><i>the spoken reply</i>"]
+  end
 
-**Devices.** The event log is the source of truth. Devices sync by the server's sequence number, merge by hybrid logical
-clock, and restart from a snapshot once old events are compacted (raw events are kept 7 days in this build). Raw health
-signals never leave the server.
+  subgraph recall["Recall · apps/mcp-server"]
+    mcp["MCP server<br/><b>Streamable HTTP · 2025-11-25</b>"]
+    tools["26 tools"]
+    core["@recall/core<br/><i>pure, tested rules</i>"]
+    jobs["Background workers<br/><i>extract · mine · consolidate</i>"]
+    api["Console API"]
+  end
 
-**Context.** Heart rate, motion, lights, charging, noise, voices, arrivals and sleep become scores for a few named
-contexts, recomputed by a background job. A context switches on only after its score holds, and off only after it has
-stayed low, so a flight of stairs isn't a workout. Thresholds are relative to the person's own resting rate. Only
-scores and thresholds are kept; raw heart rate is deleted after 7 days. Wind-down or sleep sets quiet hours.
+  db[("Postgres 16<br/>+ pgvector")]
+  bedrock["Bedrock<br/>Nova Lite · Titan embeddings"]
+  console["Console · Next.js"]
+  skill["Agent Skill<br/>packages/skill"]
 
-**Actions.** Anything done on someone's behalf is checked first, recorded, and can be undone for a while. Offers come
-only from a routine or a live context, carry their source, never come during quiet hours, and never raise health,
-money or loss. Anything that costs money is only ever drafted for the person to confirm.
+  echo --> agent
+  agent --> polly
+  worn -- "ingest_events" --> mcp
+  agent <-- "MCP" --> mcp
+  mcp --> tools --> core
+  tools --> db
+  jobs --> bedrock
+  jobs --> db
+  console --> api --> db
+  skill -. "same tools" .-> mcp
+```
 
-**Care mode.** For someone being cared for, the defaults invert. They are told only what a caregiver entered. A
-repeated question gets the same warm answer as earlier that day, never "I already told you". Safety topics are
-corrected, and painful ones redirected the way the caregiver asked. A door or movement at night that isn't usual tells
-the carers. `session_brief` also says plainly who can see what.
+**The assistant never reaches the database.** It asks for a session brief and gets back only what
+this speaker is allowed to know. Everything that decides *what is allowed* is a pure function in
+[`packages/core`](packages/core/src), so it is tested rather than prompted.
 
-**Rules.** Rules are law, learned memory is evidence. Precedence: a caregiver's safety rule for a cared-for person, then
-a parent's rule for a child, then the person's own and household rules (the most restrictive wins), then other
-caregiver rules, then anything learned.
+### One turn, in full
 
-LLM calls are metered per household per day (`llm_usage`). The model never runs on the read path.
+```mermaid
+sequenceDiagram
+  autonumber
+  participant P as Emma
+  participant A as Assistant
+  participant R as Recall (MCP)
+  participant W as Worker
 
-## Console API
+  P->>A: "Remember I'm off coffee until Wednesday"
+  A->>R: session_brief(speaker, hint)
+  R-->>A: local time · who is speaking · rules · facts she may see
+  A->>R: remember(text)
+  R-->>A: stored, extraction queued
+  A-->>P: "I've remembered that you're off coffee until Wednesday."
+  Note over R,W: ~1s later
+  W->>W: extract "Emma is off coffee"
+  W->>W: resolve "Wednesday" to a date <b>in code</b>
+  Note right of W: models get calendar<br/>arithmetic wrong
+```
 
-| Endpoint | |
+---
+
+## Track requirement, at runtime
+
+The rules ask that the required technology is *imported and actually called*, not named in a README.
+It is satisfied three separate ways:
+
+| Requirement | Where | What to look at |
+|---|---|---|
+| **Self-hosted MCP server**, spec 2025-11-25, Streamable HTTP | [`mcp.controller.ts`](apps/mcp-server/src/mcp/mcp.controller.ts) | Imports `StreamableHTTPServerTransport`; a fresh stateless server per request |
+| **26 tools registered** | [`mcp/tools.ts`](apps/mcp-server/src/mcp/tools.ts) | `McpServer` from the SDK, bound to the caller's household |
+| **MCP client actually calling it** | [`simulator/src/recall.ts`](apps/simulator/src/recall.ts) | Imports `Client` + `StreamableHTTPClientTransport` |
+| **Loaded MCP config** | [`.mcp.json`](.mcp.json) | Claude Code loads this repo's server directly |
+| **Agent Skill** | [`packages/skill/SKILL.md`](packages/skill/SKILL.md) | The same tools, as a skill |
+| **Simulated Alexa+, source included** | [`apps/simulator`](apps/simulator) | The web experience in the video |
+
+Verify the protocol version yourself:
+
+```sh
+curl -s -X POST https://v9d346pzw7.us-east-1.awsapprunner.com/mcp \
+  -H 'content-type: application/json' -H 'accept: application/json, text/event-stream' \
+  -H 'Authorization: Bearer <household token>' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"check","version":"0"}}}'
+# -> "protocolVersion":"2025-11-25"
+```
+
+---
+
+## What makes it more than a wrapper
+
+Each of these is a tested rule, not a prompt:
+
+- **Per-person scoping.** The same question answers differently for two people in one room, and an
+  unknown voice gets household facts only — never anyone's personal memory.
+- **Stated rules are law.** *"No music after 10pm on school nights"* blocks the action and the refusal
+  quotes the rule back. Rules outrank anything learned.
+- **Forgetting really forgets.** A tombstone every device picks up, the words erased where they were
+  kept, and snapshots rewritten so an offline device cannot resurrect it.
+- **Pre-flight before anything costs money.** Venue never used, address that doesn't match what was
+  said, a repeat within two hours, an unusual amount — each is a question, asked before acting.
+- **It declines to guess.** Two purchases is not a pattern. A dose nobody confirmed is not a dose
+  nobody took. "No record" is its own answer, kept apart from "missed".
+- **Care mode.** A caregiver's wording, used verbatim. Absence of a check-in is the signal: ask the
+  person first, tell the carers only if they still haven't answered.
+
+---
+
+## Connect your own agent
+
+Recall is a hosted MCP server. Point any MCP client at it — nothing to install:
+
+```sh
+claude mcp add --transport http recall https://v9d346pzw7.us-east-1.awsapprunner.com/mcp \
+  --header "Authorization: Bearer $RECALL_TOKEN"
+```
+
+This repo also ships a [`.mcp.json`](.mcp.json) pointing at the same hosted endpoint; set
+`RECALL_TOKEN` and your client loads it. Household tokens are issued from the console under
+**Settings**.
+
+`GET /health` reports database and model reachability. `GET /metrics/latency` reports p50/p95 per
+tool against its budget — both are public:
+
+```sh
+curl https://v9d346pzw7.us-east-1.awsapprunner.com/health
+```
+
+## Building on it
+
+Everything above runs on AWS; this is only needed to change the code. Node 22+, pnpm 9, Docker, and
+either AWS credentials (Bedrock) or [Ollama](https://ollama.com) for a fully offline run.
+
+```sh
+cp .env.example .env && pnpm install
+pnpm db:up && pnpm db:migrate && pnpm db:seed
+pnpm dev && pnpm sim && pnpm console
+pnpm test        # 322 tests, on a separate _test database
+```
+
+Deploying is one command — [`scripts/deploy.sh`](scripts/deploy.sh) builds, pushes and rolls both
+services; [`scripts/seed-prod.sh`](scripts/seed-prod.sh) reseeds the demo from inside the VPC,
+without opening the database to anything.
+
+---
+
+## Repository
+
+| Path | What's in it |
 |---|---|
-| `POST /auth/magic-link` `{email}` | Sends a single-use sign-in link (logged to the server console in dev) |
-| `POST /auth/verify` `{token}` | Exchanges the link for a 30-day session token |
-| `GET /me` | The signed-in person and their household memberships |
-| `POST /me/forget` `{confirm: "forget me"}` | Erases the person's memory in every household and revokes their access |
-| `POST /households/:id/tokens` `{label}` | Owner only: mint an MCP token for a device or assistant (shown once) |
-| `DELETE /households/:id/tokens/:tokenId` | Owner only: revoke it |
+| [`apps/mcp-server`](apps/mcp-server) | NestJS: the MCP server, console API, workers, migrations |
+| [`apps/simulator`](apps/simulator) | The simulated Alexa+ — agent loop, devices, replays, Polly voice |
+| [`apps/console`](apps/console) | Next.js console: memory, rules, routines, actions, context, care |
+| [`packages/core`](packages/core) | Every decision as a pure function — access, rules, context, routines, pre-flight |
+| [`packages/llm`](packages/llm) | Bedrock (Converse) and Ollama behind one interface |
+| [`packages/skill`](packages/skill) | The Agent Skill |
 
-## Tests
+## Submission documents
 
-- `pnpm test` runs everything against `<db>_test` (created, migrated and wiped automatically) with a scripted LLM and a
-  deterministic embedder, so no model is needed. It includes a latency check that fails if any read tool's server-side
-  p95 exceeds its budget.
-- `RECALL_LIVE_LLM=1 pnpm --filter @recall/mcp-server exec vitest run extraction.live rules.live` checks the extraction
-  and rule-parsing prompts against the real local model.
-
-## Layout
-
-```
-apps/mcp-server/   NestJS MCP server: tools, memory, rules, event log, sync, jobs, auth, migrations, Dockerfile
-packages/core/     domain logic without I/O: clock, device projection, rules engine, sensitivity screen, access rules
-packages/llm/      LlmProvider + Embedder: Ollama (local), Bedrock (switch via LLM_PROVIDER)
-docker/            docker-compose: Postgres + pgvector; `--profile full` adds the server
-docs/              design, architecture (with the decision log), tech stack, work plan, friction log, feedback
-```
-
-## Conventions
-
-- **Explicit `@Inject(token)` on every Nest constructor dependency.** `tsx` and `vitest` compile with esbuild, which doesn't emit decorator metadata.
-- Workspace packages export their TypeScript source under the `development` condition; `pnpm build` produces `dist/` for containers.
-- Every household-owned table carries `household_id` and `region`; every query filters on `household_id`.
-- Every transaction that writes events takes the household lock first (`lockHousehold`).
-- The model only drafts; deterministic code decides what is stored.
-- SQL migrations live in `apps/mcp-server/migrations/` and run in filename order.
-
-If the dev server seems to be running old code after large changes, restart `pnpm dev`: `tsx watch` occasionally misses new files.
+| Document | |
+|---|---|
+| [docs/feedback.md](docs/feedback.md) | Product feedback — every tool, API and SDK, and the AWS Builder write-up |
+| [docs/friction-log.md](docs/friction-log.md) | Friction log, in the required format |
+| [docs/video-script.md](docs/video-script.md) | The 3-minute demo video, shot by shot |
+| [docs/architecture.md](docs/architecture.md) | The system, and a dated log of every decision and why |
+| [docs/design.md](docs/design.md) | The problem, the research behind it, and what is deliberately out of scope |
+| [docs/demo-script.md](docs/demo-script.md) | The full walkthrough, longer than the video |
 
 ## Licence
 
-[MIT](LICENSE)
+MIT — see [LICENSE](LICENSE).
