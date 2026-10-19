@@ -513,9 +513,9 @@ Critical path: event log → miner → context engine → `propose_action`/pre-f
 - [ ] Public GitHub repo, MIT licence in About, full source + run instructions
 - [x] Alexa+ track requirement — satisfied three times over: a real MCP server (2025-11-25 negotiated, Streamable HTTP), an Agent Skill in `packages/skill`, and a simulated Alexa+ web experience whose source is in the repo. Testing in Amazon's own web simulator is **not** required (confirmed on the Devpost rules, 2026-09-15)
 - [ ] MCP over Streamable HTTP actually called in code (entry point + loaded MCP config)
-- [ ] Agent Skill present and shown in the video
+- [ ] Agent Skill present and shown in the video — a two-second cut to `packages/skill/SKILL.md` at 0:20 in the script
 - [ ] Simulated Alexa+ source included
-- [ ] Demo video < 3 min, public, English, no third-party trademarks/music
+- [ ] Demo video < 3 min, public, English, no third-party trademarks/music — script written and timed: `docs/video-script.md` (358 words ≈ 2:23, leaving the rest for the assistant answering and tab switches). Every line in it was run against the live stack first
 - [ ] Product feedback for every tool/API/SDK used (incl. AWS services and how)
 - [ ] Open Source mini challenge fields filled
 - [ ] Friction log entries in the required format
