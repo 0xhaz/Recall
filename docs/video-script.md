@@ -3,7 +3,7 @@
 A shot-by-shot script for the submission video. Narration is written to be read aloud to judges;
 everything in **bold** is what's on screen.
 
-**Total narration: 369 words** — about 2:28 read at a normal pace. The remaining 32 seconds are not
+**Total narration: 364 words** — about 2:26 read at a normal pace. The remaining 34 seconds are not
 spare: they are the assistant thinking (roughly four seconds a turn, five turns) and the tab
 switches. Do not fill them with more words.
 
@@ -59,26 +59,28 @@ Recall is a memory layer that can record and learn each family members daily rou
 
 ---
 
-## 0:20 – 0:40 · One memory, every device
+## 0:20 – 0:45 · One memory, every device
 
-> **Screen, in order:** the **Devices** page — five devices, each *synced to the same number*. Then
-> the architecture diagram from the README. Then two seconds on `packages/skill/SKILL.md`, which is
-> the checklist's *“Agent Skill shown in the video”* and the only shot that proves it.
+> **Screen, in order:** the **Devices** page. Pause on the right-hand column: the three devices
+> people speak to have all pulled the log to the same point, and the two worn ones sit at `#0` —
+> they report and never read. Then the architecture diagram from the README. Then two seconds on
+> `packages/skill/SKILL.md`, the checklist's *“Agent Skill shown in the video”* and the only shot
+> that proves it.
 >
 > Let the diagram sit while you say the middle paragraph. Do not read the boxes out — the picture is
 > doing that job, and the words are for the part a picture cannot carry.
 
-“Five devices here — two Echos, a TV, and two things people wear. None keeps its own notes.
+“Five devices. Three you speak to; two that only report.
 
-They reach one memory, through MCP. The assistant holds nothing: it asks, and gets only what the
-person in front of it may know.
+They share one memory, through MCP. The assistant keeps none of it: it asks, and gets back only what
+the person in front of it may know.
 
-What's kept is plain sentences — who said it, and when. Not recordings, and no raw heart rate.
-Forget it here, it's gone from all five.”
+What it stores is what people said, and who said it. Never audio, never a raw heart rate. Erase a
+fact, and every device drops it.”
 
 ---
 
-## 0:40 – 0:55 · What it holds
+## 0:45 – 0:55 · What it holds
 
 > **Screen:** click through Memory → Rules → Routines → Actions. **Four clicks, no lingering.**
 
@@ -167,7 +169,7 @@ A memory worth trusting is one that knows what it does not know.”
 
 If the first take runs long, cut in this order — each is the least load-bearing thing left:
 
-1. **0:40–0:55** down to two clicks (Memory, Rules). Saves ~7s.
+1. **0:45–0:55** down to two clicks (Memory, Rules). Saves ~7s.
 2. The second *“where is Arthur?”* — keep the first. Saves ~8s.
 3. *“am I drinking coffee this week?”* — the fact appearing in Memory already made the point. Saves ~10s.
 
