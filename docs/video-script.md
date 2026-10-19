@@ -3,7 +3,7 @@
 A shot-by-shot script for the submission video. Narration is written to be read aloud to judges;
 everything in **bold** is what's on screen.
 
-**Total narration: 367 words** — about 2:27 read at a normal pace. The remaining 33 seconds are not
+**Total narration: 379 words** — about 2:32 read at a normal pace. The remaining 28 seconds are not
 spare: they are the assistant thinking (roughly four seconds a turn, five turns) and the tab
 switches. Do not fill them with more words.
 
@@ -55,22 +55,26 @@ Open four tabs on the hosted console: **Simulator**, **Memory**, **Care**, **Ove
 “Alexa+ forgets. Ask it something personal twice and you can get two different answers — and what it
 does remember, everyone in the house can see.
 
-Recall is a memory layer the household owns instead. Per-person, inspectable, and anything in it can
-be corrected or erased. It plugs into Alexa+ over MCP.”
+Recall is a memory layer that can record and learn each family members daily routine for every household. Each family members will have their own routines that can be add, remove or even modified and it plugs into Alexa+ over MCP.”
 
 ---
 
-## 0:20 – 0:40 · How it is built
+## 0:20 – 0:40 · One memory, every device
 
-> **Screen:** Overview → Devices, then a two-second cut to `packages/skill/SKILL.md` open in an
-> editor. That shot is the submission checklist's *“Agent Skill shown in the video”* — it costs
-> five seconds and nothing else in the cut proves it.
+> **Screen, in order:** the **Devices** page — five devices, each *synced to the same number*. Then
+> the architecture diagram from the README. Then two seconds on `packages/skill/SKILL.md`, which is
+> the checklist's *“Agent Skill shown in the video”* and the only shot that proves it.
+>
+> Let the diagram sit while you say the middle paragraph. Do not read the boxes out — the picture is
+> doing that job, and the words are for the part a picture cannot carry.
 
-“It is an MCP server on spec 2025-11-25 over streamable HTTP, on App Runner. Nova Lite answers,
-Titan embeds, Postgres with pgvector stores. The same tools also ship as an Agent Skill.
+“Five devices here. Two Echos, a TV, and two things people wear. None of them keeps its own notes.
 
-The assistant never touches the database. It asks for a session brief and gets back only what this
-speaker is allowed to know — which is why the same question gives two people different answers.”
+They reach one memory, through MCP. The assistant holds nothing: it asks, and gets only what the
+person in front of it may know.
+
+What's kept is plain sentences — who said it, and when. Not recordings, and no raw heart rate.
+Forget it here, it's gone from all five.”
 
 ---
 
@@ -78,8 +82,8 @@ speaker is allowed to know — which is why the same question gives two people d
 
 > **Screen:** click through Memory → Rules → Routines → Actions. **Four clicks, no lingering.**
 
-“Everything it knows is on one screen. Facts, with where each came from. Rules it has to obey.
-Routines it mined from what actually happened. Every action taken on someone's behalf.
+“Everything it knows is on one screen. Facts, with where each came from. Rules it must obey.
+Routines it mined. Every action taken on someone's behalf.
 
 Nothing is inferred quietly.”
 
