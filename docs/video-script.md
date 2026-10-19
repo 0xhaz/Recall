@@ -3,7 +3,7 @@
 A shot-by-shot script for the submission video. Narration is written to be read aloud to judges;
 everything in **bold** is what's on screen.
 
-**Total narration: 379 words** — about 2:32 read at a normal pace. The remaining 28 seconds are not
+**Total narration: 369 words** — about 2:28 read at a normal pace. The remaining 32 seconds are not
 spare: they are the assistant thinking (roughly four seconds a turn, five turns) and the tab
 switches. Do not fill them with more words.
 
@@ -68,7 +68,7 @@ Recall is a memory layer that can record and learn each family members daily rou
 > Let the diagram sit while you say the middle paragraph. Do not read the boxes out — the picture is
 > doing that job, and the words are for the part a picture cannot carry.
 
-“Five devices here. Two Echos, a TV, and two things people wear. None of them keeps its own notes.
+“Five devices here — two Echos, a TV, and two things people wear. None keeps its own notes.
 
 They reach one memory, through MCP. The assistant holds nothing: it asks, and gets only what the
 person in front of it may know.
@@ -98,8 +98,7 @@ Nothing is inferred quietly.”
 
 > *It answers aloud — Amazon Polly — and the tool trace shows `session_brief`, then `remember`.*
 
-“Stored immediately — the trace shows what each call cost — and she could ask about it in the next
-breath.
+“Stored immediately, and she could ask about it in the next breath.
 
 In the background it extracts the fact and resolves ‘Wednesday’ to a real date — in code, not by the
 model, because models get calendar arithmetic wrong.”
