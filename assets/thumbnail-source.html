@@ -1,0 +1,42 @@
+<!doctype html><meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:1200px; height:800px; }
+  body {
+    background:#070B14; font-family:Inter,system-ui,sans-serif; color:#F1F5F9;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    position:relative; overflow:hidden;
+  }
+  .glow { position:absolute; width:900px; height:900px; border-radius:50%;
+    background:radial-gradient(circle, rgba(34,211,238,.17) 0%, rgba(59,130,246,.09) 38%, transparent 68%);
+    top:-230px; }
+  .grid { position:absolute; inset:0;
+    background-image:linear-gradient(rgba(148,163,184,.055) 1px, transparent 1px),
+                     linear-gradient(90deg, rgba(148,163,184,.055) 1px, transparent 1px);
+    background-size:48px 48px;
+    mask-image:radial-gradient(circle at 50% 42%, #000 35%, transparent 76%); }
+  .mark { position:relative; width:188px; height:188px; }
+  .wordmark { position:relative; font-weight:800; font-size:122px; letter-spacing:.055em;
+    margin-top:30px; line-height:1;
+    background:linear-gradient(100deg,#22D3EE 8%,#3B82F6 92%);
+    -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .tag { position:relative; margin-top:26px; font-size:31px; font-weight:400; color:#94A3B8;
+    letter-spacing:.012em; }
+  .tag b { color:#CBD5E1; font-weight:600; }
+  .rule { position:relative; margin-top:42px; display:flex; gap:14px; align-items:center;
+    font-size:19px; color:#64748B; letter-spacing:.07em; text-transform:uppercase; font-weight:600; }
+  .dot { width:5px; height:5px; border-radius:50%; background:#22D3EE; opacity:.75; }
+</style>
+<div class="glow"></div><div class="grid"></div>
+<svg class="mark" viewBox="0 0 24 24" fill="none" stroke="url(#g)" stroke-width="1.45"
+     stroke-linecap="round" stroke-linejoin="round">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="24" y2="24">
+    <stop offset="0%" stop-color="#22D3EE"/><stop offset="100%" stop-color="#3B82F6"/>
+  </linearGradient></defs>
+  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+  <circle cx="12" cy="12" r="3.1" stroke="url(#g)" stroke-width="1.45" opacity=".95"/>
+</svg>
+<div class="wordmark">RECALL</div>
+<div class="tag">The memory your home keeps — <b>not the assistant</b></div>
+<div class="rule"><span>Alexa+</span><span class="dot"></span><span>MCP</span><span class="dot"></span><span>AWS</span></div>

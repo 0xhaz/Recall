@@ -12,6 +12,20 @@ then the caregiver — start at 0:55 and run to the end.
 
 ---
 
+## Devpost fields
+
+**Elevator pitch** (187/200 characters — paste verbatim):
+
+> Alexa+ forgets, and what it does remember, everyone on the account can see. Recall is a memory the
+> household owns instead: per-person, inspectable, correctable, erasable, served over MCP.
+
+**Thumbnail:** [`assets/recall-thumbnail.png`](../assets/recall-thumbnail.png) — 2400×1600, the 3:2
+ratio Devpost asks for, 853 KB. Square mark at [`assets/recall-mark.png`](../assets/recall-mark.png).
+Both are generated from [`assets/thumbnail-source.html`](../assets/thumbnail-source.html), so the
+wording can be changed and re-rendered rather than redrawn.
+
+---
+
 ## Before you record
 
 Three rules from the submission page, and what each one means here:
@@ -70,13 +84,12 @@ Recall is a memory layer that can record and learn each family members daily rou
 > Let the diagram sit while you say the middle paragraph. Do not read the boxes out — the picture is
 > doing that job, and the words are for the part a picture cannot carry.
 
-“Five devices. Three you speak to; two that only report.
+“In this demo, we've created five devices of which three you speak to and record and two of that device will use for report.
 
-They share one memory, through MCP. The assistant keeps none of it: it asks, and gets back only what
+They share one memory via MCP. The assistant keeps none of it: it asks, and gets back only what
 the person in front of it may know.
 
-What it stores is what people said, and who said it. Never audio, never a raw heart rate. Erase a
-fact, and every device drops it.”
+What it stores is what people said, and who said it. Never an audio, never a raw heart rate. If you want to drop any of your routine, just give the command to the device”
 
 ---
 
@@ -84,8 +97,8 @@ fact, and every device drops it.”
 
 > **Screen:** click through Memory → Rules → Routines → Actions. **Four clicks, no lingering.**
 
-“Everything it knows is on one screen. Facts, with where each came from. Rules it must obey.
-Routines it mined. Every action taken on someone's behalf.
+“Everything it knows is on one screen, any important dates, shopping list, diet plans. Any hard rules can be set and it will set like an alarm clock.
+Routines will record any new task and to confirm by owner and every action taken on someone's behalf.
 
 Nothing is inferred quietly.”
 
@@ -96,11 +109,11 @@ Nothing is inferred quietly.”
 > **Screen:** Simulator. Speaker **Emma**, device **Kitchen Echo Show**.
 > **Type:** `Remember I am off coffee until Wednesday`
 
-“Emma tells it something new.”
+“Let say the user Emma tell's something new for her diet plan as simulation.”
 
 > *It answers aloud — Amazon Polly — and the tool trace shows `session_brief`, then `remember`.*
 
-“Stored immediately, and she could ask about it in the next breath.
+“Recall will stored it immediately, and Emma could ask about her new profile in case she forgotten anything.
 
 In the background it extracts the fact and resolves ‘Wednesday’ to a real date — in code, not by the
 model, because models get calendar arithmetic wrong.”
@@ -119,15 +132,19 @@ model, because models get calendar arithmetic wrong.”
 > **Screen:** Simulator. Speaker **Ruth**, device **Ruth's Echo**.
 > **Type:** `where is Arthur?`
 
-“Ruth is eighty-one and lives with the family. Her husband Arthur died in 2019.”
+“Ruth is eighty-one woman that has dementia and lives with the family. Her husband Arthur already passed away.So instead of giving direct answer of his passing, Recall will remain tactful and better handling on personal topics based on care set by Nina”
 
 > *“Arthur isn't here right now. Would you like to talk about the garden we used to keep?”*
 
-“That is not the model being tactful. It is Nina's own wording, from the care plan.”
+“The answer here is been set by Nina's own wording from the care plan.”
 
 > **Screen:** **Care** page, Arthur policy visible. Then back. **Send the same question again.**
 
-“Ask again and she gets the same warm answer. Never ‘I already told you’.”
+“And is Ruth ask again and she gets the same warm answer. Never get a direct answer”
+
+"And in care mode, Ruth has been set with her timetable of taking her medical pills and Alexa will set a reminder of her schedule until she responded"
+
+"So here I will give a response as Ruth and confirmed that she has taken her medication for today"
 
 > **Type:** `I have taken my tablets`
 > *“Thank you, Ruth. I've let the carers know.”*
@@ -136,8 +153,7 @@ model, because models get calendar arithmetic wrong.”
 
 > **Screen:** **Care** page. Point at today's doses, then scroll to the seven-day view.
 
-“Nina sees her day, and the week behind it. Taken, missed, and — kept separate — no record at all.
-Unconfirmed is not the same as not taken, and Recall will not guess the difference.”
+“Nina as a care taker will keep track of Ruth daily routine from Care page and check if there's anything missed or need to be updated."
 
 ---
 
@@ -145,12 +161,9 @@ Unconfirmed is not the same as not taken, and Recall will not guess the differen
 
 > **Screen:** Simulator with the tool trace open.
 
-“Three hundred and twenty-two tests. A session brief comes back in ten milliseconds.
+"So that's are few features that I can show for our demo, feel free to login and test the user and see the result"
 
-The hardest part was not what it remembers. It was what it refuses to say: bought twice is not a
-pattern, and nobody answering is not the same as nobody taking their tablets.
-
-A memory worth trusting is one that knows what it does not know.”
+"Thank you"
 
 > **Cut.**
 

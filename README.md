@@ -1,5 +1,7 @@
 # Recall
 
+<img src="assets/recall-thumbnail.png" alt="Recall — the memory your home keeps, not the assistant" width="640">
+
 **A memory layer for Alexa+ that the household owns.** Per-person, inspectable, correctable,
 erasable — and consistent across every device in the house.
 
