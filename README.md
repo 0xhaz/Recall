@@ -57,7 +57,7 @@ flowchart LR
 
   subgraph recall["Recall · apps/mcp-server"]
     mcp["MCP server<br/><b>Streamable HTTP · 2025-11-25</b>"]
-    tools["26 tools"]
+    tools["27 tools"]
     core["@recall/core<br/><i>pure, tested rules</i>"]
     jobs["Background workers<br/><i>extract · mine · consolidate</i>"]
     api["Console API"]
@@ -116,7 +116,7 @@ It is satisfied three separate ways:
 | Requirement | Where | What to look at |
 |---|---|---|
 | **Self-hosted MCP server**, spec 2025-11-25, Streamable HTTP | [`mcp.controller.ts`](apps/mcp-server/src/mcp/mcp.controller.ts) | Imports `StreamableHTTPServerTransport`; a fresh stateless server per request |
-| **26 tools registered** | [`mcp/tools.ts`](apps/mcp-server/src/mcp/tools.ts) | `McpServer` from the SDK, bound to the caller's household |
+| **27 tools registered** | [`mcp/tools.ts`](apps/mcp-server/src/mcp/tools.ts) | `McpServer` from the SDK, bound to the caller's household |
 | **MCP client actually calling it** | [`simulator/src/recall.ts`](apps/simulator/src/recall.ts) | Imports `Client` + `StreamableHTTPClientTransport` |
 | **Loaded MCP config** | [`.mcp.json`](.mcp.json) | Claude Code loads this repo's server directly |
 | **Agent Skill** | [`packages/skill/SKILL.md`](packages/skill/SKILL.md) | The same tools, as a skill |
@@ -208,6 +208,7 @@ without opening the database to anything.
 |---|---|
 | [docs/feedback.md](docs/feedback.md) | Product feedback — every tool, API and SDK, and the AWS Builder write-up |
 | [docs/friction-log.md](docs/friction-log.md) | Friction log, in the required format |
+| [docs/devpost-story.md](docs/devpost-story.md) | The project story, and the Built-with tags |
 | [docs/video-script.md](docs/video-script.md) | The 3-minute demo video, shot by shot |
 | [docs/architecture.md](docs/architecture.md) | The system, and a dated log of every decision and why |
 | [docs/design.md](docs/design.md) | The problem, the research behind it, and what is deliberately out of scope |
