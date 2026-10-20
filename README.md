@@ -206,7 +206,8 @@ without opening the database to anything.
 
 | Document | |
 |---|---|
-| [docs/feedback.md](docs/feedback.md) | Product feedback — every tool, API and SDK, and the AWS Builder write-up |
+| [docs/feedback.md](docs/feedback.md) | Product feedback — the five questions the form asks |
+| [docs/aws-builder.md](docs/aws-builder.md) | AWS Builder mini challenge — which services, and how |
 | [docs/friction-log.md](docs/friction-log.md) | Friction log, in the required format |
 | [docs/devpost-story.md](docs/devpost-story.md) | The project story, and the Built-with tags |
 | [docs/video-script.md](docs/video-script.md) | The 3-minute demo video, shot by shot |

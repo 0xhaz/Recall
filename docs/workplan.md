@@ -384,7 +384,7 @@ Not a general chatbot. Must-show moments: fixing a wrong fact, a rule blocking a
 - [x] RDS or containerised Postgres; persistent pool [T§4] — RDS Postgres 16, pgvector 0.8.2, private to the VPC, TLS verified against Amazon's CA bundle shipped in the image
 - [ ] Region co-located with the Alexa+ endpoint (us-east-1); simulator co-located for the video [T§4] — us-east-1 ✓; the simulator has no service slot until the App Runner restriction is lifted
 - [ ] Re-run the replay scripts on AWS; log p95 regressions in the friction log [T§4]
-- [ ] Document the Bedrock/AgentCore integration (AWS Builder mini challenge) [T§4]
+- [x] Document the AWS integration (AWS Builder mini challenge) [T§4] — `docs/aws-builder.md`, pasteable into the submission field; nine services with what each does and the traps found. AgentCore is deliberately not used (App Runner instead, see Progress), so it is not claimed
 - [ ] Optional: Strands SDK for the orchestrator + worker pattern [T§4]
 - [ ] Guard the credits: dev iteration stays local; Bedrock only for the final week and the video [T§3]
 
