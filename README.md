@@ -206,7 +206,8 @@ without opening the database to anything.
 
 | Document | |
 |---|---|
-| [docs/feedback.md](docs/feedback.md) | Product feedback — the five questions the form asks |
+| [docs/feedback-answers.md](docs/feedback-answers.md) | The five feedback fields, ready to paste |
+| [docs/feedback.md](docs/feedback.md) | Product feedback in full, with the feature requests |
 | [docs/aws-builder.md](docs/aws-builder.md) | AWS Builder mini challenge — which services, and how |
 | [docs/ai-tools.md](docs/ai-tools.md) | Which AI tools were used, building it and inside it |
 | [docs/friction-log.md](docs/friction-log.md) | Friction log, in the required format |

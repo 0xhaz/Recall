@@ -516,7 +516,7 @@ Critical path: event log → miner → context engine → `propose_action`/pre-f
 - [ ] Agent Skill present and shown in the video — a two-second cut to `packages/skill/SKILL.md` at 0:20 in the script
 - [ ] Simulated Alexa+ source included
 - [ ] Demo video < 3 min, public, English, no third-party trademarks/music — script written and timed: `docs/video-script.md` (358 words ≈ 2:23, leaving the rest for the assistant answering and tab switches). Every line in it was run against the live stack first
-- [ ] Product feedback for every tool/API/SDK used (incl. AWS services and how)
+- [x] Product feedback for every tool/API/SDK used (incl. AWS services and how) — all five fields written standalone in `docs/feedback-answers.md`; AWS Builder answer in `docs/aws-builder.md`
 - [ ] Open Source mini challenge fields filled
 - [ ] Friction log entries in the required format
 - [ ] Feature requests with urgency
